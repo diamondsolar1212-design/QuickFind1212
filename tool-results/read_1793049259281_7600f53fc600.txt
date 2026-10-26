@@ -1,0 +1,636 @@
+     1→// HTML Template Engine — generates full HTML pages for premium business templates
+     2→// Based on the 5 uploaded HTML designs, adapted to inject business data
+     3→
+     4→export interface BusinessData {
+     5→  name: string
+     6→  description: string
+     7→  category: string
+     8→  subcategory?: string | null
+     9→  city: string
+    10→  state: string
+    11→  address: string
+    12→  phone: string
+    13→  whatsapp?: string | null
+    14→  email?: string | null
+    15→  website?: string | null
+    16→  rating: number
+    17→  reviewCount: number
+    18→  profileImage: string
+    19→  imageUrls: string
+    20→  products: string
+    21→  hours: string
+    22→  themeColor: string
+    23→  template: string
+    24→}
+    25→
+    26→export function generateBusinessWebsite(business: BusinessData): string {
+    27→  const tpl = business.template
+    28→
+    29→  // Parse products
+    30→  let products: any[] = []
+    31→  try { products = business.products ? JSON.parse(business.products) : [] } catch {}
+    32→
+    33→  // Parse gallery images
+    34→  const gallery = business.imageUrls ? business.imageUrls.split(',').filter(Boolean) : []
+    35→  const allImages = business.profileImage && !gallery.includes(business.profileImage)
+    36→    ? [business.profileImage, ...gallery]
+    37→    : gallery
+    38→
+    39→  // Parse hours
+    40→  let hours: any = {}
+    41→  try { hours = business.hours ? JSON.parse(business.hours) : {} } catch {}
+    42→
+    43→  switch (tpl) {
+    44→    case 'calm-sage':
+    45→      return generateCalmSage(business, allImages, products, hours)
+    46→    case 'jungle-gold':
+    47→      return generateJungleGold(business, allImages, products, hours)
+    48→    case 'athletic-bold':
+    49→      return generateAthleticBold(business, allImages, products, hours)
+    50→    case 'tech-lime':
+    51→      return generateTechLime(business, allImages, products, hours)
+    52→    case 'journalism-red':
+    53→      return generateJournalismRed(business, allImages, products, hours)
+    54→    default:
+    55→      return generateDefault(business, allImages, products, hours)
+    56→  }
+    57→}
+    58→
+    59→function escapeHtml(str: string): string {
+    60→  return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    61→}
+    62→
+    63→function generateCalmSage(b: BusinessData, images: string[], products: any[], hours: any): string {
+    64→  const galleryHtml = images.slice(0, 8).map((url, i) =>
+    65→    `<div style="aspect-ratio:1;overflow:hidden;border-radius:12px;"><img src="${url}" alt="Gallery ${i+1}" style="width:100%;height:100%;object-fit:cover;filter:saturate(0.85) contrast(0.95);transition:transform 0.6s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"></div>`
+    66→  ).join('')
+    67→
+    68→  const productsHtml = products.length > 0 ? `
+    69→    <div style="margin-top:3rem;">
+    70→      <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:0.32em;text-transform:uppercase;color:#b16a48;margin-bottom:1.5rem;">Offerings</div>
+    71→      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">
+    72→        ${products.map(p => `
+    73→          <div style="background:#efe6d4;border-radius:16px;overflow:hidden;">
+    74→            <div style="aspect-ratio:1;overflow:hidden;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#e3d5c1;">📦</div>'}</div>
+    75→            <div style="padding:1rem;">
+    76→              <div style="font-family:'Fraunces',serif;font-size:1rem;color:#2c2620;">${escapeHtml(p.name)}</div>
+    77→              <div style="font-size:0.875rem;color:#8a9a87;font-weight:600;margin-top:0.25rem;">${escapeHtml(p.price)}</div>
+    78→              ${p.details ? `<div style="font-size:0.75rem;color:#7a6e60;margin-top:0.25rem;">${escapeHtml(p.details)}</div>` : ''}
+    79→            </div>
+    80→          </div>
+    81→        `).join('')}
+    82→      </div>
+    83→    </div>` : ''
+    84→
+    85→  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"><style>
+    86→  *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#f4ede0;color:#2c2620;line-height:1.75;overflow-x:hidden}
+    87→  .hero{position:relative;min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#faf5ec;padding:6rem 2rem;overflow:hidden}
+    88→  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.78) saturate(0.85)}
+    89→  .hero-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,transparent 0%,rgba(40,32,24,0.35) 70%,rgba(30,22,16,0.7) 100%)}
+    90→  .hero-content{position:relative;z-index:2;max-width:600px}
+    91→  .hero-label{font-size:11px;letter-spacing:0.36em;text-transform:uppercase;color:rgba(244,237,224,0.78);margin-bottom:2rem}
+    92→  .hero-title{font-family:'Fraunces',serif;font-weight:300;font-size:clamp(2.5rem,6vw,4rem);line-height:0.95;letter-spacing:-0.025em;margin-bottom:1rem}
+    93→  .hero-tag{font-family:'Fraunces',serif;font-style:italic;font-size:1.1rem;line-height:1.65;color:rgba(244,237,224,0.85);max-width:480px;margin:0 auto}
+    94→  .section{padding:4rem 2rem;max-width:900px;margin:0 auto}
+    95→  .section-label{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:#b16a48;margin-bottom:1.5rem}
+    96→  .section-title{font-family:'Fraunces',serif;font-weight:300;font-size:clamp(2rem,4vw,3rem);line-height:1.05;margin-bottom:1.5rem}
+    97→  .section-body{font-size:1rem;line-height:1.75;color:#4a4036;max-width:580px}
+    98→  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.75rem;margin-top:2rem}
+    99→  .cta{display:inline-flex;padding:1rem 2rem;border:1px solid rgba(244,237,224,0.45);color:#2c2620;text-decoration:none;font-size:12px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;border-radius:999px;background:#faf5ec;margin-top:2rem}
+   100→  .contact{background:#e3d5c1;padding:4rem 2rem;text-align:center}
+   101→  .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+   102→  .contact-item{font-family:'Fraunces',serif;font-size:0.95rem;color:#4a4036}
+   103→  .contact-label{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.24em;text-transform:uppercase;color:#7a6e60;margin-bottom:0.5rem}
+   104→  footer{background:#2c2620;color:#f4ede0;padding:3rem 2rem;text-align:center;font-size:0.875rem}
+   105→  a{color:#b16a48;text-decoration:none}
+   106→  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(44,38,32,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(244,237,224,0.1)}
+   107→  .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+   108→  .topbar-logo{font-family:'Fraunces',serif;font-size:1.2rem;color:#f4ede0;text-decoration:none;letter-spacing:0.01em}
+   109→  .topbar-nav{display:flex;gap:2rem}
+   110→  .topbar-nav a{font-family:'Inter',sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(244,237,224,0.7);text-decoration:none;transition:color 0.3s}
+   111→  .topbar-nav a:hover{color:#b16a48}
+   112→::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+   113→  <nav class="topbar">
+   114→    <div class="topbar-inner">
+   115→      <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+   116→      <div class="topbar-nav">
+   117→        <a href="#about">About</a>
+   118→        <a href="#gallery">Gallery</a>
+   119→        <a href="#products">Products</a>
+   120→        <a href="tel:${b.phone}">Contact</a>
+   121→      </div>
+   122→    </div>
+   123→  </nav>
+   124→  <div class="hero" style="margin-top:60px">
+   125→    ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:linear-gradient(135deg,#8a9a87,#5d6e5a)"></div>'}
+   126→    <div class="hero-veil"></div>
+   127→    <div class="hero-content">
+   128→      <div class="hero-label">${escapeHtml(b.category)} · ${escapeHtml(b.city)}</div>
+   129→      <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+   130→      <p class="hero-tag">${escapeHtml(b.description.substring(0, 150))}</p>
+   131→      <a href="tel:${b.phone}" class="cta">Contact →</a>
+   132→    </div>
+   133→  </div>
+   134→
+   135→  <div class="section">
+   136→    <div class="section-label">— About —</div>
+   137→    <h2 class="section-title">Welcome to ${escapeHtml(b.name)}</h2>
+   138→    <p class="section-body">${escapeHtml(b.description)}</p>
+   139→  </div>
+   140→
+   141→  ${images.length > 0 ? `
+   142→  <div class="section">
+   143→    <div class="section-label">— Gallery —</div>
+   144→    <div class="gallery">${galleryHtml}</div>
+   145→  </div>` : ''}
+   146→
+   147→  ${productsHtml}
+   148→
+   149→  <div class="contact">
+   150→    <div class="section-label">— Visit Us —</div>
+   151→    <div class="contact-grid">
+   152→      <div class="contact-item"><div class="contact-label">Address</div>${escapeHtml(b.address)}, ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</div>
+   153→      <div class="contact-item"><div class="contact-label">Phone</div><a href="tel:${b.phone}">${b.phone}</a></div>
+   154→      ${b.email ? `<div class="contact-item"><div class="contact-label">Email</div><a href="mailto:${b.email}">${b.email}</a></div>` : ''}
+   155→    </div>
+   156→  </div>
+   157→
+   158→  <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name)} · ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</footer>
+   159→</body></html>`
+   160→}
+   161→
+   162→function generateJungleGold(b: BusinessData, images: string[], products: any[], hours: any): string {
+   163→  const galleryHtml = images.slice(0, 8).map((url, i) =>
+   164→    `<div style="border:1px solid rgba(201,162,39,0.15);padding:0.5rem;">
+   165→      <div style="aspect-ratio:4/3;overflow:hidden;margin-bottom:0.5rem;"><img src="${url}" alt="Pl. ${i+1}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.8) contrast(1.1);"></div>
+   166→      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.75rem;color:#C9A227;">Pl. ${String(i+1).padStart(2,'0')}</div>
+   167→    </div>`
+   168→  ).join('')
+   169→
+   170→  const productsHtml = products.length > 0 ? `
+   171→    <div style="padding:3rem 2rem;max-width:900px;margin:0 auto;">
+   172→      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#C9A227;margin-bottom:1.5rem;">— Products —</div>
+   173→      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.5rem;">
+   174→        ${products.map(p => `
+   175→          <div style="border:1px solid rgba(201,162,39,0.15);padding:1.5rem;">
+   176→            <div style="aspect-ratio:4/3;overflow:hidden;margin-bottom:1rem;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#0D2818;">📦</div>'}</div>
+   177→            <div style="font-family:'Cormorant Garamond',serif;font-size:1.25rem;color:#F5F5DC;">${escapeHtml(p.name)}</div>
+   178→            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1rem;color:#C9A227;margin-top:0.25rem;">${escapeHtml(p.price)}</div>
+   179→            ${p.details ? `<div style="font-size:0.8rem;color:#8FBC8F;margin-top:0.5rem;">${escapeHtml(p.details)}</div>` : ''}
+   180→          </div>
+   181→        `).join('')}
+   182→      </div>
+   183→    </div>` : ''
+   184→
+   185→  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><style>
+   186→  *{margin:0;padding:0;box-sizing:border-box}body{background:#05140A;color:#F5F5DC;font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+   187→  .hero{min-height:60vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4rem 2rem;position:relative;overflow:hidden}
+   188→  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.6) contrast(1.1) saturate(0.85)}
+   189→  .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,20,10,0.85) 0%,rgba(5,20,10,0.4) 50%,rgba(5,20,10,0.9) 100%)}
+   190→  .hero-content{position:relative;z-index:2;text-align:center;max-width:700px}
+   191→  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#C9A227;margin-bottom:1rem}
+   192→  .hero-title{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:clamp(3rem,8vw,6rem);line-height:0.85;letter-spacing:-0.04em;color:#F5F5DC}
+   193→  .hero-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.2rem;color:#C9A227;margin-top:1rem}
+   194→  .section{padding:3rem 2rem;max-width:900px;margin:0 auto;position:relative;z-index:2}
+   195→  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#C9A227;margin-bottom:1rem}
+   196→  .section-title{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,4vw,3rem);font-weight:400;color:#F5F5DC;margin-bottom:1.5rem}
+   197→  .section-body{font-family:'Cormorant Garamond',serif;font-size:1.1rem;line-height:1.65;color:#8FBC8F;max-width:600px}
+   198→  .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-top:2rem}
+   199→  .divider{display:flex;align-items:center;justify-content:center;gap:1rem;padding:2rem;font-family:'Cormorant Garamond',serif;font-style:italic;color:#C9A227}
+   200→  .divider:before,.divider:after{content:'';width:4rem;height:1px;background:#C9A227;opacity:0.4}
+   201→  .contact{background:#0D2818;padding:3rem 2rem;text-align:center}
+   202→  .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+   203→  .contact-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#C9A227;margin-bottom:0.5rem}
+   204→  .contact-val{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:#F5F5DC}
+   205→  a{color:#C9A227;text-decoration:none}
+   206→  footer{background:#05140A;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.25em;color:rgba(245,245,220,0.4);text-transform:uppercase}
+   207→  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,20,10,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(201,162,39,0.2)}
+   208→  .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+   209→  .topbar-logo{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:#F5F5DC;text-decoration:none;font-weight:600}
+   210→  .topbar-nav{display:flex;gap:2rem}
+   211→  .topbar-nav a{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,245,220,0.6);text-decoration:none;transition:color 0.3s}
+   212→  .topbar-nav a:hover{color:#C9A227}
+   213→::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+   214→  <nav class="topbar">
+   215→    <div class="topbar-inner">
+   216→      <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+   217→      <div class="topbar-nav">
+   218→        <a href="#about">Preface</a>
+   219→        <a href="#gallery">Gallery</a>
+   220→        <a href="#products">Catalogue</a>
+   221→        <a href="tel:${b.phone}">Contact</a>
+   222→      </div>
+   223→    </div>
+   224→  </nav>
+   225→  <div class="hero" style="margin-top:60px">
+   226→    ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#0D2818"></div>'}
+   227→    <div class="hero-veil"></div>
+   228→    <div class="hero-content">
+   229→      <div class="eyebrow">— ${escapeHtml(b.category)} —</div>
+   230→      <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+   231→      <div class="hero-sub">${escapeHtml(b.city)}, ${escapeHtml(b.state)}</div>
+   232→    </div>
+   233→  </div>
+   234→
+   235→  <div class="divider">I — Preface</div>
+   236→
+   237→  <div class="section">
+   238→    <div class="section-label">— About —</div>
+   239→    <h2 class="section-title">${escapeHtml(b.name)}</h2>
+   240→    <p class="section-body">${escapeHtml(b.description)}</p>
+   241→  </div>
+   242→
+   243→  ${images.length > 0 ? `<div class="divider">II — Gallery</div><div class="section"><div class="gallery-grid">${galleryHtml}</div></div>` : ''}
+   244→
+   245→  ${productsHtml ? `<div class="divider">III — Products</div>${productsHtml}` : ''}
+   246→
+   247→  <div class="divider">IV — Contact</div>
+   248→  <div class="contact">
+   249→    <div class="contact-grid">
+   250→      <div><div class="contact-label">Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
+   251→      <div><div class="contact-label">Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
+   252→      ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+   253→    </div>
+   254→  </div>
+   255→  <footer>— ${escapeHtml(b.name)} · ${new Date().getFullYear()} —</footer>
+   256→</body></html>`
+   257→}
+   258→
+   259→function generateAthleticBold(b: BusinessData, images: string[], products: any[], hours: any): string {
+   260→  const galleryHtml = images.slice(0, 6).map((url, i) =>
+   261→    `<div style="aspect-ratio:1;overflow:hidden;border:1px solid #1f1f1f;"><img src="${url}" alt="Gallery ${i+1}" style="width:100%;height:100%;object-fit:cover;filter:grayscale(100%) contrast(1.3) brightness(0.7);transition:transform 0.5s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div>`
+   262→  ).join('')
+   263→
+   264→  const productsHtml = products.length > 0 ? `
+   265→    <div style="padding:3rem 2rem;max-width:900px;margin:0 auto;">
+   266→      <div style="display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#000;background:#FF5400;padding:0.5rem 1rem;margin-bottom:2rem;font-weight:700;">/ Products</div>
+   267→      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+   268→        ${products.map(p => `
+   269→          <div style="background:#141414;border:2px solid rgba(255,84,0,0.25);border-radius:8px;overflow:hidden;">
+   270→            <div style="aspect-ratio:1;overflow:hidden;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;filter:grayscale(80%) contrast(1.2);">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#141414;">📦</div>'}</div>
+   271→            <div style="padding:1rem;">
+   272→              <div style="font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;font-size:0.875rem;color:#f5f5f5;">${escapeHtml(p.name)}</div>
+   273→              <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#FF5400;margin-top:0.25rem;">${escapeHtml(p.price)}</div>
+   274→              ${p.details ? `<div style="font-size:0.75rem;color:#6a6a6a;margin-top:0.25rem;">${escapeHtml(p.details)}</div>` : ''}
+   275→            </div>
+   276→          </div>
+   277→        `).join('')}
+   278→      </div>
+   279→    </div>` : ''
+   280→
+   281→  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>
+   282→  *{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#f5f5f5;font-family:'Oswald',sans-serif;overflow-x:hidden}
+   283→  .hero{min-height:60vh;display:flex;flex-direction:column;justify-content:flex-end;padding:4rem 2rem;position:relative;overflow:hidden}
+   284→  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(100%) contrast(1.4) brightness(0.5)}
+   285→  .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,10,0.9) 0%,rgba(10,10,10,0.4) 40%,rgba(10,10,10,0.9) 100%)}
+   286→  .hero-content{position:relative;z-index:2;max-width:800px}
+   287→  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#FF5400;margin-bottom:1rem}
+   288→  .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,10vw,7rem);line-height:0.85;letter-spacing:-0.01em;text-transform:uppercase;color:#f5f5f5}
+   289→  .hero-sub{font-family:'Oswald',sans-serif;font-size:1rem;color:#c0c0c0;margin-top:0.5rem;text-transform:uppercase;letter-spacing:0.1em}
+   290→  .section{padding:3rem 2rem;max-width:900px;margin:0 auto}
+   291→  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#FF5400;margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem}
+   292→  .section-label:before{content:'';width:32px;height:1px;background:#FF5400}
+   293→  .section-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,4rem);line-height:0.9;color:#f5f5f5;margin-bottom:1rem;text-transform:uppercase}
+   294→  .section-body{font-family:'Oswald',sans-serif;font-size:1rem;line-height:1.75;color:#c0c0c0;max-width:600px;font-weight:300}
+   295→  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.5rem;margin-top:2rem}
+   296→  .cta{display:inline-block;background:#FF5400;color:#000;padding:1rem 2rem;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.05em;text-transform:uppercase;border:none;cursor:pointer;text-decoration:none;margin-top:1.5rem}
+   297→  .contact{background:#050505;padding:3rem 2rem;text-align:center}
+   298→  .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+   299→  .contact-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#FF5400;margin-bottom:0.5rem}
+   300→  .contact-val{font-family:'Oswald',sans-serif;font-size:1rem;color:#f5f5f5}
+   301→  a{color:#FF5400;text-decoration:none}
+   302→  footer{background:#050505;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase}
+   303→  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,84,0,0.2)}
+   304→  .topbar-inner{max-width:1200px;margin:0 auto;padding:0.8rem 2rem;display:flex;align-items:center;justify-content:space-between}
+   305→  .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#f5f5f5;text-decoration:none;letter-spacing:0.02em;text-transform:uppercase}
+   306→  .topbar-nav{display:flex;gap:2rem}
+   307→  .topbar-nav a{font-family:'Oswald',sans-serif;font-size:0.75rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,245,245,0.6);text-decoration:none;transition:color 0.3s}
+   308→  .topbar-nav a:hover{color:#FF5400}
+   309→::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+   310→  <nav class="topbar">
+   311→    <div class="topbar-inner">
+   312→      <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+   313→      <div class="topbar-nav">
+   314→        <a href="#about">Programs</a>
+   315→        <a href="#gallery">Gallery</a>
+   316→        <a href="#products">Products</a>
+   317→        <a href="tel:${b.phone}">Book Now</a>
+   318→      </div>
+   319→    </div>
+   320→  </nav>
+   321→  <div class="hero" style="margin-top:50px">
+   322→    ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#141414"></div>'}
+   323→    <div class="hero-veil"></div>
+   324→    <div class="hero-content">
+   325→      <div class="eyebrow">/ ${escapeHtml(b.category).toUpperCase()} /</div>
+   326→      <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+   327→      <div class="hero-sub">${b.city.toUpperCase()} · ${b.state.toUpperCase()}</div>
+   328→      <a href="tel:${b.phone}" class="cta">Book Now →</a>
+   329→    </div>
+   330→  </div>
+   331→
+   332→  <div class="section">
+   333→    <div class="section-label">/ About</div>
+   334→    <h2 class="section-title">BUILT BY DISCIPLINE</h2>
+   335→    <p class="section-body">${escapeHtml(b.description)}</p>
+   336→  </div>
+   337→
+   338→  ${images.length > 0 ? `<div class="section"><div class="section-label">/ Gallery</div><div class="gallery">${galleryHtml}</div></div>` : ''}
+   339→
+   340→  ${productsHtml}
+   341→
+   342→  <div class="contact">
+   343→    <div class="contact-grid">
+   344→      <div><div class="contact-label">/ Location</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
+   345→      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
+   346→      ${b.email ? `<div><div class="contact-label">/ Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+   347→    </div>
+   348→  </div>
+   349→  <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name).toUpperCase()} · ALL RIGHTS RESERVED</footer>
+   350→</body></html>`
+   351→}
+   352→
+   353→function generateTechLime(b: BusinessData, images: string[], products: any[], hours: any): string {
+   354→  const galleryHtml = images.slice(0, 6).map((url, i) =>
+   355→    `<div style="aspect-ratio:1;overflow:hidden;border-radius:12px;background:#1a1d28;border:1px solid rgba(240,235,225,0.08);"><img src="${url}" alt="Image ${i+1}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.5) saturate(0.8);transition:transform 0.4s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div>`
+   356→  ).join('')
+   357→
+   358→  const productsHtml = products.length > 0 ? `
+   359→    <div style="padding:3rem 2rem;max-width:900px;margin:0 auto;">
+   360→      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#d4ff3a;margin-bottom:1.5rem;">// Products</div>
+   361→      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+   362→        ${products.map(p => `
+   363→          <div style="background:#1a1d28;border:1px solid rgba(212,255,58,0.2);border-radius:12px;overflow:hidden;transition:border-color 0.3s;" onmouseover="this.style.borderColor='rgba(212,255,58,0.5)'" onmouseout="this.style.borderColor='rgba(212,255,58,0.2)'">
+   364→            <div style="aspect-ratio:1;overflow:hidden;position:relative;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#1a1d28;">📦</div>'}<div style="position:absolute;top:8px;right:8px;padding:4px 8px;font-family:monospace;font-size:10px;font-weight:700;color:#0d0e14;background:#d4ff3a;border-radius:4px;">${escapeHtml(p.price)}</div></div>
+   365→            <div style="padding:1rem;">
+   366→              <div style="font-weight:600;font-size:0.875rem;color:#f0ebe1;">${escapeHtml(p.name)}</div>
+   367→              ${p.details ? `<div style="font-size:0.75rem;color:#6b6d7a;margin-top:0.25rem;">${escapeHtml(p.details)}</div>` : ''}
+   368→            </div>
+   369→          </div>
+   370→        `).join('')}
+   371→      </div>
+   372→    </div>` : ''
+   373→
+   374→  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>
+   375→  *{margin:0;padding:0;box-sizing:border-box}body{background:#0d0e14;color:#f0ebe1;font-family:'Space Grotesk',sans-serif;overflow-x:hidden;line-height:1.5}
+   376→  .hero{min-height:60vh;display:flex;flex-direction:column;justify-content:center;padding:4rem 2rem;position:relative;overflow:hidden}
+   377→  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.5) saturate(0.8)}
+   378→  .hero-veil{position:absolute;inset:0;background:linear-gradient(135deg,rgba(13,14,20,0.9) 0%,rgba(13,14,20,0.3) 50%,rgba(13,14,20,0.8) 100%)}
+   379→  .hero-content{position:relative;z-index:2;max-width:800px}
+   380→  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#d4ff3a;margin-bottom:1rem;display:inline-flex;align-items:center;gap:0.5rem}
+   381→  .eyebrow:before{content:'';width:7px;height:7px;background:#d4ff3a;border-radius:50%;animation:pulse 2s infinite}
+   382→  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+   383→  .hero-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(2.5rem,6vw,5rem);line-height:0.95;letter-spacing:-0.02em;color:#f0ebe1}
+   384→  .hero-sub{font-size:1.1rem;color:#a8a496;margin-top:1rem;max-width:500px}
+   385→  .btn{display:inline-block;background:#d4ff3a;color:#0d0e14;padding:0.875rem 1.5rem;border-radius:10px;font-weight:600;text-decoration:none;margin-top:1.5rem;font-size:0.875rem;transition:transform 0.25s}
+   386→  .btn:hover{transform:translateY(-3px);box-shadow:0 14px 40px -8px rgba(212,255,58,0.5)}
+   387→  .section{padding:3rem 2rem;max-width:900px;margin:0 auto}
+   388→  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#d4ff3a;margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem}
+   389→  .section-label:before{content:'';width:36px;height:1px;background:#d4ff3a}
+   390→  .section-title{font-size:clamp(1.8rem,4vw,3rem);font-weight:700;letter-spacing:-0.02em;color:#f0ebe1;margin-bottom:1rem}
+   391→  .section-body{font-size:1rem;line-height:1.65;color:#a8a496;max-width:600px}
+   392→  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.75rem;margin-top:2rem}
+   393→  .contact{background:#15171f;padding:3rem 2rem;text-align:center}
+   394→  .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+   395→  .contact-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#d4ff3a;margin-bottom:0.5rem}
+   396→  .contact-val{font-size:1rem;color:#f0ebe1}
+   397→  a{color:#d4ff3a;text-decoration:none}
+   398→  footer{background:#15171f;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6d7a}
+   399→  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(13,14,20,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(240,235,225,0.08)}
+   400→  .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+   401→  .topbar-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.2rem;color:#f0ebe1;text-decoration:none;display:flex;align-items:center;gap:8px}
+   402→  .topbar-logo-mark{width:26px;height:26px;background:#d4ff3a;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#0d0e14;font-size:14px;font-weight:900;transform:rotate(-8deg)}
+   403→  .topbar-nav{display:flex;gap:2rem}
+   404→  .topbar-nav a{font-size:14px;color:#a8a496;text-decoration:none;transition:color 0.2s}
+   405→  .topbar-nav a:hover{color:#d4ff3a}
+   406→::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+   407→  <nav class="topbar">
+   408→    <div class="topbar-inner">
+   409→      <a href="#" class="topbar-logo"><span class="topbar-logo-mark">${escapeHtml(b.name.charAt(0))}</span>${escapeHtml(b.name)}</a>
+   410→      <div class="topbar-nav">
+   411→        <a href="#about">About</a>
+   412→        <a href="#gallery">Gallery</a>
+   413→        <a href="#products">Products</a>
+   414→        <a href="tel:${b.phone}">Contact</a>
+   415→      </div>
+   416→    </div>
+   417→  </nav>
+   418→  <div class="hero" style="margin-top:60px">
+   419→    ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#1a1d28"></div>'}
+   420→    <div class="hero-veil"></div>
+   421→    <div class="hero-content">
+   422→      <div class="eyebrow">// ${escapeHtml(b.category)}</div>
+   423→      <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+   424→      <p class="hero-sub">${escapeHtml(b.description.substring(0, 120))}</p>
+   425→      <a href="tel:${b.phone}" class="btn">Get Best Price →</a>
+   426→    </div>
+   427→  </div>
+   428→
+   429→  <div class="section">
+   430→    <div class="section-label">01 — About</div>
+   431→    <h2 class="section-title">About ${escapeHtml(b.name)}</h2>
+   432→    <p class="section-body">${escapeHtml(b.description)}</p>
+   433→  </div>
+   434→
+   435→  ${images.length > 0 ? `<div class="section"><div class="section-label">02 — Gallery</div><div class="gallery">${galleryHtml}</div></div>` : ''}
+   436→
+   437→  ${productsHtml}
+   438→
+   439→  <div class="contact">
+   440→    <div class="contact-grid">
+   441→      <div><div class="contact-label">// Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
+   442→      <div><div class="contact-label">// Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
+   443→      ${b.email ? `<div><div class="contact-label">// Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+   444→    </div>
+   445→  </div>
+   446→  <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name)} · Made with precision</footer>
+   447→</body></html>`
+   448→}
+   449→
+   450→function generateJournalismRed(b: BusinessData, images: string[], products: any[], hours: any): string {
+   451→  const galleryHtml = images.slice(0, 8).map((url, i) =>
+   452→    `<div style="width:180px;height:180px;flex-shrink:0;overflow:hidden;background:#111111;border:1px solid rgba(255,42,42,0.15);"><img src="${url}" alt="Frame ${i+1}" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.6) saturate(0.7);transition:transform 0.5s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div>`
+   453→  ).join('')
+   454→
+   455→  const productsHtml = products.length > 0 ? `
+   456→    <div style="padding:3rem 2rem;max-width:1200px;margin:0 auto;">
+   457→      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:1.5rem;">/ 02 — Products</div>
+   458→      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;">
+   459→        ${products.map(p => `
+   460→          <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+   461→            <div style="aspect-ratio:1;overflow:hidden;position:relative;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#111111;">📦</div>'}<div style="position:absolute;bottom:0;left:0;right:0;padding:4px 8px;font-family:monospace;font-size:10px;font-weight:700;color:#000;background:#ff2a2a;">${escapeHtml(p.price)}</div></div>
+   462→            <div style="padding:1rem;">
+   463→              <div style="font-weight:700;font-size:0.875rem;text-transform:uppercase;color:#f5f5f5;">${escapeHtml(p.name)}</div>
+   464→              ${p.details ? `<div style="font-size:0.75rem;color:#555;margin-top:0.25rem;">${escapeHtml(p.details)}</div>` : ''}
+   465→            </div>
+   466→          </div>
+   467→        `).join('')}
+   468→      </div>
+   469→    </div>` : ''
+   470→
+   471→  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"><style>
+   472→  *{margin:0;padding:0;box-sizing:border-box}body{background:#080808;color:#f5f5f5;font-family:'Space Grotesk',sans-serif;overflow-x:hidden}
+   473→  .hero{min-height:60vh;display:flex;flex-direction:column;justify-content:flex-end;padding:4rem 2rem;position:relative;overflow:hidden}
+   474→  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.6) contrast(1.1) saturate(0.7)}
+   475→  .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,8,8,0.85) 0%,rgba(8,8,8,0.2) 50%,rgba(8,8,8,0.95) 100%)}
+   476→  .hero-content{position:relative;z-index:2;max-width:900px}
+   477→  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:1rem;display:inline-flex;align-items:center;gap:0.5rem}
+   478→  .eyebrow:before{content:'';width:8px;height:8px;border-radius:50%;background:#ff2a2a;animation:live-pulse 1.8s infinite}
+   479→  @keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(255,42,42,0.7)}70%{box-shadow:0 0 0 14px rgba(255,42,42,0)}100%{box-shadow:0 0 0 0 rgba(255,42,42,0)}}
+   480→  .hero-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(2.5rem,7vw,6rem);line-height:0.92;letter-spacing:-0.035em;color:#f5f5f5;text-transform:uppercase}
+   481→  .hero-sub{font-family:'JetBrains Mono',monospace;font-size:0.875rem;color:#ff2a2a;margin-top:0.75rem;text-transform:uppercase;letter-spacing:0.1em}
+   482→  .btn{display:inline-flex;background:#ff2a2a;color:#000;padding:0.875rem 1.5rem;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:0.04em;text-decoration:none;margin-top:1.5rem;border:1px solid #ff2a2a;transition:all 0.25s}
+   483→  .btn:hover{background:#f5f5f5;border-color:#f5f5f5;transform:translate(-2px,-2px);box-shadow:4px 4px 0 #ff2a2a}
+   484→  .section{padding:3rem 2rem;max-width:900px;margin:0 auto}
+   485→  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:1rem;display:inline-flex;align-items:center;gap:0.75rem}
+   486→  .section-label:before{content:'';width:36px;height:1px;background:#ff2a2a}
+   487→  .section-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(2rem,5vw,4rem);line-height:1;letter-spacing:-0.025em;color:#f5f5f5;margin-bottom:1rem;text-transform:uppercase}
+   488→  .section-body{font-size:1rem;line-height:1.75;color:#888888;max-width:600px}
+   489→  .gallery-strip{display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.5rem;margin-top:2rem}
+   490→  .contact{background:#111111;padding:3rem 2rem;text-align:center}
+   491→  .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+   492→  .contact-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:0.5rem}
+   493→  .contact-val{font-size:1rem;color:#f5f5f5}
+   494→  a{color:#ff2a2a;text-decoration:none}
+   495→  footer{background:#080808;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#555;text-transform:uppercase;letter-spacing:0.15em}
+   496→  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(8,8,8,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.05)}
+   497→  .topbar-inner{max-width:1400px;margin:0 auto;padding:0.9rem 2rem;display:flex;align-items:center;justify-content:space-between}
+   498→  .topbar-logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.1rem;color:#f5f5f5;text-decoration:none;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:-0.02em}
+   499→  .topbar-logo-mark{width:32px;height:32px;background:#ff2a2a;display:inline-flex;align-items:center;justify-content:center;color:#000;font-size:16px;font-weight:900}
+   500→  .topbar-nav{display:flex;gap:2rem}
+   501→  .topbar-nav a{font-size:13px;font-weight:500;color:#888;text-decoration:none;transition:color 0.2s;text-transform:uppercase;letter-spacing:0.02em}
+   502→  .topbar-nav a:hover{color:#ff2a2a}
+   503→::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+   504→  <nav class="topbar">
+   505→    <div class="topbar-inner">
+   506→      <a href="#" class="topbar-logo"><span class="topbar-logo-mark">${escapeHtml(b.name.charAt(0))}</span>${escapeHtml(b.name)}</a>
+   507→      <div class="topbar-nav">
+   508→        <a href="#about">Reviews</a>
+   509→        <a href="#gallery">Gallery</a>
+   510→        <a href="#products">Picks</a>
+   511→        <a href="tel:${b.phone}">Contact</a>
+   512→      </div>
+   513→    </div>
+   514→  </nav>
+   515→  <div class="hero" style="margin-top:55px">
+   516→    ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#111111"></div>'}
+   517→    <div class="hero-veil"></div>
+   518→    <div class="hero-content">
+   519→      <div class="eyebrow">NEW · ${escapeHtml(b.category).toUpperCase()}</div>
+   520→      <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+   521→      <div class="hero-sub">${b.city.toUpperCase()} · EST. ${new Date().getFullYear()}</div>
+   522→      <a href="tel:${b.phone}" class="btn">Read More →</a>
+   523→    </div>
+   524→  </div>
+   525→
+   526→  <div class="section">
+   527→    <div class="section-label">/ 01 — About</div>
+   528→    <h2 class="section-title">${escapeHtml(b.name)}</h2>
+   529→    <p class="section-body">${escapeHtml(b.description)}</p>
+   530→  </div>
+   531→
+   532→  ${images.length > 0 ? `<div class="section"><div class="section-label">/ Gallery</div><div class="gallery-strip">${galleryHtml}</div></div>` : ''}
+   533→
+   534→  ${productsHtml}
+   535→
+   536→  <div class="contact">
+   537→    <div class="contact-grid">
+   538→      <div><div class="contact-label">/ Location</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
+   539→      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
+   540→      ${b.email ? `<div><div class="contact-label">/ Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+   541→    </div>
+   542→  </div>
+   543→  <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name).toUpperCase()} · ALL RIGHTS RESERVED</footer>
+   544→</body></html>`
+   545→}
+   546→
+   547→function generateDefault(b: BusinessData, images: string[], products: any[], hours: any): string {
+   548→  const galleryHtml = images.slice(0, 8).map((url, i) =>
+   549→    '<div style="aspect-ratio:1;overflow:hidden;border-radius:8px;"><img src="' + url + '" alt="Gallery ' + (i + 1) + '" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s;" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"></div>'
+   550→  ).join('')
+   551→
+   552→  const productsHtml = products.length > 0 ? `
+   553→    <div style="padding:2rem;max-width:900px;margin:0 auto;">
+   554→      <div style="font-size:0.875rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${b.themeColor || '#0d9488'};margin-bottom:1rem;">Products & Services</div>
+   555→      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">
+   556→        ${products.map(p => `
+   557→          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+   558→            <div style="aspect-ratio:1;overflow:hidden;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#f9fafb;">\u{1F4E6}</div>'}</div>
+   559→            <div style="padding:0.75rem;">
+   560→              <div style="font-weight:600;font-size:0.875rem;color:#1a1a1a;">${escapeHtml(p.name)}</div>
+   561→              <div style="font-size:0.875rem;font-weight:600;color:${b.themeColor || '#0d9488'};margin-top:0.25rem;">${escapeHtml(p.price)}</div>
+   562→              ${p.details ? `<div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">${escapeHtml(p.details)}</div>` : ''}
+   563→            </div>
+   564→          </div>
+   565→        `).join('')}
+   566→      </div>
+   567→    </div>` : ''
+   568→
+   569→  const accent = b.themeColor || '#0d9488'
+   570→  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><style>
+   571→    *{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#1a1a1a;line-height:1.6;overflow-x:hidden}
+   572→    .hero{min-height:50vh;display:flex;flex-direction:column;justify-content:center;padding:4rem 2rem;position:relative;overflow:hidden;color:#fff}
+   573→    .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.7)}
+   574→    .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.5) 0%,transparent 50%,rgba(0,0,0,0.5) 100%)}
+   575→    .hero-content{position:relative;z-index:2;max-width:700px}
+   576→    .hero-label{font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;opacity:0.8;margin-bottom:1rem}
+   577→    .hero-title{font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;margin-bottom:1rem}
+   578→    .hero-sub{font-size:1rem;opacity:0.9;max-width:500px}
+   579→    .btn{display:inline-block;background:${accent};color:#fff;padding:0.875rem 1.5rem;border-radius:8px;text-decoration:none;font-weight:600;margin-top:1.5rem}
+   580→    .section{padding:3rem 2rem;max-width:900px;margin:0 auto}
+   581→    .section-label{font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;color:${accent};margin-bottom:0.5rem;font-weight:600}
+   582→    .section-title{font-size:1.875rem;font-weight:700;margin-bottom:1rem}
+   583→    .section-body{font-size:1rem;line-height:1.75;color:#4b5563;max-width:600px}
+   584→    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.5rem;margin-top:1.5rem}
+   585→    .contact{background:#f9fafb;padding:3rem 2rem;text-align:center}
+   586→    .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+   587→    .contact-label{font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:#9ca3af;margin-bottom:0.5rem;font-weight:600}
+   588→    .contact-val{font-size:0.95rem;color:#1a1a1a}
+   589→    a{color:${accent};text-decoration:none}
+   590→    footer{background:#1a1a1a;color:#9ca3af;padding:2rem;text-align:center;font-size:0.8rem}
+   591→    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(26,26,26,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08)}
+   592→    .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+   593→    .topbar-logo{font-size:1.2rem;font-weight:700;color:#fff;text-decoration:none}
+   594→    .topbar-nav{display:flex;gap:2rem}
+   595→    .topbar-nav a{font-size:0.85rem;color:rgba(255,255,255,0.6);text-decoration:none;transition:color 0.2s}
+   596→    .topbar-nav a:hover{color:${accent}}
+   597→  ::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+   598→    <nav class="topbar">
+   599→      <div class="topbar-inner">
+   600→        <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+   601→        <div class="topbar-nav">
+   602→          <a href="#about">About</a>
+   603→          <a href="#gallery">Gallery</a>
+   604→          <a href="#products">Products</a>
+   605→          <a href="tel:${b.phone}">Contact</a>
+   606→        </div>
+   607→      </div>
+   608→    </nav>
+   609→    <div class="hero" style="margin-top:60px">
+   610→      ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,${accent},${accent}cc)"></div>`}
+   611→      <div class="hero-veil"></div>
+   612→      <div class="hero-content">
+   613→        <div class="hero-label">${escapeHtml(b.category)} \u00b7 ${escapeHtml(b.city)}</div>
+   614→        <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+   615→        <p class="hero-sub">${escapeHtml(b.description.substring(0, 150))}</p>
+   616→        <a href="tel:${b.phone}" class="btn">Get Best Price</a>
+   617→      </div>
+   618→    </div>
+   619→    <div class="section">
+   620→      <div class="section-label">About</div>
+   621→      <h2 class="section-title">${escapeHtml(b.name)}</h2>
+   622→      <p class="section-body">${escapeHtml(b.description)}</p>
+   623→    </div>
+   624→    ${images.length > 0 ? `<div class="section"><div class="section-label">Gallery</div><div class="gallery">${galleryHtml}</div></div>` : ''}
+   625→    ${productsHtml}
+   626→    <div class="contact">
+   627→      <div class="contact-grid">
+   628→        <div><div class="contact-label">Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</div></div>
+   629→        <div><div class="contact-label">Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
+   630→        ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+   631→      </div>
+   632→    </div>
+   633→    <footer>\u00a9 ${new Date().getFullYear()} ${escapeHtml(b.name)}</footer>
+   634→  </body></html>`
+   635→}
+   636→

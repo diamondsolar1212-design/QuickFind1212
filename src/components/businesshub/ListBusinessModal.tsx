@@ -287,8 +287,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                     <p className="text-xs text-muted-foreground mt-0.5">Choose template, customize design, manage products. Live preview on right updates as you change.</p>
                   </div>
 
-                  {/* Split layout: customization LEFT, live preview RIGHT */}
-                  <div className="grid lg:grid-cols-[1fr_560px] gap-4">
+                  {/* Split layout: customization LEFT, live preview RIGHT (wider) */}
+                  <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
                     {/* ===== LEFT: Customization ===== */}
                     <div className="space-y-4 min-w-0">
                       {/* Base template selection — visual previews */}
@@ -630,10 +630,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       </div>
                     </div>
 
-                    {/* ===== RIGHT: LIVE PREVIEW (sticky) — template-aware ===== */}
+                    {/* ===== RIGHT: LIVE PREVIEW (sticky, wider) — template-aware ===== */}
                     <div className="hidden lg:block">
                       <div className="sticky top-4">
-                        <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
+                        <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden shadow-md">
                           <div className="bg-brand/10 px-3 py-2 flex items-center justify-between border-b border-brand/20">
                             <span className="text-xs font-bold text-brand flex items-center gap-1.5">
                               <Eye className="w-3.5 h-3.5" />
@@ -641,10 +641,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
                             </span>
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{form.template}</span>
                           </div>
-                          {/* Real HTML website preview via iframe — full height, no scrollbar */}
+                          {/* Real HTML website preview via iframe — full height, internal scroll, no outer scrollbar */}
                           <div style={{ 
-                            height: 'calc(95vh - 180px)', 
-                            minHeight: '500px',
+                            height: 'calc(95vh - 140px)', 
+                            minHeight: '560px',
                             overflow: 'hidden', 
                             position: 'relative', 
                             background: '#fff'
@@ -672,14 +672,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                 width: '100%',
                                 height: '100%',
                                 border: 'none',
-                                pointerEvents: 'auto'
+                                pointerEvents: 'auto',
+                                display: 'block'
                               }}
-                              sandbox="allow-same-origin allow-scripts"
+                              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
                             />
                           </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground text-center mt-2">
-                          Preview updates live as you customize
+                          Preview updates live as you customize · Click nav links inside to test
                         </p>
                       </div>
                     </div>
@@ -693,7 +694,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         LIVE PREVIEW
                       </span>
                     </div>
-                    <div style={{ height: '400px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+                    <div style={{ height: '500px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
                       <iframe
                         srcDoc={generateBusinessWebsite({
                           name: form.name || 'Your Business Name',
@@ -713,8 +714,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           template: form.template
                         })}
                         title="Live Website Preview (Mobile)"
-                        style={{ width: '100%', height: '100%', border: 'none' }}
-                        sandbox="allow-same-origin allow-scripts"
+                        style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
                       />
                     </div>
                   </div>

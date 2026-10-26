@@ -1,0 +1,125 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sharma Electronics</title><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"><style>
+  *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{background:#080808;color:#f5f5f5;font-family:'Space Grotesk',sans-serif;overflow-x:hidden}
+  .hero{min-height:60vh;display:flex;flex-direction:column;justify-content:flex-end;padding:4rem 2rem;position:relative;overflow:hidden}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.6) contrast(1.1) saturate(0.7)}
+  .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,8,8,0.85) 0%,rgba(8,8,8,0.2) 50%,rgba(8,8,8,0.95) 100%)}
+  .hero-content{position:relative;z-index:2;max-width:900px}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:1rem;display:inline-flex;align-items:center;gap:0.5rem}
+  .eyebrow:before{content:'';width:8px;height:8px;border-radius:50%;background:#ff2a2a;animation:live-pulse 1.8s infinite}
+  @keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(255,42,42,0.7)}70%{box-shadow:0 0 0 14px rgba(255,42,42,0)}100%{box-shadow:0 0 0 0 rgba(255,42,42,0)}}
+  .hero-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(2.5rem,7vw,6rem);line-height:0.92;letter-spacing:-0.035em;color:#f5f5f5;text-transform:uppercase}
+  .hero-sub{font-family:'JetBrains Mono',monospace;font-size:0.875rem;color:#ff2a2a;margin-top:0.75rem;text-transform:uppercase;letter-spacing:0.1em}
+  .btn{display:inline-flex;background:#ff2a2a;color:#000;padding:0.875rem 1.5rem;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:0.04em;text-decoration:none;margin-top:1.5rem;border:1px solid #ff2a2a;transition:all 0.25s}
+  .btn:hover{background:#f5f5f5;border-color:#f5f5f5;transform:translate(-2px,-2px);box-shadow:4px 4px 0 #ff2a2a}
+  .section{padding:3rem 2rem;max-width:900px;margin:0 auto;scroll-margin-top:80px}
+  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:1rem;display:inline-flex;align-items:center;gap:0.75rem}
+  .section-label:before{content:'';width:36px;height:1px;background:#ff2a2a}
+  .section-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(2rem,5vw,4rem);line-height:1;letter-spacing:-0.025em;color:#f5f5f5;margin-bottom:1rem;text-transform:uppercase}
+  .section-body{font-size:1rem;line-height:1.75;color:#888888;max-width:600px}
+  .gallery-strip{display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.5rem;margin-top:2rem}
+  .contact{background:#111111;padding:3rem 2rem;text-align:center;scroll-margin-top:80px}
+  .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+  .contact-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#ff2a2a;margin-bottom:0.5rem}
+  .contact-val{font-size:1rem;color:#f5f5f5}
+  a{color:#ff2a2a;text-decoration:none}
+  footer{background:#080808;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#555;text-transform:uppercase;letter-spacing:0.15em}
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(180deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.35) 100%),url('https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800') center/cover fixed;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,42,42,0.2);box-shadow:0 4px 24px rgba(0,0,0,0.5)}
+  .topbar-inner{max-width:1400px;margin:0 auto;padding:0.9rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.1rem;color:#f5f5f5;text-decoration:none;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:-0.02em}
+  .topbar-logo-mark{width:32px;height:32px;background:#ff2a2a;display:inline-flex;align-items:center;justify-content:center;color:#000;font-size:16px;font-weight:900}
+  .topbar-nav{display:flex;gap:2rem}
+  .topbar-nav a{font-size:13px;font-weight:500;color:#aaa;text-decoration:none;transition:color 0.2s;text-transform:uppercase;letter-spacing:0.02em}
+  .topbar-nav a:hover{color:#ff2a2a}
+  .reviews-wrap{background:#0f0f0f;padding:3rem 2rem;text-align:center;scroll-margin-top:80px}
+  .reviews-stars{font-size:2rem;color:#ff2a2a;letter-spacing:0.2em;margin:1rem 0}
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(255,42,42,0.4);border-radius:3px}::-webkit-scrollbar-track{background:#080808}</style></head><body>
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="#top" class="topbar-logo"><span class="topbar-logo-mark">S</span>Sharma Electronics</a>
+      <div class="topbar-nav">
+        <a href="#about">About</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#products">Picks</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
+  </nav>
+  <div id="top"></div>
+  <div class="hero" style="margin-top:55px">
+    <img src="https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800" alt="Sharma Electronics">
+    <div class="hero-veil"></div>
+    <div class="hero-content">
+      <div class="eyebrow">NEW · ELECTRONICS</div>
+      <h1 class="hero-title">Sharma Electronics</h1>
+      <div class="hero-sub">MUMBAI · EST. 2026</div>
+      <a href="tel:+91 98765 43210" class="btn">Read More →</a>
+    </div>
+  </div>
+
+  <section id="about" class="section">
+    <div class="section-label">/ 01 — About</div>
+    <h2 class="section-title">Sharma Electronics</h2>
+    <p class="section-body">Trusted electronics store in Mumbai with quality products and reliable service for over 15 years.</p>
+    <p class="section-body" style="margin-top:1rem;">Operating from 123 Main Road, Andheri West, Mumbai, Sharma Electronics has built a reputation for honesty, speed, and substance. We don't make empty promises — we deliver results that you can see, measure, and trust.</p>
+  </section>
+
+  <section id="gallery" class="section"><div class="section-label">/ Gallery</div><h2 class="section-title">Frames</h2><div class="gallery-strip"><div style="width:180px;height:180px;flex-shrink:0;overflow:hidden;background:#111111;border:1px solid rgba(255,42,42,0.15);"><img src="https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800" alt="Frame 1" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.6) saturate(0.7);transition:transform 0.5s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div><div style="width:180px;height:180px;flex-shrink:0;overflow:hidden;background:#111111;border:1px solid rgba(255,42,42,0.15);"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600" alt="Frame 2" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.6) saturate(0.7);transition:transform 0.5s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div><div style="width:180px;height:180px;flex-shrink:0;overflow:hidden;background:#111111;border:1px solid rgba(255,42,42,0.15);"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600" alt="Frame 3" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.6) saturate(0.7);transition:transform 0.5s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div><div style="width:180px;height:180px;flex-shrink:0;overflow:hidden;background:#111111;border:1px solid rgba(255,42,42,0.15);"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600" alt="Frame 4" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.6) saturate(0.7);transition:transform 0.5s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div></div></section>
+
+  
+    <section id="products" class="section">
+      <div class="section-label">/ 02 — Products</div>
+      <h2 class="section-title">Picks</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:2rem;">
+        
+          <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;position:relative;"><img src="https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=600" alt="LED TV 55&quot;" style="width:100%;height:100%;object-fit:cover;"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px 8px;font-family:monospace;font-size:10px;font-weight:700;color:#000;background:#ff2a2a;">₹45,000</div></div>
+            <div style="padding:1rem;">
+              <div style="font-weight:700;font-size:0.875rem;text-transform:uppercase;color:#f5f5f5;">LED TV 55&quot;</div>
+              <div style="font-size:0.75rem;color:#555;margin-top:0.25rem;">4K Ultra HD Smart TV with HDR</div>
+            </div>
+          </div>
+        
+          <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;position:relative;"><img src="https://images.unsplash.com/photo-1608043152269-423dbba4e7ad?w=600" alt="Bluetooth Speaker" style="width:100%;height:100%;object-fit:cover;"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px 8px;font-family:monospace;font-size:10px;font-weight:700;color:#000;background:#ff2a2a;">₹2,500</div></div>
+            <div style="padding:1rem;">
+              <div style="font-weight:700;font-size:0.875rem;text-transform:uppercase;color:#f5f5f5;">Bluetooth Speaker</div>
+              <div style="font-size:0.75rem;color:#555;margin-top:0.25rem;">Portable waterproof speaker with 12hr battery</div>
+            </div>
+          </div>
+        
+          <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;position:relative;"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#111111;">📦</div><div style="position:absolute;bottom:0;left:0;right:0;padding:4px 8px;font-family:monospace;font-size:10px;font-weight:700;color:#000;background:#ff2a2a;">₹3,200</div></div>
+            <div style="padding:1rem;">
+              <div style="font-weight:700;font-size:0.875rem;text-transform:uppercase;color:#f5f5f5;">Wireless Headphones</div>
+              <div style="font-size:0.75rem;color:#555;margin-top:0.25rem;">Noise cancelling, 30hr battery</div>
+            </div>
+          </div>
+        
+      </div>
+    </section>
+
+  <section id="reviews" class="reviews-wrap">
+    <div class="section-label">/ 03 — Reviews</div>
+    <h2 class="section-title">Voices</h2>
+    <div class="reviews-stars">★★★★☆</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:3rem;font-weight:800;color:#ff2a2a;">4.5</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:#555;margin-top:0.5rem;text-transform:uppercase;">128 VERIFIED VOICES</div>
+    <div style="max-width:600px;margin:2rem auto 0;display:grid;gap:1rem;">
+      <div style="background:#111111;border:1px solid rgba(255,42,42,0.2);padding:1.5rem;text-align:left;"><div style="color:#ff2a2a;font-size:1rem;margin-bottom:0.5rem;">★★★★★</div><div style="color:#f5f5f5;">"Real, honest, and reliable. They told me exactly what to expect — and delivered more."</div><div style="font-size:0.7rem;color:#555;margin-top:0.5rem;font-family:'JetBrains Mono',monospace;">— VERIFIED CUSTOMER</div></div>
+      <div style="background:#111111;border:1px solid rgba(255,42,42,0.2);padding:1.5rem;text-align:left;"><div style="color:#ff2a2a;font-size:1rem;margin-bottom:0.5rem;">★★★★★</div><div style="color:#f5f5f5;">"Quick, clean, and professional. Would recommend to anyone in Mumbai."</div><div style="font-size:0.7rem;color:#555;margin-top:0.5rem;font-family:'JetBrains Mono',monospace;">— VERIFIED CUSTOMER</div></div>
+    </div>
+  </section>
+
+  <section id="contact" class="contact">
+    <div class="section-label">/ 04 — Get in Touch</div>
+    <h2 class="section-title">Reach Out</h2>
+    <div class="contact-grid" style="margin-top:2rem;">
+      <div><div class="contact-label">/ Location</div><div class="contact-val">123 Main Road, Andheri West, Mumbai</div></div>
+      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a href="tel:+91 98765 43210">+91 98765 43210</a></div></div>
+      <div><div class="contact-label">/ Email</div><div class="contact-val"><a href="mailto:contact@sharma-electronics.com">contact@sharma-electronics.com</a></div></div>
+      <div><div class="contact-label">/ WhatsApp</div><div class="contact-val"><a href="https://wa.me/919876543210">+91 98765 43210</a></div></div>
+    </div>
+  </section>
+  <footer>© 2026 SHARMA ELECTRONICS · ALL RIGHTS RESERVED</footer>
+</body></html>

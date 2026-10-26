@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sharma Electronics</title><style>
+    *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#1a1a1a;line-height:1.6;overflow-x:hidden}
+    .hero{min-height:50vh;display:flex;flex-direction:column;justify-content:center;padding:4rem 2rem;position:relative;overflow:hidden;color:#fff}
+    .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.7)}
+    .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.5) 0%,transparent 50%,rgba(0,0,0,0.5) 100%)}
+    .hero-content{position:relative;z-index:2;max-width:700px}
+    .hero-label{font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;opacity:0.9;margin-bottom:1rem}
+    .hero-title{font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;margin-bottom:1rem}
+    .hero-sub{font-size:1rem;opacity:0.9;max-width:500px}
+    .btn{display:inline-block;background:#0d9488;color:#fff;padding:0.875rem 1.5rem;border-radius:8px;text-decoration:none;font-weight:600;margin-top:1.5rem}
+    .section{padding:3rem 2rem;max-width:900px;margin:0 auto;scroll-margin-top:80px}
+    .section-label{font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;color:#0d9488;margin-bottom:0.5rem;font-weight:600}
+    .section-title{font-size:1.875rem;font-weight:700;margin-bottom:1rem}
+    .section-body{font-size:1rem;line-height:1.75;color:#4b5563;max-width:600px}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.5rem;margin-top:1.5rem}
+    .contact{background:#f9fafb;padding:3rem 2rem;text-align:center;scroll-margin-top:80px}
+    .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+    .contact-label{font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:#9ca3af;margin-bottom:0.5rem;font-weight:600}
+    .contact-val{font-size:0.95rem;color:#1a1a1a}
+    a{color:#0d9488;text-decoration:none}
+    footer{background:#1a1a1a;color:#9ca3af;padding:2rem;text-align:center;font-size:0.8rem}
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(180deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.35) 100%),url('https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800') center/cover fixed;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 24px rgba(0,0,0,0.15)}
+    .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+    .topbar-logo{font-size:1.2rem;font-weight:700;color:#fff;text-decoration:none}
+    .topbar-nav{display:flex;gap:2rem}
+    .topbar-nav a{font-size:0.85rem;color:rgba(255,255,255,0.8);text-decoration:none;transition:color 0.2s;font-weight:500}
+    .topbar-nav a:hover{color:#0d9488}
+    .reviews-wrap{background:#f9fafb;padding:3rem 2rem;text-align:center;scroll-margin-top:80px}
+    .reviews-stars{font-size:2rem;color:#0d9488;letter-spacing:0.2em;margin:1rem 0}
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#0d948866;border-radius:3px}::-webkit-scrollbar-track{background:transparent}</style></head><body>
+    <nav class="topbar">
+      <div class="topbar-inner">
+        <a href="#top" class="topbar-logo">Sharma Electronics</a>
+        <div class="topbar-nav">
+          <a href="#about">About</a>
+          <a href="#gallery">Gallery</a>
+          <a href="#products">Products</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#contact">Contact</a>
+        </div>
+      </div>
+    </nav>
+    <div id="top"></div>
+    <div class="hero" style="margin-top:60px">
+      <img src="https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800" alt="Sharma Electronics">
+      <div class="hero-veil"></div>
+      <div class="hero-content">
+        <div class="hero-label">Electronics · Mumbai</div>
+        <h1 class="hero-title">Sharma Electronics</h1>
+        <p class="hero-sub">Trusted electronics store in Mumbai with quality products and reliable service for over 15 years.</p>
+        <a href="tel:+91 98765 43210" class="btn">Get Best Price</a>
+      </div>
+    </div>
+    <section id="about" class="section">
+      <div class="section-label">About</div>
+      <h2 class="section-title">Sharma Electronics</h2>
+      <p class="section-body">Trusted electronics store in Mumbai with quality products and reliable service for over 15 years.</p>
+      <p class="section-body" style="margin-top:1rem;">We are located at 123 Main Road, Andheri West, Mumbai, Maharashtra. Our commitment to quality and customer satisfaction has made us a trusted name in electronics. Visit us today and experience the difference.</p>
+    </section>
+    <section id="gallery" class="section"><div class="section-label">Gallery</div><h2 class="section-title">Photo Gallery</h2><div class="gallery"><div style="aspect-ratio:1;overflow:hidden;border-radius:8px;"><img src="https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800" alt="Gallery 1" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div><div style="aspect-ratio:1;overflow:hidden;border-radius:8px;"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600" alt="Gallery 2" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div><div style="aspect-ratio:1;overflow:hidden;border-radius:8px;"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600" alt="Gallery 3" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div><div style="aspect-ratio:1;overflow:hidden;border-radius:8px;"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600" alt="Gallery 4" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></div></div></section>
+    
+    <section id="products" class="section">
+      <div class="section-label">Products & Services</div>
+      <h2 class="section-title">Our Offerings</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-top:1.5rem;">
+        
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;"><img src="https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=600" alt="LED TV 55&quot;" style="width:100%;height:100%;object-fit:cover;"></div>
+            <div style="padding:0.75rem;">
+              <div style="font-weight:600;font-size:0.875rem;color:#1a1a1a;">LED TV 55&quot;</div>
+              <div style="font-size:0.875rem;font-weight:600;color:#0d9488;margin-top:0.25rem;">₹45,000</div>
+              <div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">4K Ultra HD Smart TV with HDR</div>
+            </div>
+          </div>
+        
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;"><img src="https://images.unsplash.com/photo-1608043152269-423dbba4e7ad?w=600" alt="Bluetooth Speaker" style="width:100%;height:100%;object-fit:cover;"></div>
+            <div style="padding:0.75rem;">
+              <div style="font-weight:600;font-size:0.875rem;color:#1a1a1a;">Bluetooth Speaker</div>
+              <div style="font-size:0.875rem;font-weight:600;color:#0d9488;margin-top:0.25rem;">₹2,500</div>
+              <div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">Portable waterproof speaker with 12hr battery</div>
+            </div>
+          </div>
+        
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#f9fafb;">📦</div></div>
+            <div style="padding:0.75rem;">
+              <div style="font-weight:600;font-size:0.875rem;color:#1a1a1a;">Wireless Headphones</div>
+              <div style="font-size:0.875rem;font-weight:600;color:#0d9488;margin-top:0.25rem;">₹3,200</div>
+              <div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">Noise cancelling, 30hr battery</div>
+            </div>
+          </div>
+        
+      </div>
+    </section>
+    <section id="reviews" class="reviews-wrap">
+      <div class="section-label">Reviews</div>
+      <h2 class="section-title">What Our Customers Say</h2>
+      <div class="reviews-stars">★★★★☆</div>
+      <div style="font-size:2rem;font-weight:700;color:#0d9488;">4.5 / 5.0</div>
+      <div style="font-size:0.875rem;color:#6b7280;margin-top:0.5rem;">Based on 128 reviews</div>
+      <div style="max-width:600px;margin:2rem auto 0;display:grid;gap:1rem;">
+        <div style="background:#fff;padding:1.5rem;border-radius:8px;border:1px solid #e5e7eb;text-align:left;"><div style="color:#0d9488;font-size:1rem;margin-bottom:0.5rem;">★★★★★</div><div style="color:#1a1a1a;">"Great experience! Highly recommend Sharma Electronics to everyone in Mumbai."</div><div style="font-size:0.75rem;color:#6b7280;margin-top:0.5rem;">— Verified Customer</div></div>
+        <div style="background:#fff;padding:1.5rem;border-radius:8px;border:1px solid #e5e7eb;text-align:left;"><div style="color:#0d9488;font-size:1rem;margin-bottom:0.5rem;">★★★★★</div><div style="color:#1a1a1a;">"Professional service and quality products. Will definitely come back."</div><div style="font-size:0.75rem;color:#6b7280;margin-top:0.5rem;">— Happy Customer</div></div>
+      </div>
+    </section>
+    <section id="contact" class="contact">
+      <div class="section-label">Contact</div>
+      <h2 class="section-title">Get in Touch</h2>
+      <div class="contact-grid" style="margin-top:1.5rem;">
+        <div><div class="contact-label">Address</div><div class="contact-val">123 Main Road, Andheri West, Mumbai, Maharashtra</div></div>
+        <div><div class="contact-label">Phone</div><div class="contact-val"><a href="tel:+91 98765 43210">+91 98765 43210</a></div></div>
+        <div><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:contact@sharma-electronics.com">contact@sharma-electronics.com</a></div></div>
+        <div><div class="contact-label">WhatsApp</div><div class="contact-val"><a href="https://wa.me/919876543210">+91 98765 43210</a></div></div>
+      </div>
+    </section>
+    <footer>© 2026 Sharma Electronics</footer>
+  </body></html>

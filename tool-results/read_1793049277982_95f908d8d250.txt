@@ -1,0 +1,1223 @@
+     1→'use client'
+     2→
+     3→import { useState, useMemo } from 'react'
+     4→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+     5→import { Badge } from '@/components/ui/badge'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Separator } from '@/components/ui/separator'
+     8→import { Textarea } from '@/components/ui/textarea'
+     9→import { Input } from '@/components/ui/input'
+    10→import { Label } from '@/components/ui/label'
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    12→import {
+    13→  Star, Phone, MessageCircle, Mail, Globe, MapPin, Clock, ShieldCheck, Crown,
+    14→  Navigation, Share2, ChevronLeft, Store, UtensilsCrossed, Wrench, Sparkles,
+    15→  ThumbsUp, Send, Check
+    16→} from 'lucide-react'
+    17→import { useApp, type Business } from '@/store/app'
+    18→import { useI18n } from '@/store/i18n'
+    19→import { toast } from 'sonner'
+    20→import { generateBusinessWebsite } from '@/lib/template-engine'
+    21→
+    22→function getTagStyle(themeColor: string | undefined) {
+    23→  const c = themeColor || '#0d9488'
+    24→  return { borderColor: c + '40', color: c, backgroundColor: c + '10' }
+    25→}
+    26→
+    27→interface Props {
+    28→  business: Business | null
+    29→  open: boolean
+    30→  onClose: () => void
+    31→}
+    32→
+    33→const TEMPLATE_META: Record<string, { icon: any; accent: string; label: string }> = {
+    34→  retail: { icon: Store, accent: '#16a34a', label: 'Retail Store' },
+    35→  restaurant: { icon: UtensilsCrossed, accent: '#dc2626', label: 'Restaurant' },
+    36→  service: { icon: Wrench, accent: '#0891b2', label: 'Service Provider' },
+    37→  premium: { icon: Sparkles, accent: '#7c3aed', label: 'Premium Showcase' }
+    38→}
+    39→
+    40→export function BusinessDetailModal({ business, open, onClose }: Props) {
+    41→  const { t } = useI18n()
+    42→  const { user } = useApp()
+    43→  const [reviewName, setReviewName] = useState(user?.name || '')
+    44→  const [reviewRating, setReviewRating] = useState(5)
+    45→  const [reviewComment, setReviewComment] = useState('')
+    46→  const [submitting, setSubmitting] = useState(false)
+    47→
+    48→  if (!business) return null
+    49→
+    50→  const template = TEMPLATE_META[business.template] || TEMPLATE_META.retail
+    51→  const TemplateIcon = template.icon
+    52→
+    53→  const products = (() => {
+    54→    try { return business.products ? JSON.parse(business.products) : [] } catch { return [] }
+    55→  })()
+    56→  const hours = (() => {
+    57→    try { return business.hours ? JSON.parse(business.hours) : {} } catch { return {} }
+    58→  })()
+    59→  const days = [
+    60→    { key: 'mon', label: 'Monday' },
+    61→    { key: 'tue', label: 'Tuesday' },
+    62→    { key: 'wed', label: 'Wednesday' },
+    63→    { key: 'thu', label: 'Thursday' },
+    64→    { key: 'fri', label: 'Friday' },
+    65→    { key: 'sat', label: 'Saturday' },
+    66→    { key: 'sun', label: 'Sunday' }
+    67→  ]
+    68→
+    69→  const handleSubmitReview = async () => {
+    70→    if (!reviewName.trim() || !reviewComment.trim()) {
+    71→      toast.error('Please fill name and comment')
+    72→      return
+    73→    }
+    74→    setSubmitting(true)
+    75→    try {
+    76→      const res = await fetch('/api/business', {
+    77→        method: 'POST',
+    78→        headers: { 'Content-Type': 'application/json' },
+    79→        body: JSON.stringify({
+    80→          businessId: business.id,
+    81→          rating: reviewRating,
+    82→          comment: reviewComment,
+    83→          userName: reviewName,
+    84→          userId: user?.id || null
+    85→        })
+    86→      })
+    87→      if (res.ok) {
+    88→        const data = await res.json()
+    89→        toast.success('Review submitted successfully!')
+    90→        setReviewComment('')
+    91→        setReviewRating(5)
+    92→        // Refresh business data to show new review + updated rating
+    93→        if (business?.id) {
+    94→          try {
+    95→            const fresh = await fetch(`/api/business?id=${business.id}`)
+    96→            const freshData = await fresh.json()
+    97→            if (freshData.business) {
+    98→              // Update via window event so parent can refresh too
+    99→              window.dispatchEvent(new CustomEvent('business-updated', { detail: freshData.business }))
+   100→            }
+   101→          } catch {}
+   102→        }
+   103→      } else {
+   104→        toast.error('Failed to submit review')
+   105→      }
+   106→    } catch {
+   107→      toast.error('Network error')
+   108→    }
+   109→    setSubmitting(false)
+   110→  }
+   111→
+   112→  const handleShare = async () => {
+   113→    const shareUrl = `${window.location.origin}/?biz=${business.id}`
+   114→    try {
+   115→      if (navigator.share) {
+   116→        await navigator.share({
+   117→          title: business.name,
+   118→          text: business.description,
+   119→          url: shareUrl
+   120→        })
+   121→      } else {
+   122→        await navigator.clipboard?.writeText(shareUrl)
+   123→        toast.success('Website link copied! Share it anywhere.')
+   124→      }
+   125→    } catch (err) {
+   126→      // User cancelled share — silently ignore
+   127→      console.warn('Share cancelled:', err)
+   128→    }
+   129→  }
+   130→
+   131→  // Update website template (premium only)
+   132→  const handleTemplateChange = async (tpl: string) => {
+   133→    if (!business.premium) return
+   134→    try {
+   135→      const res = await fetch('/api/business', {
+   136→        method: 'POST',
+   137→        headers: { 'Content-Type': 'application/json' },
+   138→        body: JSON.stringify({
+   139→          action: 'update',
+   140→          businessId: business.id,
+   141→          updates: { websiteTemplate: tpl }
+   142→        })
+   143→      })
+   144→      if (res.ok) {
+   145→        const data = await res.json()
+   146→        toast.success(`Template switched to ${tpl}!`)
+   147→        // Trigger refresh
+   148→        window.dispatchEvent(new CustomEvent('business-updated', { detail: data.business }))
+   149→      } else {
+   150→        toast.error('Failed to update template')
+   151→      }
+   152→    } catch {
+   153→      toast.error('Network error')
+   154→    }
+   155→  }
+   156→
+   157→  return (
+   158→    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+   159→      <DialogContent className="max-w-7xl sm:max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden p-0 gap-0 bg-card">
+   160→        {/* Hero banner — uses profile image if available, otherwise gradient */}
+   161→        <div
+   162→          className="relative h-52 sm:h-72 overflow-hidden flex-shrink-0"
+   163→          style={{
+   164→            background: business.profileImage
+   165→              ? `linear-gradient(135deg, ${business.imageColor}99 0%, ${business.imageColor}55 100%)`
+   166→              : `linear-gradient(135deg, ${business.imageColor} 0%, ${business.imageColor}cc 60%, ${business.imageColor}80 100%)`
+   167→          }}
+   168→        >
+   169→          {/* Profile image background (if exists) */}
+   170→          {business.profileImage && (
+   171→             
+   172→            <img
+   173→              src={business.profileImage}
+   174→              alt={business.name}
+   175→              className="absolute inset-0 w-full h-full object-cover"
+   176→            />
+   177→          )}
+   178→          {/* Dark gradient overlay for text readability */}
+   179→          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+   180→
+   181→          {/* Decorative pattern (only when no profile image) */}
+   182→          {!business.profileImage && (
+   183→            <div className="absolute inset-0 opacity-10" style={{
+   184→              backgroundImage: `radial-gradient(circle at 25% 25%, white 1.5px, transparent 1.5px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
+   185→              backgroundSize: '32px 32px, 24px 24px'
+   186→            }} />
+   187→          )}
+   188→
+   189→          {/* Live location badge — top-center if liveTracking enabled */}
+   190→          {business.liveTracking && (
+   191→            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+   192→              <div className="bg-emerald-500/90 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+   193→                <span className="relative flex h-2 w-2">
+   194→                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+   195→                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+   196→                </span>
+   197→                LIVE LOCATION
+   198→              </div>
+   199→            </div>
+   200→          )}
+   201→
+   202→          {/* Back button */}
+   203→          <Button
+   204→            variant="ghost"
+   205→            size="sm"
+   206→            className="absolute top-3 left-3 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md"
+   207→            onClick={onClose}
+   208→          >
+   209→            <ChevronLeft className="w-4 h-4 mr-1" />
+   210→            {t('detail_back')}
+   211→          </Button>
+   212→
+   213→          {/* Share Website button */}
+   214→          <Button
+   215→            variant="ghost"
+   216→            size="sm"
+   217→            className="absolute top-3 right-3 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md h-9 px-3"
+   218→            onClick={handleShare}
+   219→            title="Share this website"
+   220→          >
+   221→            <Share2 className="w-4 h-4 mr-1.5" />
+   222→            <span className="text-xs font-semibold">Share</span>
+   223→          </Button>
+   224→
+   225→          {/* Logo + template tag */}
+   226→          <div className="absolute bottom-4 left-5 sm:left-8 flex items-end gap-4">
+   227→            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white shadow-xl flex items-center justify-center text-4xl sm:text-5xl border-4 border-white">
+   228→              {business.emoji}
+   229→            </div>
+   230→            <div className="pb-2">
+   231→              <div className="flex items-center gap-1.5 mb-1">
+   232→                {business.verified && (
+   233→                  <Badge className="bg-white/95 text-emerald-700 hover:bg-white/95 shadow-sm">
+   234→                    <ShieldCheck className="w-3 h-3 mr-1" /> {t('card_verified')}
+   235→                  </Badge>
+   236→                )}
+   237→                {business.premium && (
+   238→                  <Badge className="bg-amber-500/95 text-white hover:bg-amber-500/95 shadow-sm">
+   239→                    <Crown className="w-3 h-3 mr-1" /> {t('card_premium')}
+   240→                  </Badge>
+   241→                )}
+   242→              </div>
+   243→              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg leading-tight max-w-3xl">
+   244→                {business.name}
+   245→              </h2>
+   246→              <div className="flex items-center gap-2 mt-1 text-white/90 text-sm">
+   247→                <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1">
+   248→                  <TemplateIcon className="w-3 h-3" />
+   249→                  {template.label}
+   250→                </span>
+   251→                <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1">
+   252→                  <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
+   253→                  {business.rating.toFixed(1)} ({business.reviewCount})
+   254→                </span>
+   255→                {business.isB2B && <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md text-xs">B2B</span>}
+   256→                {business.isB2C && <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md text-xs">B2C</span>}
+   257→              </div>
+   258→            </div>
+   259→          </div>
+   260→        </div>
+   261→
+   262→        {/* Body */}
+   263→        <div className="overflow-y-auto" style={{ maxHeight: 'calc(95vh - 18rem)' }}>
+   264→          <div className="p-6 sm:p-10 max-w-5xl mx-auto">
+   265→            <Tabs defaultValue="about" className="w-full">
+   266→              <TabsList
+   267→                className="mb-5 bg-muted/50 grid"
+   268→                style={{
+   269→                  gridTemplateColumns: 'repeat(' + (2 + (business.showProducts !== false ? 1 : 0) + (business.showReviews !== false ? 1 : 0)) + ', minmax(0, 1fr))'
+   270→                }}
+   271→              >
+   272→                <TabsTrigger value="about" className="text-xs sm:text-sm">{t('detail_about')}</TabsTrigger>
+   273→                {business.showProducts !== false && (
+   274→                  <TabsTrigger value="products" className="text-xs sm:text-sm">{t('detail_products')}</TabsTrigger>
+   275→                )}
+   276→                <TabsTrigger value="contact" className="text-xs sm:text-sm">{t('detail_contact')}</TabsTrigger>
+   277→                {business.showReviews !== false && (
+   278→                  <TabsTrigger value="reviews" className="text-xs sm:text-sm">{t('detail_reviews')}</TabsTrigger>
+   279→                )}
+   280→              </TabsList>
+   281→
+   282→              {/* About Tab */}
+   283→              <TabsContent value="about" className="space-y-5 mt-0">
+   284→                {/* If one of the 5 new premium HTML templates, render full HTML website via iframe */}
+   285→                {['calm-sage', 'jungle-gold', 'athletic-bold', 'tech-lime', 'journalism-red'].includes(business.template) ? (
+   286→                  <HtmlTemplateRenderer business={business} />
+   287→                ) : (
+   288→                  <>
+   289→                    {/* Gallery images — rendered in different styles based on template */}
+   290→                    {business.showGallery !== false && <GalleryRenderer business={business} />}
+   291→
+   292→                    {/* Products catalog with image, name, price, details */}
+   293→                    <ProductsRenderer business={business} />
+   294→                  </>
+   295→                )}
+   296→
+   297→                <div>
+   298→                  <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   299→                    <span className="w-1 h-5 rounded" style={{ background: business.themeColor || '#0d9488' }} />
+   300→                    {t('detail_about')}
+   301→                  </h3>
+   302→                  <p className="text-sm sm:text-base text-foreground/85 leading-relaxed">
+   303→                    {business.description}
+   304→                  </p>
+   305→                  {business.tags && (
+   306→                    <div className="flex flex-wrap gap-1.5 mt-3">
+   307→                      {business.tags.split(',').filter(Boolean).map((tag, i) => {
+   308→                        return (
+   309→                          <Badge key={i} variant="outline" className="text-xs" style={getTagStyle(business.themeColor)}>
+   310→                            <span>#{tag.trim()}</span>
+   311→                          </Badge>
+   312→                        )
+   313→                      })}
+   314→
+   315→                    </div>
+   316→                  )}
+   317→                </div>
+   318→
+   319→                <Separator />
+   320→
+   321→                {/* Hours (only if showHours enabled) */}
+   322→                {business.showHours !== false && (
+   323→                  <>
+   324→                    <Separator />
+   325→                    <div>
+   326→                      <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+   327→                        <Clock className="w-4 h-4" style={{ color: business.themeColor || '#0d9488' }} />
+   328→                        {t('detail_hours')}
+   329→                      </h3>
+   330→                      <div className="grid sm:grid-cols-2 gap-1.5">
+   331→                        {days.map((d) => (
+   332→                          <div key={d.key} className="flex justify-between text-sm py-1.5 px-3 rounded-md bg-muted/30">
+   333→                            <span className="text-muted-foreground">{d.label}</span>
+   334→                            <span className="font-medium text-foreground">{hours[d.key] || '—'}</span>
+   335→                          </div>
+   336→                        ))}
+   337→                      </div>
+   338→                    </div>
+   339→                  </>
+   340→                )}
+   341→
+   342→                {/* Premium website template picker (only for premium businesses) */}
+   343→                {business.premium && (
+   344→                  <>
+   345→                    <Separator />
+   346→                    <div>
+   347→                      <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+   348→                        <Crown className="w-4 h-4 text-amber-500" />
+   349→                        Website Template
+   350→                        <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 bg-amber-50 ml-1">
+   351→                          PREMIUM
+   352→                        </Badge>
+   353→                      </h3>
+   354→                      <p className="text-xs text-muted-foreground mb-3">
+   355→                        Choose how your business website looks. Visitors will see this template when they open your shared link.
+   356→                      </p>
+   357→                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   358→                        {[
+   359→                          { id: 'elegant', name: 'Elegant', desc: 'Serif + soft', preview: 'from-slate-100 to-stone-200' },
+   360→                          { id: 'classic', name: 'Classic', desc: 'Warm + traditional', preview: 'from-amber-50 to-orange-100' },
+   361→                          { id: 'bold', name: 'Bold', desc: 'High contrast', preview: 'from-zinc-900 to-zinc-700' },
+   362→                          { id: 'boutique', name: 'Boutique', desc: 'Luxury + minimal', preview: 'from-rose-50 to-pink-100' }
+   363→                        ].map((tpl) => {
+   364→                          const isActive = (business.websiteTemplate || 'elegant') === tpl.id
+   365→                          return (
+   366→                            <button
+   367→                              key={tpl.id}
+   368→                              onClick={() => handleTemplateChange(tpl.id)}
+   369→                              className={`rounded-lg overflow-hidden border-2 transition-all text-left ${
+   370→                                isActive ? 'border-brand shadow-md' : 'border-border hover:border-brand/40'
+   371→                              }`}
+   372→                            >
+   373→                              <div className={`h-12 bg-gradient-to-br ${tpl.preview} flex items-center justify-center`}>
+   374→                                {isActive && <Check className="w-4 h-4 text-emerald-600" />}
+   375→                              </div>
+   376→                              <div className="p-2 bg-card">
+   377→                                <div className="font-bold text-xs">{tpl.name}</div>
+   378→                                <div className="text-[10px] text-muted-foreground">{tpl.desc}</div>
+   379→                              </div>
+   380→                            </button>
+   381→                          )
+   382→                        })}
+   383→                      </div>
+   384→                    </div>
+   385→                  </>
+   386→                )}
+   387→              </TabsContent>
+   388→
+   389→              {/* Products Tab */}
+   390→              <TabsContent value="products" className="mt-0">
+   391→                <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+   392→                  <span className="w-1 h-5 rounded bg-brand" />
+   393→                  {t('detail_products')}
+   394→                </h3>
+   395→                {products.length > 0 ? (
+   396→                  <div className="grid sm:grid-cols-2 gap-3">
+   397→                    {products.map((p: any, i: number) => (
+   398→                      <div
+   399→                        key={i}
+   400→                        className="flex items-center gap-3 p-3 rounded-xl border border-border/60 hover:border-brand/40 hover:shadow-sm transition-all bg-card"
+   401→                      >
+   402→                        <div
+   403→                          className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
+   404→                          style={{ background: `${business.imageColor}15` }}
+   405→                        >
+   406→                          {p.img}
+   407→                        </div>
+   408→                        <div className="flex-1 min-w-0">
+   409→                          <div className="font-medium text-sm leading-tight">{p.name}</div>
+   410→                          <div className="text-brand font-semibold text-sm mt-0.5">{p.price}</div>
+   411→                        </div>
+   412→                      </div>
+   413→                    ))}
+   414→                  </div>
+   415→                ) : (
+   416→                  <p className="text-sm text-muted-foreground italic">No products listed yet.</p>
+   417→                )}
+   418→              </TabsContent>
+   419→
+   420→              {/* Contact Tab */}
+   421→              <TabsContent value="contact" className="space-y-4 mt-0">
+   422→                <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   423→                  <span className="w-1 h-5 rounded bg-brand" />
+   424→                  {t('detail_contact')}
+   425→                </h3>
+   426→
+   427→                <div className="space-y-3">
+   428→                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+   429→                    <MapPin className="w-5 h-5 text-brand flex-shrink-0 mt-0.5" />
+   430→                    <div className="flex-1 min-w-0">
+   431→                      <div className="text-xs uppercase tracking-wide text-muted-foreground">{t('detail_address')}</div>
+   432→                      <div className="text-sm font-medium mt-0.5">{business.address}</div>
+   433→                      <div className="text-sm text-muted-foreground">{business.city}, {business.state}{business.pincode ? ` - ${business.pincode}` : ''}</div>
+   434→
+   435→                      {/* Live location indicator */}
+   436→                      {business.liveTracking && (
+   437→                        <div className="mt-2 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md text-xs font-bold text-emerald-700">
+   438→                          <span className="relative flex h-2 w-2">
+   439→                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+   440→                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+   441→                          </span>
+   442→                          LIVE LOCATION ENABLED
+   443→                        </div>
+   444→                      )}
+   445→
+   446→                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+   447→                        <Button
+   448→                          size="sm"
+   449→                          variant="outline"
+   450→                          className="h-7 text-xs border-brand/40 text-brand hover:bg-brand-soft"
+   451→                          onClick={() => window.open(`https://www.openstreetmap.org/directions?from=&to=${business.lat}%2C${business.lng}`, '_blank')}
+   452→                        >
+   453→                          <Navigation className="w-3 h-3 mr-1" />
+   454→                          {t('detail_getDirections')}
+   455→                        </Button>
+   456→                        <Button
+   457→                          size="sm"
+   458→                          variant="ghost"
+   459→                          className="h-7 text-xs text-blue-700 hover:bg-blue-50"
+   460→                          onClick={() => {
+   461→                            navigator.clipboard?.writeText(`${business.lat},${business.lng}`)
+   462→                            toast.success('Coordinates copied')
+   463→                          }}
+   464→                        >
+   465→                          <MapPin className="w-3 h-3 mr-1" />
+   466→                          Copy Coordinates
+   467→                        </Button>
+   468→                      </div>
+   469→                    </div>
+   470→                  </div>
+   471→
+   472→                  <div className="grid sm:grid-cols-2 gap-3">
+   473→                    <Button
+   474→                      className="h-12 bg-brand hover:bg-brand/90 text-brand-foreground font-medium"
+   475→                      onClick={() => window.location.href = `tel:${business.phone}`}
+   476→                    >
+   477→                      <Phone className="w-4 h-4 mr-2" />
+   478→                      <div className="text-left">
+   479→                        <div className="text-[10px] opacity-80 uppercase">{t('detail_callNow')}</div>
+   480→                        <div className="text-sm">{business.phone}</div>
+   481→                      </div>
+   482→                    </Button>
+   483→
+   484→                    {business.whatsapp && (
+   485→                      <Button
+   486→                        variant="outline"
+   487→                        className="h-12 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 font-medium"
+   488→                        onClick={() => {
+   489→                          const num = business.whatsapp!.replace(/[^0-9]/g, '')
+   490→                          window.open(`https://wa.me/${num}`, '_blank')
+   491→                        }}
+   492→                      >
+   493→                        <MessageCircle className="w-4 h-4 mr-2" />
+   494→                        <div className="text-left">
+   495→                          <div className="text-[10px] opacity-80 uppercase">WhatsApp</div>
+   496→                          <div className="text-sm">{business.whatsapp}</div>
+   497→                        </div>
+   498→                      </Button>
+   499→                    )}
+   500→
+   501→                    {business.email && (
+   502→                      <Button
+   503→                        variant="outline"
+   504→                        className="h-12 font-medium"
+   505→                        onClick={() => window.location.href = `mailto:${business.email}`}
+   506→                      >
+   507→                        <Mail className="w-4 h-4 mr-2" />
+   508→                        <div className="text-left">
+   509→                          <div className="text-[10px] opacity-80 uppercase">{t('detail_emailNow')}</div>
+   510→                          <div className="text-sm truncate max-w-[180px]">{business.email}</div>
+   511→                        </div>
+   512→                      </Button>
+   513→                    )}
+   514→
+   515→                    {business.website && (
+   516→                      <Button
+   517→                        variant="outline"
+   518→                        className="h-12 font-medium"
+   519→                        onClick={() => window.open(business.website!, '_blank')}
+   520→                      >
+   521→                        <Globe className="w-4 h-4 mr-2" />
+   522→                        <div className="text-left">
+   523→                          <div className="text-[10px] opacity-80 uppercase">{t('detail_visitSite')}</div>
+   524→                          <div className="text-sm truncate max-w-[180px]">Visit Website</div>
+   525→                        </div>
+   526→                      </Button>
+   527→                    )}
+   528→                  </div>
+   529→                </div>
+   530→
+   531→                {/* Embedded mini map (only if showMap enabled) */}
+   532→                {business.showMap !== false && (
+   533→                  <div className="rounded-xl overflow-hidden border border-border/60 h-64 mt-4">
+   534→                    <iframe
+   535→                      title="map"
+   536→                      width="100%"
+   537→                      height="100%"
+   538→                      style={{ border: 0 }}
+   539→                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${business.lng - 0.01}%2C${business.lat - 0.008}%2C${business.lng + 0.01}%2C${business.lat + 0.008}&layer=mapnik&marker=${business.lat}%2C${business.lng}`}
+   540→                    />
+   541→                  </div>
+   542→                )}
+   543→              </TabsContent>
+   544→
+   545→              {/* Reviews Tab */}
+   546→              <TabsContent value="reviews" className="space-y-4 mt-0">
+   547→                <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   548→                  <span className="w-1 h-5 rounded bg-brand" />
+   549→                  {t('detail_reviews')}
+   550→                </h3>
+   551→
+   552→                {/* Rating summary */}
+   553→                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/50">
+   554→                  <div className="text-center">
+   555→                    <div className="text-4xl font-serif font-bold text-amber-700">{business.rating.toFixed(1)}</div>
+   556→                    <div className="flex items-center gap-0.5 mt-1 justify-center">
+   557→                      {[1,2,3,4,5].map((s) => (
+   558→                        <Star
+   559→                          key={s}
+   560→                          className={`w-3.5 h-3.5 ${s <= Math.round(business.rating) ? 'fill-amber-500 text-amber-500' : 'text-amber-300'}`}
+   561→                        />
+   562→                      ))}
+   563→                    </div>
+   564→                    <div className="text-xs text-muted-foreground mt-1">{business.reviewCount} reviews</div>
+   565→                  </div>
+   566→                  <Separator orientation="vertical" className="h-20" />
+   567→                  <div className="flex-1">
+   568→                    <p className="text-sm text-foreground/80 italic">
+   569→                      "{business.premium ? 'Top-rated premium business with consistent customer satisfaction.' : 'Trusted by customers in the local community.'}"
+   570→                    </p>
+   571→                  </div>
+   572→                </div>
+   573→
+   574→                {/* Existing reviews */}
+   575→                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+   576→                  {business.reviews && business.reviews.length > 0 ? (
+   577→                    business.reviews.map((r: any) => (
+   578→                      <div key={r.id} className="p-3 rounded-lg border border-border/50 bg-card">
+   579→                        <div className="flex items-center justify-between mb-1">
+   580→                          <div className="font-medium text-sm">{r.userName}</div>
+   581→                          <div className="flex items-center gap-0.5">
+   582→                            {[1,2,3,4,5].map((s) => (
+   583→                              <Star
+   584→                                key={s}
+   585→                                className={`w-3 h-3 ${s <= r.rating ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground/30'}`}
+   586→                              />
+   587→                            ))}
+   588→                          </div>
+   589→                        </div>
+   590→                        <p className="text-sm text-muted-foreground">{r.comment}</p>
+   591→                      </div>
+   592→                    ))
+   593→                  ) : (
+   594→                    <p className="text-sm text-muted-foreground italic text-center py-6">{t('detail_noReviews')}</p>
+   595→                  )}
+   596→                </div>
+   597→
+   598→                <Separator />
+   599→
+   600→                {/* Write review */}
+   601→                <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+   602→                  <h4 className="font-serif font-semibold text-sm flex items-center gap-2">
+   603→                    <ThumbsUp className="w-4 h-4 text-brand" />
+   604→                    {t('detail_writeReview')}
+   605→                  </h4>
+   606→                  <div>
+   607→                    <Label className="text-xs">{t('detail_reviewName')}</Label>
+   608→                    <Input
+   609→                      value={reviewName}
+   610→                      onChange={(e) => setReviewName(e.target.value)}
+   611→                      placeholder="Your name"
+   612→                      className="mt-1 h-9"
+   613→                    />
+   614→                  </div>
+   615→                  <div>
+   616→                    <Label className="text-xs">{t('detail_reviewRating')}</Label>
+   617→                    <div className="flex items-center gap-2 mt-1">
+   618→                      {[1,2,3,4,5].map((s) => (
+   619→                        <button key={s} onClick={() => setReviewRating(s)} className="p-1">
+   620→                          <Star
+   621→                            className={`w-6 h-6 transition-colors ${s <= reviewRating ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'}`}
+   622→                          />
+   623→                        </button>
+   624→                      ))}
+   625→                      <span className="text-sm text-muted-foreground ml-2">{reviewRating}.0</span>
+   626→                    </div>
+   627→                  </div>
+   628→                  <div>
+   629→                    <Label className="text-xs">{t('detail_reviewComment')}</Label>
+   630→                    <Textarea
+   631→                      value={reviewComment}
+   632→                      onChange={(e) => setReviewComment(e.target.value)}
+   633→                      placeholder="Share your experience..."
+   634→                      className="mt-1 min-h-[80px]"
+   635→                    />
+   636→                  </div>
+   637→                  <Button
+   638→                    onClick={handleSubmitReview}
+   639→                    disabled={submitting}
+   640→                    className="w-full bg-brand hover:bg-brand/90 text-brand-foreground"
+   641→                  >
+   642→                    <Send className="w-4 h-4 mr-2" />
+   643→                    {submitting ? 'Submitting...' : t('detail_submitReview')}
+   644→                  </Button>
+   645→                </div>
+   646→              </TabsContent>
+   647→            </Tabs>
+   648→          </div>
+   649→        </div>
+   650→      </DialogContent>
+   651→    </Dialog>
+   652→  )
+   653→}
+   654→
+   655→
+   656→// Helper component to render gallery in different template styles
+   657→function GalleryRenderer({ business }: { business: any }) {
+   658→  const gallery = business.imageUrls ? business.imageUrls.split(',').filter(Boolean) : []
+   659→  const allImages = business.profileImage && !gallery.includes(business.profileImage)
+   660→    ? [business.profileImage, ...gallery]
+   661→    : gallery
+   662→  if (allImages.length === 0) return null
+   663→
+   664→  const tpl = business.websiteTemplate || 'elegant'
+   665→  const accent = business.themeColor || '#0d9488'
+   666→
+   667→  if (tpl === 'bold') {
+   668→    return (
+   669→      <div>
+   670→        <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   671→          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+   672→          Gallery
+   673→        </h3>
+   674→        <div className="rounded-xl overflow-hidden mb-2 border border-border/60">
+   675→          <img src={allImages[0]} alt="Featured" className="w-full h-48 object-cover" />
+   676→        </div>
+   677→        {allImages.length > 1 && (
+   678→          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+   679→            {allImages.slice(1, 9).map((url: string, i: number) => (
+   680→              <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
+   681→                <img src={url} alt={'Gallery ' + (i + 2)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+   682→              </div>
+   683→            ))}
+   684→          </div>
+   685→        )}
+   686→      </div>
+   687→    )
+   688→  }
+   689→
+   690→  if (tpl === 'boutique') {
+   691→    return (
+   692→      <div>
+   693→        <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   694→          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+   695→          Gallery
+   696→        </h3>
+   697→        <div className="grid grid-cols-2 gap-2">
+   698→          {allImages.slice(0, 6).map((url: string, i: number) => (
+   699→            <div
+   700→              key={i}
+   701→              className={'rounded-xl overflow-hidden border-2 border-border/60 bg-muted hover:shadow-lg transition-all ' + (i === 0 ? 'col-span-2 aspect-[2/1]' : 'aspect-square')}
+   702→            >
+   703→              <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+   704→            </div>
+   705→          ))}
+   706→        </div>
+   707→      </div>
+   708→    )
+   709→  }
+   710→
+   711→  if (tpl === 'classic') {
+   712→    return (
+   713→      <div>
+   714→        <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   715→          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+   716→          Gallery
+   717→        </h3>
+   718→        <div className="flex gap-3 overflow-x-auto pb-2">
+   719→          {allImages.slice(0, 8).map((url: string, i: number) => (
+   720→            <div key={i} className="w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden border border-border/60 bg-muted">
+   721→              <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+   722→            </div>
+   723→          ))}
+   724→        </div>
+   725→      </div>
+   726→    )
+   727→  }
+   728→
+   729→  // Elegant (default): grid layout
+   730→  return (
+   731→    <div>
+   732→      <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+   733→        <span className="w-1 h-5 rounded" style={{ background: accent }} />
+   734→        Gallery
+   735→      </h3>
+   736→      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+   737→        {allImages.slice(0, 8).map((url: string, i: number) => (
+   738→          <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
+   739→            <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+   740→          </div>
+   741→        ))}
+   742→      </div>
+   743→    </div>
+   744→  )
+   745→}
+   746→
+   747→// Helper: render full HTML template website via iframe
+   748→function HtmlTemplateRenderer({ business }: { business: any }) {
+   749→  const html = useMemo(() => {
+   750→    return generateBusinessWebsite({
+   751→      name: business.name,
+   752→      description: business.description,
+   753→      category: business.category,
+   754→      subcategory: business.subcategory,
+   755→      city: business.city,
+   756→      state: business.state,
+   757→      address: business.address,
+   758→      phone: business.phone,
+   759→      whatsapp: business.whatsapp,
+   760→      email: business.email,
+   761→      website: business.website,
+   762→      rating: business.rating,
+   763→      reviewCount: business.reviewCount,
+   764→      profileImage: business.profileImage,
+   765→      imageUrls: business.imageUrls,
+   766→      products: business.products,
+   767→      hours: business.hours,
+   768→      themeColor: business.themeColor,
+   769→      template: business.template
+   770→    })
+   771→  }, [business])
+   772→
+   773→  return (
+   774→    <div className="rounded-xl overflow-hidden border border-border/60 shadow-lg">
+   775→      <iframe
+   776→        srcDoc={html}
+   777→        title={`${business.name} Website`}
+   778→        className="w-full"
+   779→        style={{ height: '80vh', minHeight: '600px', border: 'none' }}
+   780→        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+   781→      />
+   782→    </div>
+   783→  )
+   784→}
+   785→
+   786→// Helper: render business website with template-specific full styling (OLD — kept for fallback)
+   787→function WebsiteTemplateRenderer({ business }: { business: any }) {
+   788→  const tpl = business.template || 'retail'
+   789→  const accent = business.themeColor || '#0d9488'
+   790→  const gallery = business.imageUrls ? business.imageUrls.split(',').filter(Boolean) : []
+   791→  const allImages = business.profileImage && !gallery.includes(business.profileImage)
+   792→    ? [business.profileImage, ...gallery]
+   793→    : gallery
+   794→  const products = (() => {
+   795→    try { return business.products ? JSON.parse(business.products) : [] } catch { return [] }
+   796→  })()
+   797→
+   798→  // === CALM SAGE (yoga studio inspired) ===
+   799→  if (tpl === 'calm-sage') {
+   800→    return (
+   801→      <div className="space-y-6" style={{ background: '#f4ede0', color: '#2c2620', fontFamily: 'Georgia, serif' }}>
+   802→        {/* Hero banner */}
+   803→        {business.profileImage && (
+   804→          <div className="relative h-56 overflow-hidden rounded-xl">
+   805→            <img src={business.profileImage} alt={business.name} className="w-full h-full object-cover" style={{ filter: 'brightness(0.85) saturate(0.9)' }} />
+   806→            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+   807→            <div className="absolute bottom-4 left-5 text-white">
+   808→              <div className="text-2xl font-light italic">{business.name}</div>
+   809→              <div className="text-sm opacity-90">{business.category} · {business.city}</div>
+   810→            </div>
+   811→          </div>
+   812→        )}
+   813→        <div className="px-5 pb-5">
+   814→          <p className="italic text-sm leading-relaxed mb-4" style={{ color: '#4a4036' }}>{business.description}</p>
+   815→          {/* Gallery — soft rounded */}
+   816→          {business.showGallery !== false && allImages.length > 0 && (
+   817→            <div className="mb-4">
+   818→              <div className="text-xs uppercase tracking-wider mb-2" style={{ color: accent }}>Gallery</div>
+   819→              <div className="grid grid-cols-3 gap-2">
+   820→                {allImages.slice(0, 6).map((url: string, i: number) => (
+   821→                  <div key={i} className="aspect-square rounded-xl overflow-hidden">
+   822→                    <img src={url} alt={'Image ' + (i + 1)} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+   823→                  </div>
+   824→                ))}
+   825→              </div>
+   826→            </div>
+   827→          )}
+   828→          {/* Products — calm offerings */}
+   829→          {business.showProducts !== false && products.length > 0 && (
+   830→            <div>
+   831→              <div className="text-xs uppercase tracking-wider mb-2" style={{ color: accent }}>Offerings</div>
+   832→              <div className="grid grid-cols-2 gap-3">
+   833→                {products.map((p: any, i: number) => (
+   834→                  <div key={i} className="rounded-xl overflow-hidden" style={{ background: accent + '10' }}>
+   835→                    <div className="aspect-square bg-muted overflow-hidden">
+   836→                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+   837→                    </div>
+   838→                    <div className="p-3">
+   839→                      <div className="text-sm">{p.name || 'Product'}</div>
+   840→                      <div className="text-sm font-semibold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+   841→                      {p.details && <div className="text-xs mt-1" style={{ color: '#7a6e60' }}>{p.details}</div>}
+   842→                    </div>
+   843→                  </div>
+   844→                ))}
+   845→              </div>
+   846→            </div>
+   847→          )}
+   848→        </div>
+   849→      </div>
+   850→    )
+   851→  }
+   852→
+   853→  // === JUNGLE GOLD (editorial monograph inspired) ===
+   854→  if (tpl === 'jungle-gold') {
+   855→    return (
+   856→      <div className="space-y-6" style={{ background: '#05140A', color: '#F5F5DC', fontFamily: 'Georgia, serif' }}>
+   857→        {/* Hero */}
+   858→        {business.profileImage && (
+   859→          <div className="relative h-56 overflow-hidden">
+   860→            <img src={business.profileImage} alt={business.name} className="w-full h-full object-cover" style={{ filter: 'brightness(0.6) contrast(1.1)' }} />
+   861→            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+   862→            <div className="absolute bottom-4 left-5">
+   863→              <div className="text-xs uppercase tracking-widest mb-1" style={{ color: accent }}>— {business.category} —</div>
+   864→              <div className="text-3xl font-bold" style={{ color: '#F5F5DC' }}>{business.name}</div>
+   865→              <div className="text-sm italic mt-1" style={{ color: accent }}>{business.city}, {business.state}</div>
+   866→            </div>
+   867→          </div>
+   868→        )}
+   869→        <div className="px-5 pb-5">
+   870→          <p className="italic leading-relaxed mb-4" style={{ color: '#8FBC8F', fontSize: '1.05rem' }}>{business.description}</p>
+   871→          {/* Gallery — editorial style */}
+   872→          {business.showGallery !== false && allImages.length > 0 && (
+   873→            <div className="mb-4 border-t pt-4" style={{ borderColor: 'rgba(201,162,39,0.2)' }}>
+   874→              <div className="text-xs uppercase tracking-widest mb-3" style={{ color: accent }}>— Catalogue —</div>
+   875→              <div className="grid grid-cols-2 gap-4">
+   876→                {allImages.slice(0, 6).map((url: string, i: number) => (
+   877→                  <div key={i} className="border p-2" style={{ borderColor: 'rgba(201,162,39,0.15)' }}>
+   878→                    <div className="aspect-[4/3] bg-muted overflow-hidden mb-2">
+   879→                      <img src={url} alt={'Plate ' + (i + 1)} className="w-full h-full object-cover" />
+   880→                    </div>
+   881→                    <div className="text-xs italic" style={{ color: accent }}>Pl. {String(i + 1).padStart(2, '0')}</div>
+   882→                  </div>
+   883→                ))}
+   884→              </div>
+   885→            </div>
+   886→          )}
+   887→          {/* Products */}
+   888→          {business.showProducts !== false && products.length > 0 && (
+   889→            <div className="border-t pt-4" style={{ borderColor: 'rgba(201,162,39,0.2)' }}>
+   890→              <div className="text-xs uppercase tracking-widest mb-3" style={{ color: accent }}>— Products —</div>
+   891→              <div className="grid grid-cols-2 gap-4">
+   892→                {products.map((p: any, i: number) => (
+   893→                  <div key={i} className="border p-3" style={{ borderColor: 'rgba(201,162,39,0.15)' }}>
+   894→                    <div className="aspect-[4/3] bg-muted overflow-hidden mb-2">
+   895→                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+   896→                    </div>
+   897→                    <div className="text-base">{p.name || 'Product'}</div>
+   898→                    <div className="text-sm italic mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+   899→                    {p.details && <div className="text-xs mt-1" style={{ color: '#8FBC8F' }}>{p.details}</div>}
+   900→                  </div>
+   901→                ))}
+   902→              </div>
+   903→            </div>
+   904→          )}
+   905→        </div>
+   906→      </div>
+   907→    )
+   908→  }
+   909→
+   910→  // === ATHLETIC BOLD (gym/strength inspired) ===
+   911→  if (tpl === 'athletic-bold') {
+   912→    return (
+   913→      <div className="space-y-0" style={{ background: '#0a0a0a', color: '#f5f5f5', fontFamily: 'Oswald, Arial, sans-serif' }}>
+   914→        {/* Hero — dark with orange accent */}
+   915→        {business.profileImage && (
+   916→          <div className="relative h-56 overflow-hidden">
+   917→            <img src={business.profileImage} alt={business.name} className="w-full h-full object-cover" style={{ filter: 'grayscale(100%) contrast(1.4) brightness(0.5)' }} />
+   918→            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(10,10,10,0.9) 0%, rgba(10,10,10,0.4) 40%, rgba(10,10,10,0.9) 100%)' }} />
+   919→            <div className="absolute bottom-4 left-5">
+   920→              <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: accent }}>— {business.category} —</div>
+   921→              <div className="text-4xl font-black uppercase" style={{ color: '#f5f5f5', letterSpacing: '-0.02em' }}>{business.name}</div>
+   922→              <div className="text-sm mt-1" style={{ color: accent }}>{business.city.toUpperCase()} · {business.state.toUpperCase()}</div>
+   923→            </div>
+   924→          </div>
+   925→        )}
+   926→        <div className="px-5 py-5">
+   927→          <p className="leading-relaxed mb-4 text-sm" style={{ color: '#c0c0c0' }}>{business.description}</p>
+   928→          {/* Gallery — noir grid */}
+   929→          {business.showGallery !== false && allImages.length > 0 && (
+   930→            <div className="mb-4">
+   931→              <div className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: accent }}>/ Gallery</div>
+   932→              <div className="grid grid-cols-3 gap-2">
+   933→                {allImages.slice(0, 6).map((url: string, i: number) => (
+   934→                  <div key={i} className="aspect-square overflow-hidden border" style={{ borderColor: '#1f1f1f' }}>
+   935→                    <img src={url} alt={'Image ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" style={{ filter: 'grayscale(100%) contrast(1.3) brightness(0.7)' }} />
+   936→                  </div>
+   937→                ))}
+   938→              </div>
+   939→            </div>
+   940→          )}
+   941→          {/* Products — bold dark cards */}
+   942→          {business.showProducts !== false && products.length > 0 && (
+   943→            <div>
+   944→              <div className="text-xs font-mono uppercase tracking-widest mb-3 px-3 py-1.5 inline-block font-bold" style={{ background: accent, color: '#000' }}>/ Products</div>
+   945→              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+   946→                {products.map((p: any, i: number) => (
+   947→                  <div key={i} className="border-2 rounded-lg overflow-hidden" style={{ borderColor: accent + '40', background: '#141414' }}>
+   948→                    <div className="aspect-square bg-muted overflow-hidden">
+   949→                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+   950→                    </div>
+   951→                    <div className="p-3">
+   952→                      <div className="font-bold text-sm uppercase">{p.name || 'Product'}</div>
+   953→                      <div className="text-lg font-bold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+   954→                      {p.details && <div className="text-xs mt-1" style={{ color: '#6a6a6a' }}>{p.details}</div>}
+   955→                    </div>
+   956→                  </div>
+   957→                ))}
+   958→              </div>
+   959→            </div>
+   960→          )}
+   961→        </div>
+   962→      </div>
+   963→    )
+   964→  }
+   965→
+   966→  // === TECH LIME (math/tech inspired) ===
+   967→  if (tpl === 'tech-lime') {
+   968→    return (
+   969→      <div className="space-y-0" style={{ background: '#0d0e14', color: '#f0ebe1', fontFamily: 'Space Grotesk, Arial, sans-serif' }}>
+   970→        {/* Hero — dark with lime accent */}
+   971→        {business.profileImage && (
+   972→          <div className="relative h-56 overflow-hidden">
+   973→            <img src={business.profileImage} alt={business.name} className="w-full h-full object-cover" style={{ filter: 'brightness(0.5) saturate(0.8)' }} />
+   974→            <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(13,14,20,0.9) 0%, rgba(13,14,20,0.3) 50%, rgba(13,14,20,0.8) 100%)' }} />
+   975→            <div className="absolute bottom-4 left-5">
+   976→              <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: accent }}>{'// ' + business.category}</div>
+   977→              <div className="text-3xl font-bold" style={{ color: '#f0ebe1', letterSpacing: '-0.02em' }}>{business.name}</div>
+   978→              <div className="text-sm mt-1" style={{ color: accent }}>{business.city} · {business.state}</div>
+   979→            </div>
+   980→          </div>
+   981→        )}
+   982→        <div className="px-5 py-5">
+   983→          <p className="leading-relaxed mb-4 text-sm" style={{ color: '#a8a496' }}>{business.description}</p>
+   984→          {/* Gallery — tech grid */}
+   985→          {business.showGallery !== false && allImages.length > 0 && (
+   986→            <div className="mb-4">
+   987→              <div className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: accent }}>{'// Gallery'}</div>
+   988→              <div className="grid grid-cols-3 gap-2">
+   989→                {allImages.slice(0, 6).map((url: string, i: number) => (
+   990→                  <div key={i} className="aspect-square overflow-hidden rounded-lg" style={{ background: '#1a1d28', border: '1px solid rgba(240,235,225,0.08)' }}>
+   991→                    <img src={url} alt={'Image ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+   992→                  </div>
+   993→                ))}
+   994→              </div>
+   995→            </div>
+   996→          )}
+   997→          {/* Products — modern dark cards */}
+   998→          {business.showProducts !== false && products.length > 0 && (
+   999→            <div>
+  1000→              <div className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: accent }}>{'// Products'}</div>
+  1001→              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1002→                {products.map((p: any, i: number) => (
+  1003→                  <div key={i} className="rounded-lg overflow-hidden" style={{ background: '#1a1d28', border: '1px solid ' + accent + '30' }}>
+  1004→                    <div className="aspect-square bg-muted overflow-hidden relative">
+  1005→                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+  1006→                      <div className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>{p.price || '₹0'}</div>
+  1007→                    </div>
+  1008→                    <div className="p-3">
+  1009→                      <div className="font-bold text-sm">{p.name || 'Product'}</div>
+  1010→                      {p.details && <div className="text-xs mt-1" style={{ color: '#6b6d7a' }}>{p.details}</div>}
+  1011→                    </div>
+  1012→                  </div>
+  1013→                ))}
+  1014→              </div>
+  1015→            </div>
+  1016→          )}
+  1017→        </div>
+  1018→      </div>
+  1019→    )
+  1020→  }
+  1021→
+  1022→  // === JOURNALISM RED (tech review inspired) ===
+  1023→  if (tpl === 'journalism-red') {
+  1024→    return (
+  1025→      <div className="space-y-0" style={{ background: '#080808', color: '#f5f5f5', fontFamily: 'Space Grotesk, Arial, sans-serif' }}>
+  1026→        {/* Hero — cinematic dark with red accent */}
+  1027→        {business.profileImage && (
+  1028→          <div className="relative h-56 overflow-hidden">
+  1029→            <img src={business.profileImage} alt={business.name} className="w-full h-full object-cover" style={{ filter: 'brightness(0.6) contrast(1.1) saturate(0.7)' }} />
+  1030→            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(8,8,8,0.85) 0%, rgba(8,8,8,0.2) 50%, rgba(8,8,8,0.95) 100%)' }} />
+  1031→            <div className="absolute bottom-4 left-5">
+  1032→              <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{ color: accent }}>— {business.category} —</div>
+  1033→              <div className="text-4xl font-black uppercase" style={{ color: '#f5f5f5', letterSpacing: '-0.03em' }}>{business.name}</div>
+  1034→              <div className="text-sm mt-1 font-mono" style={{ color: accent }}>{business.city.toUpperCase()} · EST. {new Date(business.createdAt).getFullYear()}</div>
+  1035→            </div>
+  1036→          </div>
+  1037→        )}
+  1038→        <div className="px-5 py-5">
+  1039→          <p className="leading-relaxed mb-4 text-sm" style={{ color: '#888888' }}>{business.description}</p>
+  1040→          {/* Gallery — film strip style */}
+  1041→          {business.showGallery !== false && allImages.length > 0 && (
+  1042→            <div className="mb-4">
+  1043→              <div className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: accent }}>/ 01 — Gallery</div>
+  1044→              <div className="flex gap-2 overflow-x-auto pb-2">
+  1045→                {allImages.slice(0, 8).map((url: string, i: number) => (
+  1046→                  <div key={i} className="w-32 h-32 flex-shrink-0 overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,42,42,0.15)' }}>
+  1047→                    <img src={url} alt={'Frame ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+  1048→                  </div>
+  1049→                ))}
+  1050→              </div>
+  1051→            </div>
+  1052→          )}
+  1053→          {/* Products — editorial cards */}
+  1054→          {business.showProducts !== false && products.length > 0 && (
+  1055→            <div>
+  1056→              <div className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: accent }}>/ 02 — Products</div>
+  1057→              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1058→                {products.map((p: any, i: number) => (
+  1059→                  <div key={i} className="overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}>
+  1060→                    <div className="aspect-square bg-muted overflow-hidden relative">
+  1061→                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+  1062→                      <div className="absolute bottom-0 left-0 right-0 px-2 py-1 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>
+  1063→                        {p.price || '₹0'}
+  1064→                      </div>
+  1065→                    </div>
+  1066→                    <div className="p-3">
+  1067→                      <div className="font-bold text-sm uppercase">{p.name || 'Product'}</div>
+  1068→                      {p.details && <div className="text-xs mt-1" style={{ color: '#555555' }}>{p.details}</div>}
+  1069→                    </div>
+  1070→                  </div>
+  1071→                ))}
+  1072→              </div>
+  1073→            </div>
+  1074→          )}
+  1075→        </div>
+  1076→      </div>
+  1077→    )
+  1078→  }
+  1079→
+  1080→  // Default: no special template rendering (regular modal handles it)
+  1081→  return null
+  1082→}
+  1083→
+  1084→// Helper: render products catalog with image, name, price, details
+  1085→function ProductsRenderer({ business }: { business: any }) {
+  1086→  if (business.showProducts === false) return null
+  1087→  const products = (() => {
+  1088→    try { return business.products ? JSON.parse(business.products) : [] } catch { return [] }
+  1089→  })()
+  1090→  if (!products || products.length === 0) return null
+  1091→
+  1092→  const accent = business.themeColor || '#0d9488'
+  1093→  const tpl = business.websiteTemplate || 'elegant'
+  1094→
+  1095→  // Different product card styles per template
+  1096→  if (tpl === 'athletic-bold') {
+  1097→    // Dark cards with orange accents
+  1098→    return (
+  1099→      <div>
+  1100→        <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-white" style={{ background: accent, padding: '0.5rem 1rem', borderRadius: '0.5rem' }}>
+  1101→          PRODUCTS
+  1102→        </h3>
+  1103→        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1104→          {products.map((p: any, i: number) => (
+  1105→            <div key={i} className="bg-card border-2 border-border rounded-lg overflow-hidden hover:border-current transition-all" style={{ borderColor: accent + '40' }}>
+  1106→              <div className="aspect-square bg-muted overflow-hidden">
+  1107→                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+  1108→              </div>
+  1109→              <div className="p-3">
+  1110→                <div className="font-bold text-sm">{p.name || 'Product'}</div>
+  1111→                <div className="text-lg font-bold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+  1112→                {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+  1113→              </div>
+  1114→            </div>
+  1115→          ))}
+  1116→        </div>
+  1117→      </div>
+  1118→    )
+  1119→  }
+  1120→
+  1121→  if (tpl === 'jungle-gold') {
+  1122→    // Editorial luxury style
+  1123→    return (
+  1124→      <div>
+  1125→        <h3 className="font-serif italic text-lg mb-3 flex items-center gap-2" style={{ color: accent }}>
+  1126→          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+  1127→          Catalogue
+  1128→        </h3>
+  1129→        <div className="grid grid-cols-2 gap-4">
+  1130→          {products.map((p: any, i: number) => (
+  1131→            <div key={i} className="border border-border/40 p-4">
+  1132→              <div className="aspect-[4/3] bg-muted overflow-hidden mb-3">
+  1133→                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+  1134→              </div>
+  1135→              <div className="font-serif text-base">{p.name || 'Product'}</div>
+  1136→              <div className="font-serif italic text-sm mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+  1137→              {p.details && <div className="text-xs text-muted-foreground mt-2">{p.details}</div>}
+  1138→            </div>
+  1139→          ))}
+  1140→        </div>
+  1141→      </div>
+  1142→    )
+  1143→  }
+  1144→
+  1145→  if (tpl === 'calm-sage') {
+  1146→    // Soft, calm cards
+  1147→    return (
+  1148→      <div>
+  1149→        <h3 className="font-serif italic text-lg mb-3 flex items-center gap-2" style={{ color: accent }}>
+  1150→          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+  1151→          Offerings
+  1152→        </h3>
+  1153→        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1154→          {products.map((p: any, i: number) => (
+  1155→            <div key={i} className="rounded-xl overflow-hidden border border-border/40" style={{ background: accent + '08' }}>
+  1156→              <div className="aspect-square bg-muted overflow-hidden">
+  1157→                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+  1158→              </div>
+  1159→              <div className="p-3">
+  1160→                <div className="font-serif text-sm">{p.name || 'Product'}</div>
+  1161→                <div className="text-sm font-semibold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+  1162→                {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+  1163→              </div>
+  1164→            </div>
+  1165→          ))}
+  1166→        </div>
+  1167→      </div>
+  1168→    )
+  1169→  }
+  1170→
+  1171→  if (tpl === 'tech-lime' || tpl === 'journalism-red') {
+  1172→    // Modern dark cards with accent
+  1173→    return (
+  1174→      <div>
+  1175→        <h3 className="font-mono text-sm uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: accent }}>
+  1176→          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+  1177→          Products
+  1178→        </h3>
+  1179→        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1180→          {products.map((p: any, i: number) => (
+  1181→            <div key={i} className="bg-card border rounded-lg overflow-hidden hover:shadow-md transition-all" style={{ borderColor: accent + '30' }}>
+  1182→              <div className="aspect-square bg-muted overflow-hidden relative">
+  1183→                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+  1184→                <div className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>
+  1185→                  {p.price || '₹0'}
+  1186→                </div>
+  1187→              </div>
+  1188→              <div className="p-3">
+  1189→                <div className="font-bold text-sm">{p.name || 'Product'}</div>
+  1190→                {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+  1191→              </div>
+  1192→            </div>
+  1193→          ))}
+  1194→        </div>
+  1195→      </div>
+  1196→    )
+  1197→  }
+  1198→
+  1199→  // Default elegant style
+  1200→  return (
+  1201→    <div>
+  1202→      <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+  1203→        <span className="w-1 h-5 rounded" style={{ background: accent }} />
+  1204→        Products & Services
+  1205→      </h3>
+  1206→      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  1207→        {products.map((p: any, i: number) => (
+  1208→          <div key={i} className="bg-card border border-border/60 rounded-lg overflow-hidden hover:shadow-md transition-all">
+  1209→            <div className="aspect-square bg-muted overflow-hidden">
+  1210→              {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+  1211→            </div>
+  1212→            <div className="p-3">
+  1213→              <div className="font-bold text-sm">{p.name || 'Product'}</div>
+  1214→              <div className="text-sm font-semibold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+  1215→              {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+  1216→            </div>
+  1217→          </div>
+  1218→        ))}
+  1219→      </div>
+  1220→    </div>
+  1221→  )
+  1222→}
+  1223→

@@ -771,13 +771,13 @@ function HtmlTemplateRenderer({ business }: { business: any }) {
   }, [business])
 
   return (
-    <div className="rounded-xl overflow-hidden border border-border/60 shadow-lg">
+    <div className="rounded-xl overflow-hidden border border-border/60 shadow-lg" style={{ background: '#fff' }}>
       <iframe
         srcDoc={html}
         title={`${business.name} Website`}
         className="w-full"
-        style={{ height: '80vh', minHeight: '600px', border: 'none' }}
-        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+        style={{ height: '85vh', minHeight: '640px', border: 'none', display: 'block' }}
+        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
       />
     </div>
   )
