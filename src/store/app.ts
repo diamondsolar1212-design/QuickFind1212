@@ -43,10 +43,18 @@ export interface Business {
   distance?: number
 }
 
+export type DesignTheme = 'justdial' | 'dark-gold' | 'mint' | 'editorial'
+
 interface AppState {
   user: User | null
   setUser: (user: User | null) => void
   logout: () => void
+
+  // Design theme
+  theme: DesignTheme
+  setTheme: (t: DesignTheme) => void
+  showThemePicker: boolean
+  setShowThemePicker: (v: boolean) => void
 
   // Search & filters
   searchQuery: string
@@ -93,6 +101,11 @@ export const useApp = create<AppState>()(
       user: null,
       setUser: (user) => set({ user }),
       logout: () => set({ user: null }),
+
+      theme: 'justdial',
+      setTheme: (theme) => set({ theme }),
+      showThemePicker: true,
+      setShowThemePicker: (v) => set({ showThemePicker: v }),
 
       searchQuery: '',
       cityQuery: '',
@@ -141,7 +154,7 @@ export const useApp = create<AppState>()(
     }),
     {
       name: 'businesshub-app',
-      partialize: (state) => ({ user: state.user }) // only persist user
+      partialize: (state) => ({ user: state.user, theme: state.theme }) // persist user + theme
     }
   )
 )
