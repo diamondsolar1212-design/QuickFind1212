@@ -639,24 +639,36 @@ export function ListBusinessModal({ open, onClose }: Props) {
                             </span>
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{form.template}</span>
                           </div>
-                          <TemplatePreview
-                            template={form.template}
-                            themeColor={themeColor}
-                            fontChoice={fontChoice}
-                            layoutStyle={layoutStyle}
-                            businessName={form.name || 'Your Business Name'}
-                            businessCategory={form.category || 'Category'}
-                            businessCity={form.city || 'City'}
-                            businessDescription={form.description || 'Your business description will appear here. Add details in Step 2.'}
-                            profileImage={profileImage}
-                            galleryImages={galleryImages}
-                            catalogProducts={catalogProducts}
-                            showGallery={showGallery}
-                            showProducts={showProducts}
-                            showHours={showHours}
-                            showReviews={showReviews}
-                            showMap={showMap}
-                          />
+                          {/* Real HTML website preview via iframe */}
+                          <div style={{ height: '500px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+                            <iframe
+                              srcDoc={generateBusinessWebsite({
+                                name: form.name || 'Your Business Name',
+                                description: form.description || 'Your business description will appear here. Add details in Step 2.',
+                                category: form.category || 'Category',
+                                city: form.city || 'City',
+                                state: form.state || 'State',
+                                address: form.address || 'Address',
+                                phone: form.phone || '+91 98765 43210',
+                                rating: 4.5,
+                                reviewCount: 100,
+                                profileImage: profileImage,
+                                imageUrls: galleryImages.join(','),
+                                products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
+                                hours: '',
+                                themeColor: themeColor,
+                                template: form.template
+                              })}
+                              title="Live Website Preview"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                border: 'none',
+                                pointerEvents: 'auto'
+                              }}
+                              sandbox="allow-same-origin allow-scripts"
+                            />
+                          </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground text-center mt-2">
                           Preview updates live as you customize
@@ -673,24 +685,30 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         LIVE PREVIEW
                       </span>
                     </div>
-                    <TemplatePreview
-                      template={form.template}
-                      themeColor={themeColor}
-                      fontChoice={fontChoice}
-                      layoutStyle={layoutStyle}
-                      businessName={form.name || 'Your Business Name'}
-                      businessCategory={form.category || 'Category'}
-                      businessCity={form.city || 'City'}
-                      businessDescription={form.description || 'Your business description will appear here.'}
-                      profileImage={profileImage}
-                      galleryImages={galleryImages}
-                      catalogProducts={catalogProducts}
-                      showGallery={showGallery}
-                      showProducts={showProducts}
-                      showHours={showHours}
-                      showReviews={showReviews}
-                      showMap={showMap}
-                    />
+                    <div style={{ height: '400px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+                      <iframe
+                        srcDoc={generateBusinessWebsite({
+                          name: form.name || 'Your Business Name',
+                          description: form.description || 'Your business description will appear here.',
+                          category: form.category || 'Category',
+                          city: form.city || 'City',
+                          state: form.state || 'State',
+                          address: form.address || 'Address',
+                          phone: form.phone || '+91 98765 43210',
+                          rating: 4.5,
+                          reviewCount: 100,
+                          profileImage: profileImage,
+                          imageUrls: galleryImages.join(','),
+                          products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
+                          hours: '',
+                          themeColor: themeColor,
+                          template: form.template
+                        })}
+                        title="Live Website Preview (Mobile)"
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                        sandbox="allow-same-origin allow-scripts"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
