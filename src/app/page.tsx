@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Search, MapPin, LocateFixed, Store, LayoutGrid, Map as MapIcon, Languages,
   ShieldCheck, Star, Loader2, ChevronRight, ChevronLeft,
-  Crown, Sparkles, Megaphone, X, Tag, MessageCircle
+  Crown, Sparkles, X, Tag, MessageCircle
 } from 'lucide-react'
 import { BusinessCard } from '@/components/businesshub/BusinessCard'
 import { FilterPanel } from '@/components/businesshub/FilterPanel'
@@ -70,7 +70,6 @@ export default function Home() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
   const [showFiltersMobile, setShowFiltersMobile] = useState(false)
   const [showMapMobile, setShowMapMobile] = useState(false)
-  const [showPostRequirement, setShowPostRequirement] = useState(false)
   const [showUserPanel, setShowUserPanel] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
 
@@ -390,15 +389,6 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={() => setShowPostRequirement(true)}
-                className="bg-inquiry hover:bg-inquiry/90 text-inquiry-foreground font-bold text-xs h-8"
-              >
-                <Megaphone className="w-3.5 h-3.5 mr-1" />
-                <span className="hidden sm:inline">{t('nav_postRequirement')}</span>
-                <span className="sm:hidden">Post</span>
-              </Button>
               <Button
                 size="sm"
                 onClick={() => {
@@ -778,7 +768,6 @@ export default function Home() {
                 <li><button onClick={() => setActiveTab('map')} className="hover:text-brand">{t('nav_map')}</button></li>
                 <li><button onClick={() => setActiveTab('categories')} className="hover:text-brand">{t('nav_categories')}</button></li>
                 <li><button onClick={() => setShowListModal(true)} className="hover:text-brand">{t('footer_listFree')}</button></li>
-                <li><button onClick={() => setShowPostRequirement(true)} className="hover:text-brand">{t('nav_postRequirement')}</button></li>
               </ul>
             </div>
             <div>
@@ -810,9 +799,6 @@ export default function Home() {
       />
       <ListBusinessModal open={showListModal} onClose={() => setShowListModal(false)} />
       <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} />
-
-      {/* ===== Post Requirement Modal ===== */}
-      <PostRequirementModal open={showPostRequirement} onClose={() => setShowPostRequirement(false)} />
 
       {/* ===== User Panel (logged-in users) ===== */}
       {showUserPanel && user && (
@@ -860,171 +846,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {/* ===== Floating Post Requirement button (mobile) ===== */}
-      <button
-        onClick={() => setShowPostRequirement(true)}
-        className="sm:hidden fixed bottom-4 right-4 z-40 h-12 px-4 rounded-full bg-inquiry text-inquiry-foreground shadow-lg hover:bg-inquiry/90 flex items-center gap-1.5 font-bold text-xs"
-      >
-        <Megaphone className="w-4 h-4" />
-        Post Requirement
-      </button>
     </div>
-  )
-}
-
-// ===== Inline Post Requirement Modal =====
-function PostRequirementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useI18n()
-  const [submitted, setSubmitted] = useState(false)
-  const [form, setForm] = useState({
-    product: '', quantity: '', unit: 'pieces', city: '', name: '', phone: '', details: ''
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.product || !form.name || !form.phone) return
-    setSubmitted(true)
-  }
-
-  const reset = () => {
-    setSubmitted(false)
-    setForm({ product: '', quantity: '', unit: 'pieces', city: '', name: '', phone: '', details: '' })
-    onClose()
-  }
-
-  return (
-    <>
-      {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={reset} />
-          <div className="relative bg-card rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-inquiry to-inquiry/80 text-inquiry-foreground px-5 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-lg flex items-center gap-2">
-                  <Megaphone className="w-5 h-5" />
-                  {t('nav_postRequirement')}
-                </h3>
-                <p className="text-xs text-inquiry-foreground/80 mt-0.5">
-                  Get best price quotes from verified suppliers
-                </p>
-              </div>
-              <button onClick={reset} className="p-1 hover:bg-inquiry-foreground/10 rounded">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {submitted ? (
-              <div className="p-8 text-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-verified-soft mx-auto flex items-center justify-center">
-                  <ShieldCheck className="w-9 h-9 text-verified" />
-                </div>
-                <h3 className="font-bold text-lg text-navy">Requirement Posted!</h3>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Verified suppliers near you will contact you shortly with their best price quotes.
-                  You'll receive calls on <span className="font-semibold text-navy">{form.phone}</span>.
-                </p>
-                <Button onClick={reset} className="bg-brand hover:bg-brand/90 text-brand-foreground font-semibold">
-                  Done
-                </Button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="p-5 space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Product / Service Required *
-                  </label>
-                  <input
-                    value={form.product}
-                    onChange={(e) => setForm({ ...form, product: e.target.value })}
-                    placeholder="e.g. TMT Steel Bars, Office Chairs, Catering Service..."
-                    className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">Quantity</label>
-                    <input
-                      value={form.quantity}
-                      onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                      placeholder="500"
-                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">Unit</label>
-                    <select
-                      value={form.unit}
-                      onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                    >
-                      <option value="pieces">Pieces</option>
-                      <option value="kg">Kg</option>
-                      <option value="tons">Tons</option>
-                      <option value="liters">Liters</option>
-                      <option value="boxes">Boxes</option>
-                      <option value="units">Units</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Your City *</label>
-                  <input
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="Mumbai"
-                    className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">Your Name *</label>
-                    <input
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Raj Kumar"
-                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">Phone *</label>
-                    <input
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      placeholder="+91 98765 43210"
-                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase">Additional Details</label>
-                  <textarea
-                    value={form.details}
-                    onChange={(e) => setForm({ ...form, details: e.target.value })}
-                    placeholder="Brand preference, delivery timeline, payment terms..."
-                    className="mt-1 w-full min-h-[60px] px-3 py-2 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full h-11 bg-inquiry hover:bg-inquiry/90 text-inquiry-foreground font-bold rounded-md flex items-center justify-center gap-2"
-                >
-                  <Megaphone className="w-4 h-4" />
-                  Submit Requirement
-                </button>
-                <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-verified" />
-                  Your details are safe. We don't share without consent.
-                </p>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-    </>
   )
 }
