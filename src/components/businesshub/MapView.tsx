@@ -40,17 +40,37 @@ function FlyToUser() {
   const map = useMap()
 
   // Defensive: treat anything that isn't a real finite number as invalid.
-  // typeof check guards against null/undefined/string leaking through state.
   const safeLat = (typeof userLat === 'number' && Number.isFinite(userLat)) ? userLat : null
   const safeLng = (typeof userLng === 'number' && Number.isFinite(userLng)) ? userLng : null
   const valid = safeLat !== null && safeLng !== null
 
   useEffect(() => {
-    if (valid && safeLat !== null && safeLng !== null) {
-      // Final runtime guard before invoking Leaflet — never let NaN reach flyTo.
-      if (Number.isFinite(safeLat) && Number.isFinite(safeLng)) {
-        map.flyTo([safeLat, safeLng], 12, { duration: 1.2 })
+    if (!valid || safeLat === null || safeLng === null) return
+
+    const tryFly = (): boolean => {
+      try {
+        const size = map.getSize()
+        // Never fly while the map container is zero-sized (hidden / mid-layout / HMR).
+        // Leaflet's internal getCenter() produces NaN → "Invalid LatLng" when size is 0.
+        if (size.x > 0 && size.y > 0) {
+          map.flyTo([safeLat, safeLng], 12, { duration: 1.2 })
+          return true
+        }
+        return false
+      } catch {
+        // Leaflet itself threw (internal NaN during init/HMR) — retry on load.
+        return false
       }
+    }
+
+    // Attempt immediately; if the map isn't ready yet, defer to its 'load' event.
+    if (!tryFly()) {
+      const onLoad = () => {
+        map.off('load', onLoad)
+        tryFly()
+      }
+      map.on('load', onLoad)
+      return () => { map.off('load', onLoad) }
     }
   }, [safeLat, safeLng, map, valid])
 
@@ -63,7 +83,7 @@ function FlyToUser() {
       </Marker>
       <Circle
         center={[safeLat, safeLng]}
-        radius={radius * 1000}
+        radius={Number.isFinite(radius) ? radius * 1000 : 50000}
         pathOptions={{ color: '#1e40af', fillColor: '#3b82f6', fillOpacity: 0.05, weight: 1.5, dashArray: '6 4' }}
       />
     </>
