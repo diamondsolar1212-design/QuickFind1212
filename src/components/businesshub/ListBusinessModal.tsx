@@ -213,7 +213,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 bg-card">
+      <DialogContent className="max-w-7xl sm:max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto p-0 gap-0 bg-card">
         {/* Header */}
         <div className="bg-gradient-to-r from-brand to-brand/80 px-6 py-5 text-brand-foreground">
           <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
@@ -249,7 +249,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
           )}
         </div>
 
-        <div className="p-6">
+        <div className="p-6 sm:p-8">
           {success ? (
             <div className="text-center py-12 space-y-4">
               <div className="w-20 h-20 rounded-full bg-emerald-100 mx-auto flex items-center justify-center">
@@ -285,13 +285,13 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   </div>
 
                   {/* Split layout: customization LEFT, live preview RIGHT */}
-                  <div className="grid lg:grid-cols-[1fr_360px] gap-4">
+                  <div className="grid lg:grid-cols-[1fr_420px] gap-5">
                     {/* ===== LEFT: Customization ===== */}
                     <div className="space-y-4 min-w-0">
                       {/* Base template selection */}
                       <div>
                         <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Base Template</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
                           {TEMPLATES.map((tpl) => {
                             const Icon = tpl.icon
                             const selected = form.template === tpl.id
