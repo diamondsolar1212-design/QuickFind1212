@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
+import { generateBusinessWebsite } from '@/lib/template-engine'
 import { toast } from 'sonner'
 
 const MapView = dynamic(
@@ -377,92 +378,43 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                   </span>
                                 )}
 
-                                {/* Mini website preview */}
-                                <div
-                                  className="p-2 space-y-1.5"
-                                  style={{
-                                    background: ps.bg,
-                                    color: ps.textColor,
-                                    fontFamily: ps.font === 'serif' ? 'Georgia, serif' : ps.font === 'monospace' ? 'monospace' : 'inherit'
-                                  }}
-                                >
-                                  {/* Hero bar */}
-                                  <div
-                                    className="rounded p-1.5 flex items-center justify-between"
-                                    style={{ background: ps.heroBg, color: ps.heroText }}
-                                  >
-                                    <div
-                                      className="text-[9px] font-bold leading-none"
-                                      style={{
-                                        textTransform: ps.uppercase ? 'uppercase' : 'none',
-                                        letterSpacing: ps.uppercase ? '-0.02em' : '0'
-                                      }}
-                                    >
-                                      {tpl.emoji} Business
-                                    </div>
-                                    <div className="text-[7px] opacity-70">{ps.label}</div>
-                                  </div>
-
-                                  {/* Image placeholders */}
-                                  <div className="flex gap-1">
-                                    <div
-                                      className="w-8 h-8 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
-                                      style={{
-                                        background: ps.bg === '#ffffff' ? '#f0f0f0' : 'rgba(255,255,255,0.05)',
-                                        filter: ps.imgFilter === 'none' ? 'none' : 'grayscale(100%) brightness(0.6)'
-                                      }}
-                                    >
-                                      <span className="text-xs">{tpl.emoji}</span>
-                                    </div>
-                                    <div className="flex-1 space-y-0.5">
-                                      <div className="h-1.5 rounded" style={{ background: ps.textColor + '20', width: '80%' }} />
-                                      <div className="h-1 rounded" style={{ background: ps.textColor + '15', width: '60%' }} />
-                                      <div className="h-1 rounded" style={{ background: ps.textColor + '10', width: '70%' }} />
-                                    </div>
-                                  </div>
-
-                                  {/* Product chips */}
-                                  <div className="flex gap-0.5">
-                                    <span
-                                      className="text-[6px] px-1 py-0.5 rounded font-medium"
-                                      style={{ background: tpl.color + '20', color: tpl.color }}
-                                    >
-                                      ₹450
-                                    </span>
-                                    <span
-                                      className="text-[6px] px-1 py-0.5 rounded font-medium"
-                                      style={{ background: tpl.color + '20', color: tpl.color }}
-                                    >
-                                      ₹320
-                                    </span>
-                                  </div>
-
-                                  {/* CTA button */}
-                                  <div
-                                    className="text-[7px] font-bold text-center py-1 rounded"
+                                {/* Real HTML template preview via iframe */}
+                                <div style={{ height: '160px', overflow: 'hidden', pointerEvents: 'none' }}>
+                                  <iframe
+                                    srcDoc={generateBusinessWebsite({
+                                      name: form.name || 'Your Business',
+                                      description: form.description || 'Premium business website preview',
+                                      category: form.category || 'Category',
+                                      city: form.city || 'City',
+                                      state: form.state || 'State',
+                                      address: form.address || 'Address',
+                                      phone: form.phone || '+91 00000 00000',
+                                      rating: 4.5,
+                                      reviewCount: 100,
+                                      profileImage: profileImage,
+                                      imageUrls: galleryImages.join(','),
+                                      products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
+                                      hours: '',
+                                      themeColor: themeColor,
+                                      template: tpl.id
+                                    })}
+                                    title={tpl.id + ' preview'}
                                     style={{
-                                      background: ps.ctaBg,
-                                      color: ps.ctaColor,
-                                      textTransform: ps.uppercase ? 'uppercase' : 'none',
-                                      letterSpacing: ps.uppercase ? '0.05em' : '0'
+                                      width: '400px',
+                                      height: '400px',
+                                      border: 'none',
+                                      transform: 'scale(0.45)',
+                                  transformOrigin: 'top left',
+                                  pointerEvents: 'none'
                                     }}
-                                  >
-                                    {ps.ctaText}
-                                  </div>
+                                    sandbox="allow-same-origin"
+                                    loading="lazy"
+                                  />
                                 </div>
 
                                 {/* Template name */}
-                                <div
-                                  className="px-2 py-1.5 border-t"
-                                  style={{
-                                    background: ps.bg,
-                                    borderColor: ps.textColor + '10'
-                                  }}
-                                >
-                                  <div
-                                    className="font-bold text-[10px] leading-tight"
-                                    style={{ color: ps.textColor }}
-                                  >
+                                <div className="px-2 py-1.5 border-t bg-card">
+                                  <div className="font-bold text-[10px] leading-tight text-navy">
                                     {typeof tpl.name === 'string' && tpl.name.startsWith('list_') ? t(tpl.name as any) : tpl.name}
                                   </div>
                                 </div>

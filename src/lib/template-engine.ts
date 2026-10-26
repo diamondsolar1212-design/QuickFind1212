@@ -458,5 +458,74 @@ function generateJournalismRed(b: BusinessData, images: string[], products: any[
 }
 
 function generateDefault(b: BusinessData, images: string[], products: any[], hours: any): string {
-  return generateCalmSage(b, images, products, hours)
+  const galleryHtml = images.slice(0, 8).map((url, i) =>
+    '<div style="aspect-ratio:1;overflow:hidden;border-radius:8px;"><img src="' + url + '" alt="Gallery ' + (i + 1) + '" style="width:100%;height:100%;object-fit:cover;transition:transform 0.4s;" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"></div>'
+  ).join('')
+
+  const productsHtml = products.length > 0 ? `
+    <div style="padding:2rem;max-width:900px;margin:0 auto;">
+      <div style="font-size:0.875rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${b.themeColor || '#0d9488'};margin-bottom:1rem;">Products & Services</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">
+        ${products.map(p => `
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+            <div style="aspect-ratio:1;overflow:hidden;">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#f9fafb;">\u{1F4E6}</div>'}</div>
+            <div style="padding:0.75rem;">
+              <div style="font-weight:600;font-size:0.875rem;color:#1a1a1a;">${escapeHtml(p.name)}</div>
+              <div style="font-size:0.875rem;font-weight:600;color:${b.themeColor || '#0d9488'};margin-top:0.25rem;">${escapeHtml(p.price)}</div>
+              ${p.details ? `<div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">${escapeHtml(p.details)}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''
+
+  const accent = b.themeColor || '#0d9488'
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(b.name)}</title><style>
+    *{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#1a1a1a;line-height:1.6;overflow-x:hidden}
+    .hero{min-height:50vh;display:flex;flex-direction:column;justify-content:center;padding:4rem 2rem;position:relative;overflow:hidden;color:#fff}
+    .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.7)}
+    .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.5) 0%,transparent 50%,rgba(0,0,0,0.5) 100%)}
+    .hero-content{position:relative;z-index:2;max-width:700px}
+    .hero-label{font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;opacity:0.8;margin-bottom:1rem}
+    .hero-title{font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;margin-bottom:1rem}
+    .hero-sub{font-size:1rem;opacity:0.9;max-width:500px}
+    .btn{display:inline-block;background:${accent};color:#fff;padding:0.875rem 1.5rem;border-radius:8px;text-decoration:none;font-weight:600;margin-top:1.5rem}
+    .section{padding:3rem 2rem;max-width:900px;margin:0 auto}
+    .section-label{font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;color:${accent};margin-bottom:0.5rem;font-weight:600}
+    .section-title{font-size:1.875rem;font-weight:700;margin-bottom:1rem}
+    .section-body{font-size:1rem;line-height:1.75;color:#4b5563;max-width:600px}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.5rem;margin-top:1.5rem}
+    .contact{background:#f9fafb;padding:3rem 2rem;text-align:center}
+    .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;max-width:800px;margin:0 auto}
+    .contact-label{font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:#9ca3af;margin-bottom:0.5rem;font-weight:600}
+    .contact-val{font-size:0.95rem;color:#1a1a1a}
+    a{color:${accent};text-decoration:none}
+    footer{background:#1a1a1a;color:#9ca3af;padding:2rem;text-align:center;font-size:0.8rem}
+  </style></head><body>
+    <div class="hero">
+      ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,${accent},${accent}cc)"></div>`}
+      <div class="hero-veil"></div>
+      <div class="hero-content">
+        <div class="hero-label">${escapeHtml(b.category)} \u00b7 ${escapeHtml(b.city)}</div>
+        <h1 class="hero-title">${escapeHtml(b.name)}</h1>
+        <p class="hero-sub">${escapeHtml(b.description.substring(0, 150))}</p>
+        <a href="tel:${b.phone}" class="btn">Get Best Price</a>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">About</div>
+      <h2 class="section-title">${escapeHtml(b.name)}</h2>
+      <p class="section-body">${escapeHtml(b.description)}</p>
+    </div>
+    ${images.length > 0 ? `<div class="section"><div class="section-label">Gallery</div><div class="gallery">${galleryHtml}</div></div>` : ''}
+    ${productsHtml}
+    <div class="contact">
+      <div class="contact-grid">
+        <div><div class="contact-label">Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</div></div>
+        <div><div class="contact-label">Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
+        ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+      </div>
+    </div>
+    <footer>\u00a9 ${new Date().getFullYear()} ${escapeHtml(b.name)}</footer>
+  </body></html>`
 }
