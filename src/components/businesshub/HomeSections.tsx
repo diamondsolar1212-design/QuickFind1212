@@ -178,7 +178,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSea
         {/* Yellow accent bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-amber-400 to-brand" />
 
-        <div className="relative text-center max-w-3xl mx-auto">
+        <div className="relative text-center max-w-4xl mx-auto">
           <Badge className="inline-flex items-center gap-1 mb-3 bg-brand/90 text-brand-foreground hover:bg-brand/90 font-bold">
             <Sparkles className="w-3 h-3" />
             INDIA'S LARGEST B2B + B2C MARKETPLACE
@@ -186,7 +186,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSea
           <h1 className="text-2xl sm:text-4xl font-black mb-3 leading-tight">
             Search across <span className="text-brand">5.8 Crore+</span> Businesses
           </h1>
-          <p className="text-sm sm:text-base text-white/80 mb-6 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-white/80 mb-6 max-w-3xl mx-auto">
             Find verified suppliers, wholesalers, manufacturers, retailers near you with live map location.
             Get instant best price quotes from trusted businesses.
           </p>

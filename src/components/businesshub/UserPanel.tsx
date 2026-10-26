@@ -132,7 +132,7 @@ export function UserPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[100] bg-background overflow-y-auto">
       {/* Top bar */}
       <div className="sticky top-0 z-10 bg-navy text-navy-foreground shadow-md">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-brand text-brand-foreground flex items-center justify-center font-bold text-lg">
               {user.name?.[0] || user.email[0].toUpperCase()}
@@ -156,7 +156,7 @@ export function UserPanel({ onClose }: Props) {
         </div>
         {/* Tab strip */}
         <div className="border-t border-navy-foreground/10">
-          <div className="max-w-6xl mx-auto px-4 flex">
+          <div className="max-w-[1600px] mx-auto px-4 flex">
             {[
               { id: 'overview', label: 'Overview', icon: TrendingUp },
               { id: 'businesses', label: 'My Businesses', icon: Store },
@@ -182,7 +182,7 @@ export function UserPanel({ onClose }: Props) {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 py-6">
         {/* ===== Overview Tab ===== */}
         {tab === 'overview' && (
           <div className="space-y-6">

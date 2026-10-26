@@ -302,7 +302,7 @@ export function AdminPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[100] bg-background overflow-y-auto">
       {/* Top bar */}
       <div className="sticky top-0 z-10 bg-gradient-to-r from-navy to-blue-900 text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-brand" />
@@ -322,7 +322,7 @@ export function AdminPanel({ onClose }: Props) {
         </div>
         {/* Tab strip */}
         <div className="border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-4 flex">
+          <div className="max-w-[1600px] mx-auto px-4 flex">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'businesses', label: 'Businesses', icon: Store },
@@ -348,7 +348,7 @@ export function AdminPanel({ onClose }: Props) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 py-6">
         {/* ===== Dashboard Tab ===== */}
         {tab === 'dashboard' && (
           <div className="space-y-6">

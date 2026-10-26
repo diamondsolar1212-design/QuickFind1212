@@ -282,7 +282,7 @@ export default function Home() {
             </div>
 
             {/* Search bar — prominent, IndiaMART style */}
-            <div className="flex-1 max-w-3xl">
+            <div className="flex-1 max-w-4xl">
               <div className="flex items-stretch bg-white rounded-md overflow-hidden border-2 border-brand shadow-sm">
                 <div className="hidden sm:flex items-center pl-3 text-muted-foreground">
                   <Search className="w-4 h-4" />

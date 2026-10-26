@@ -155,10 +155,10 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden p-0 gap-0 bg-card">
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden p-0 gap-0 bg-card">
         {/* Hero banner — uses profile image if available, otherwise gradient */}
         <div
-          className="relative h-44 sm:h-56 overflow-hidden flex-shrink-0"
+          className="relative h-52 sm:h-72 overflow-hidden flex-shrink-0"
           style={{
             background: business.profileImage
               ? `linear-gradient(135deg, ${business.imageColor}99 0%, ${business.imageColor}55 100%)`
@@ -222,8 +222,8 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
           </Button>
 
           {/* Logo + template tag */}
-          <div className="absolute bottom-4 left-5 flex items-end gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-white shadow-xl flex items-center justify-center text-4xl border-4 border-white">
+          <div className="absolute bottom-4 left-5 sm:left-8 flex items-end gap-4">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white shadow-xl flex items-center justify-center text-4xl sm:text-5xl border-4 border-white">
               {business.emoji}
             </div>
             <div className="pb-2">
@@ -239,7 +239,7 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                   </Badge>
                 )}
               </div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-white drop-shadow-md leading-tight max-w-xl">
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg leading-tight max-w-3xl">
                 {business.name}
               </h2>
               <div className="flex items-center gap-2 mt-1 text-white/90 text-sm">
@@ -259,8 +259,8 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto" style={{ maxHeight: 'calc(92vh - 14rem)' }}>
-          <div className="p-5 sm:p-7">
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(95vh - 18rem)' }}>
+          <div className="p-6 sm:p-10 max-w-5xl mx-auto">
             <Tabs defaultValue="about" className="w-full">
               <TabsList
                 className="mb-5 bg-muted/50 grid"
