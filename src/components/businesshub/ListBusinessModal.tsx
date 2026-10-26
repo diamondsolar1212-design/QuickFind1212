@@ -523,7 +523,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       </div>
                     </div>
 
-                    {/* ===== RIGHT: LIVE PREVIEW (sticky) ===== */}
+                    {/* ===== RIGHT: LIVE PREVIEW (sticky) — template-aware ===== */}
                     <div className="hidden lg:block">
                       <div className="sticky top-4">
                         <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
@@ -532,83 +532,27 @@ export function ListBusinessModal({ open, onClose }: Props) {
                               <Eye className="w-3.5 h-3.5" />
                               LIVE PREVIEW
                             </span>
-                            <span className="text-[10px] text-muted-foreground">{form.template}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{form.template}</span>
                           </div>
-                          <div
-                            className={`p-3 ${layoutStyle === 'compact' ? 'space-y-2' : layoutStyle === 'spacious' ? 'space-y-4' : 'space-y-3'}`}
-                            style={{ fontFamily: fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : fontChoice === 'modern' ? 'monospace' : 'inherit' }}
-                          >
-                            {/* Mini website preview */}
-                            <div
-                              className="rounded-lg p-3 text-white"
-                              style={{ background: 'linear-gradient(135deg, ' + themeColor + ' 0%, ' + themeColor + 'cc 100%)' }}
-                            >
-                              <div className="text-base font-bold">{form.name || 'Your Business Name'}</div>
-                              <div className="text-[10px] opacity-90 mt-0.5">{form.category || 'Category'} · {form.city || 'City'}</div>
-                            </div>
-
-                            {/* Gallery row */}
-                            {showGallery && (
-                              <div className="flex gap-1.5 overflow-x-auto">
-                                {profileImage && (
-                                  <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
-                                    <img src={profileImage} alt="" className="w-full h-full object-cover" />
-                                  </div>
-                                )}
-                                {galleryImages.slice(0, 3).map((url, i) => (
-                                  <div key={i} className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
-                                    <img src={url} alt="" className="w-full h-full object-cover" />
-                                  </div>
-                                ))}
-                                {!profileImage && galleryImages.length === 0 && (
-                                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-xl flex-shrink-0">🖼️</div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Description */}
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {form.description || 'Your business description will appear here. Add details in Step 2.'}
-                            </p>
-
-                            {/* Products preview */}
-                            {showProducts && catalogProducts.length > 0 && (
-                              <div className="space-y-1.5">
-                                <div className="text-[10px] font-bold uppercase text-muted-foreground">Products</div>
-                                {catalogProducts.slice(0, 3).map((p, i) => (
-                                  <div key={i} className="flex items-center gap-2 p-1.5 rounded bg-muted/40">
-                                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-sm flex-shrink-0 overflow-hidden">
-                                      {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : '📦'}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-[11px] font-semibold truncate">{p.name || 'Product name'}</div>
-                                      <div className="text-[10px] text-muted-foreground">{p.price || '₹0'}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Section badges */}
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {showHours && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">⏰ Open</span>}
-                              {showProducts && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">🛍️ Products</span>}
-                              {showReviews && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">⭐ Reviews</span>}
-                              {showMap && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-semibold">📍 Map</span>}
-                            </div>
-
-                            {/* CTA button */}
-                            <button
-                              type="button"
-                              className="w-full py-2 rounded-md text-xs font-bold text-white"
-                              style={{ background: themeColor }}
-                            >
-                              Get Best Price
-                            </button>
-                          </div>
+                          <TemplatePreview
+                            template={form.template}
+                            themeColor={themeColor}
+                            fontChoice={fontChoice}
+                            layoutStyle={layoutStyle}
+                            businessName={form.name || 'Your Business Name'}
+                            businessCategory={form.category || 'Category'}
+                            businessCity={form.city || 'City'}
+                            businessDescription={form.description || 'Your business description will appear here. Add details in Step 2.'}
+                            profileImage={profileImage}
+                            galleryImages={galleryImages}
+                            catalogProducts={catalogProducts}
+                            showGallery={showGallery}
+                            showProducts={showProducts}
+                            showHours={showHours}
+                            showReviews={showReviews}
+                            showMap={showMap}
+                          />
                         </div>
-
-                        {/* Mobile preview note */}
                         <p className="text-[10px] text-muted-foreground text-center mt-2">
                           Preview updates live as you customize
                         </p>
@@ -624,18 +568,24 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         LIVE PREVIEW
                       </span>
                     </div>
-                    <div className="p-3 space-y-2" style={{ fontFamily: fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : 'inherit' }}>
-                      <div className="rounded-lg p-3 text-white" style={{ background: 'linear-gradient(135deg, ' + themeColor + ' 0%, ' + themeColor + 'cc 100%)' }}>
-                        <div className="text-base font-bold">{form.name || 'Your Business Name'}</div>
-                        <div className="text-[10px] opacity-90 mt-0.5">{form.category || 'Category'} · {form.city || 'City'}</div>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {form.description || 'Your business description will appear here.'}
-                      </p>
-                      <button type="button" className="w-full py-2 rounded-md text-xs font-bold text-white" style={{ background: themeColor }}>
-                        Get Best Price
-                      </button>
-                    </div>
+                    <TemplatePreview
+                      template={form.template}
+                      themeColor={themeColor}
+                      fontChoice={fontChoice}
+                      layoutStyle={layoutStyle}
+                      businessName={form.name || 'Your Business Name'}
+                      businessCategory={form.category || 'Category'}
+                      businessCity={form.city || 'City'}
+                      businessDescription={form.description || 'Your business description will appear here.'}
+                      profileImage={profileImage}
+                      galleryImages={galleryImages}
+                      catalogProducts={catalogProducts}
+                      showGallery={showGallery}
+                      showProducts={showProducts}
+                      showHours={showHours}
+                      showReviews={showReviews}
+                      showMap={showMap}
+                    />
                   </div>
                 </div>
               )}
@@ -1048,5 +998,211 @@ export function ListBusinessModal({ open, onClose }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ===== Template Preview Component — renders unique style per template =====
+function TemplatePreview({
+  template, themeColor, fontChoice, layoutStyle,
+  businessName, businessCategory, businessCity, businessDescription,
+  profileImage, galleryImages, catalogProducts,
+  showGallery, showProducts, showHours, showReviews, showMap
+}: {
+  template: string
+  themeColor: string
+  fontChoice: string
+  layoutStyle: string
+  businessName: string
+  businessCategory: string
+  businessCity: string
+  businessDescription: string
+  profileImage: string
+  galleryImages: string[]
+  catalogProducts: Array<{ id: string; name: string; price: string; details: string; image: string }>
+  showGallery: boolean
+  showProducts: boolean
+  showHours: boolean
+  showReviews: boolean
+  showMap: boolean
+}) {
+  const spacing = layoutStyle === 'compact' ? 'space-y-2' : layoutStyle === 'spacious' ? 'space-y-4' : 'space-y-3'
+  const fontFamily = fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : fontChoice === 'modern' ? 'monospace' : 'inherit'
+
+  // Get template-specific colors
+  const TPL_COLORS: Record<string, { bg: string; fg: string; accent: string; cardBg: string; label: string }> = {
+    'retail': { bg: themeColor + '10', fg: '#1a1a1a', accent: themeColor, cardBg: '#ffffff', label: 'Store' },
+    'restaurant': { bg: '#fef2f2', fg: '#1a1a1a', accent: '#dc2626', cardBg: '#ffffff', label: 'Restaurant' },
+    'service': { bg: '#ecfeff', fg: '#1a1a1a', accent: '#0891b2', cardBg: '#ffffff', label: 'Service' },
+    'premium': { bg: '#faf5ff', fg: '#1a1a1a', accent: '#7c3aed', cardBg: '#ffffff', label: 'Premium' },
+    'calm-sage': { bg: '#f4ede0', fg: '#2c2620', accent: themeColor || '#8a9a87', cardBg: '#efe6d4', label: 'Studio' },
+    'jungle-gold': { bg: '#05140A', fg: '#F5F5DC', accent: themeColor || '#C9A227', cardBg: '#0D2818', label: 'Atelier' },
+    'athletic-bold': { bg: '#0a0a0a', fg: '#f5f5f5', accent: themeColor || '#FF5400', cardBg: '#141414', label: 'Forge' },
+    'tech-lime': { bg: '#0d0e14', fg: '#f0ebe1', accent: themeColor || '#d4ff3a', cardBg: '#1a1d28', label: 'Lab' },
+    'journalism-red': { bg: '#080808', fg: '#f5f5f5', accent: themeColor || '#ff2a2a', cardBg: '#111111', label: 'Review' }
+  }
+
+  const colors = TPL_COLORS[template] || TPL_COLORS['retail']
+  const isDark = ['jungle-gold', 'athletic-bold', 'tech-lime', 'journalism-red'].includes(template)
+
+  return (
+    <div
+      className={'p-3 ' + spacing}
+      style={{
+        background: colors.bg,
+        color: colors.fg,
+        fontFamily: fontFamily,
+        minHeight: '300px'
+      }}
+    >
+      {/* === HERO BANNER === */}
+      {profileImage ? (
+        <div className="relative h-24 rounded-lg overflow-hidden">
+          <img src={profileImage} alt="" className="w-full h-full object-cover" style={{
+            filter: template === 'athletic-bold' ? 'grayscale(100%) contrast(1.3) brightness(0.5)' :
+                    template === 'jungle-gold' ? 'brightness(0.6) contrast(1.1)' :
+                    template === 'journalism-red' ? 'brightness(0.6) saturate(0.7)' :
+                    template === 'tech-lime' ? 'brightness(0.5) saturate(0.8)' :
+                    'brightness(0.85)'
+          }} />
+          <div className="absolute inset-0" style={{
+            background: isDark
+              ? 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.9) 100%)'
+              : 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 100%)'
+          }} />
+          <div className="absolute bottom-2 left-3 text-white">
+            <div
+              className="text-sm font-bold"
+              style={{
+                fontFamily: fontFamily,
+                letterSpacing: template === 'athletic-bold' || template === 'journalism-red' ? '-0.02em' : '0',
+                textTransform: template === 'athletic-bold' || template === 'journalism-red' ? 'uppercase' : 'none'
+              }}
+            >
+              {businessName}
+            </div>
+            <div className="text-[9px] opacity-90" style={{ color: colors.accent }}>
+              {businessCategory} · {businessCity}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="rounded-lg p-3"
+          style={{
+            background: 'linear-gradient(135deg, ' + colors.accent + ' 0%, ' + colors.accent + 'cc 100%)',
+            color: isDark ? colors.fg : '#ffffff'
+          }}
+        >
+          <div
+            className="text-sm font-bold"
+            style={{
+              letterSpacing: template === 'athletic-bold' || template === 'journalism-red' ? '-0.02em' : '0',
+              textTransform: template === 'athletic-bold' || template === 'journalism-red' ? 'uppercase' : 'none'
+            }}
+          >
+            {businessName}
+          </div>
+          <div className="text-[9px] opacity-90 mt-0.5">{businessCategory} · {businessCity}</div>
+        </div>
+      )}
+
+      {/* === GALLERY === */}
+      {showGallery && (profileImage || galleryImages.length > 0) && (
+        <div className="flex gap-1.5">
+          {galleryImages.slice(0, 4).map((url, i) => (
+            <div key={i} className="w-10 h-10 rounded overflow-hidden flex-shrink-0" style={{
+              border: '1px solid ' + (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)')
+            }}>
+              <img src={url} alt="" className="w-full h-full object-cover" style={{
+                filter: template === 'athletic-bold' ? 'grayscale(100%) contrast(1.3) brightness(0.7)' : 'none'
+              }} />
+            </div>
+          ))}
+          {!profileImage && galleryImages.length === 0 && (
+            <div className="w-10 h-10 rounded flex items-center justify-center text-base flex-shrink-0" style={{ background: colors.cardBg }}>
+              🖼️
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === DESCRIPTION === */}
+      <p className="text-[11px] line-clamp-2 leading-relaxed" style={{
+        color: isDark ? (template === 'jungle-gold' ? '#8FBC8F' : template === 'tech-lime' ? '#a8a496' : '#888888') : '#6b6d7a',
+        fontStyle: template === 'calm-sage' || template === 'jungle-gold' ? 'italic' : 'normal'
+      }}>
+        {businessDescription}
+      </p>
+
+      {/* === PRODUCTS === */}
+      {showProducts && catalogProducts.length > 0 && (
+        <div className="space-y-1">
+          <div className="text-[9px] uppercase tracking-wider font-bold" style={{ color: colors.accent }}>
+            {template === 'calm-sage' ? 'Offerings' : template === 'jungle-gold' ? 'Catalogue' : template === 'athletic-bold' ? 'PRODUCTS' : 'Products'}
+          </div>
+          {catalogProducts.slice(0, 2).map((p, i) => (
+            <div key={i} className="flex items-center gap-2 p-1.5 rounded" style={{ background: colors.cardBg }}>
+              <div className="w-7 h-7 rounded flex items-center justify-center text-xs flex-shrink-0 overflow-hidden" style={{ background: isDark ? '#333' : '#f0f0f0' }}>
+                {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : '📦'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-semibold truncate">{p.name || 'Product'}</div>
+                <div className="text-[9px]" style={{ color: colors.accent }}>{p.price || '₹0'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* === SECTION BADGES === */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {showHours && (
+          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
+            background: isDark ? 'rgba(16,185,129,0.15)' : '#d1fae5',
+            color: isDark ? '#4dd4ac' : '#065f46'
+          }}>
+            ⏰ Open
+          </span>
+        )}
+        {showProducts && (
+          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
+            background: isDark ? colors.accent + '20' : '#dbeafe',
+            color: isDark ? colors.accent : '#1e40af'
+          }}>
+            🛍️ Products
+          </span>
+        )}
+        {showReviews && (
+          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
+            background: isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7',
+            color: isDark ? '#fbbf24' : '#92400e'
+          }}>
+            ⭐ Reviews
+          </span>
+        )}
+        {showMap && (
+          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
+            background: isDark ? 'rgba(168,85,247,0.15)' : '#f3e8ff',
+            color: isDark ? '#c4a5ff' : '#6b21a8'
+          }}>
+            📍 Map
+          </span>
+        )}
+      </div>
+
+      {/* === CTA BUTTON === */}
+      <button
+        type="button"
+        className="w-full py-2 rounded text-[10px] font-bold"
+        style={{
+          background: colors.accent,
+          color: isDark ? '#000' : '#fff',
+          textTransform: template === 'athletic-bold' || template === 'journalism-red' ? 'uppercase' : 'none',
+          letterSpacing: template === 'athletic-bold' || template === 'journalism-red' ? '0.05em' : '0'
+        }}
+      >
+        {template === 'athletic-bold' ? 'BOOK NOW' : template === 'journalism-red' ? 'READ MORE' : 'Get Best Price'}
+      </button>
+    </div>
   )
 }
