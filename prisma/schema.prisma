@@ -1,0 +1,70 @@
+// BusinessHub India - Marketplace Platform
+// Hybrid B2B + B2C with live map and multi-template business profiles
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?
+  phone     String?
+  password  String
+  role      String     @default("CUSTOMER") // CUSTOMER | BUSINESS_OWNER
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  businesses Business[]
+}
+
+model Business {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  category      String
+  subcategory   String?
+  tags          String   @default("") // comma separated
+  phone         String
+  whatsapp      String?
+  email         String?
+  website       String?
+  address       String
+  city          String
+  state         String
+  pincode       String?
+  lat           Float
+  lng           Float
+  rating        Float    @default(4.0)
+  reviewCount   Int      @default(0)
+  verified      Boolean  @default(false)
+  premium       Boolean  @default(false)
+  isB2B         Boolean  @default(false)
+  isB2C         Boolean  @default(true)
+  template      String   @default("retail") // retail | restaurant | service | premium
+  imageColor    String   @default("#0d9488") // used for thumbnail gradient
+  emoji         String   @default("🏪") // category icon
+  hours         String   @default("") // JSON string of weekly hours
+  products      String   @default("") // JSON string of product/service list
+  imageUrls     String   @default("") // comma separated
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  reviews       Review[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rating      Int
+  comment     String?
+  userName    String
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId      String?
+  createdAt   DateTime @default(now())
+}
