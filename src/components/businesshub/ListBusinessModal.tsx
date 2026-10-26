@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Store, UtensilsCrossed, Wrench, Sparkles, ChevronRight, ChevronLeft,
-  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown, Eye
+  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown, Eye, LocateFixed
 } from 'lucide-react'
 import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
@@ -788,10 +788,35 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
                   {/* Map picker */}
                   <div>
-                    <Label className="flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4 text-brand" />
-                      {t('list_pickLocation')}
-                    </Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-brand" />
+                        {t('list_pickLocation')}
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!navigator.geolocation) {
+                            toast.error('Geolocation not supported')
+                            return
+                          }
+                          toast.info('Detecting your location...')
+                          navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                              handlePickLocation(pos.coords.latitude, pos.coords.longitude)
+                            },
+                            () => {
+                              toast.error('Could not detect location. Please pick on map.')
+                            },
+                            { enableHighAccuracy: true, timeout: 10000 }
+                          )
+                        }}
+                        className="text-xs font-semibold text-brand hover:underline flex items-center gap-1.5 border border-brand/30 rounded-md px-3 py-1.5 hover:bg-brand-soft/30 transition-colors"
+                      >
+                        <LocateFixed className="w-3.5 h-3.5" />
+                        Use Current Location
+                      </button>
+                    </div>
                     <MapView
                       businesses={[]}
                       pickMode

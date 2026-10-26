@@ -237,7 +237,6 @@ export default function Home() {
 
   const getUserLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation not supported')
       return
     }
     setIsLocating(true)
@@ -247,17 +246,18 @@ export default function Home() {
         setIsLocating(false)
       },
       (err) => {
-        // Don't auto-fallback to Mumbai. Inform user instead.
         setIsLocating(false)
-        if (err.code === err.PERMISSION_DENIED) {
-          alert('Location permission denied. Please allow location access in your browser settings, or search by city name instead.')
-        } else {
-          alert('Could not detect your location. Please try again or search by city.')
-        }
+        // Silently fail — user can click "Use My Location" manually
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     )
   }
+
+  // Auto-detect location on first page load
+  useEffect(() => {
+    const timer = setTimeout(() => getUserLocation(), 1500)
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleSearch = () => fetchBusinesses()
 
