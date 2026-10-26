@@ -38,21 +38,31 @@ const USER_LOC_ICON = L.divIcon({
 function FlyToUser() {
   const { userLat, userLng, radius } = useApp()
   const map = useMap()
-  const valid = Number.isFinite(userLat) && Number.isFinite(userLng)
+
+  // Defensive: treat anything that isn't a real finite number as invalid.
+  // typeof check guards against null/undefined/string leaking through state.
+  const safeLat = (typeof userLat === 'number' && Number.isFinite(userLat)) ? userLat : null
+  const safeLng = (typeof userLng === 'number' && Number.isFinite(userLng)) ? userLng : null
+  const valid = safeLat !== null && safeLng !== null
+
   useEffect(() => {
-    if (valid) {
-      map.flyTo([userLat as number, userLng as number], 12, { duration: 1.2 })
+    if (valid && safeLat !== null && safeLng !== null) {
+      // Final runtime guard before invoking Leaflet — never let NaN reach flyTo.
+      if (Number.isFinite(safeLat) && Number.isFinite(safeLng)) {
+        map.flyTo([safeLat, safeLng], 12, { duration: 1.2 })
+      }
     }
-  }, [userLat, userLng, map, valid])
-  return valid ? (
+  }, [safeLat, safeLng, map, valid])
+
+  return valid && safeLat !== null && safeLng !== null ? (
     <>
-      <Marker position={[userLat as number, userLng as number]} icon={USER_LOC_ICON}>
+      <Marker position={[safeLat, safeLng]} icon={USER_LOC_ICON}>
         <Popup>
           <div className="text-sm font-medium text-blue-700">📍 You are here</div>
         </Popup>
       </Marker>
       <Circle
-        center={[userLat as number, userLng as number]}
+        center={[safeLat, safeLng]}
         radius={radius * 1000}
         pathOptions={{ color: '#1e40af', fillColor: '#3b82f6', fillOpacity: 0.05, weight: 1.5, dashArray: '6 4' }}
       />
@@ -135,7 +145,9 @@ export function MapView({ businesses, onPickLocation, pickMode = false, height =
             />
           )}
           <FlyToUser />
-          {businesses.map((biz) => (
+          {businesses
+            .filter((biz) => Number.isFinite(biz.lat) && Number.isFinite(biz.lng))
+            .map((biz) => (
             <Marker
               key={biz.id}
               position={[biz.lat, biz.lng]}
