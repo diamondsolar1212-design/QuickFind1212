@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Star, Phone, MessageCircle, Mail, Globe, MapPin, Clock, ShieldCheck, Crown,
   Navigation, Share2, ChevronLeft, Store, UtensilsCrossed, Wrench, Sparkles,
-  ThumbsUp, Send
+  ThumbsUp, Send, Check
 } from 'lucide-react'
 import { useApp, type Business } from '@/store/app'
 import { useI18n } from '@/store/i18n'
@@ -104,32 +104,94 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
   }
 
   const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/?biz=${business.id}`
     try {
-      await navigator.share({
-        title: business.name,
-        text: business.description,
-        url: window.location.href
+      if (navigator.share) {
+        await navigator.share({
+          title: business.name,
+          text: business.description,
+          url: shareUrl
+        })
+      } else {
+        await navigator.clipboard?.writeText(shareUrl)
+        toast.success('Website link copied! Share it anywhere.')
+      }
+    } catch (err) {
+      // User cancelled share — silently ignore
+      console.warn('Share cancelled:', err)
+    }
+  }
+
+  // Update website template (premium only)
+  const handleTemplateChange = async (tpl: string) => {
+    if (!business.premium) return
+    try {
+      const res = await fetch('/api/business', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          businessId: business.id,
+          updates: { websiteTemplate: tpl }
+        })
       })
+      if (res.ok) {
+        const data = await res.json()
+        toast.success(`Template switched to ${tpl}!`)
+        // Trigger refresh
+        window.dispatchEvent(new CustomEvent('business-updated', { detail: data.business }))
+      } else {
+        toast.error('Failed to update template')
+      }
     } catch {
-      navigator.clipboard?.writeText(window.location.href)
-      toast.success('Link copied')
+      toast.error('Network error')
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden p-0 gap-0 bg-card">
-        {/* Hero banner */}
+        {/* Hero banner — uses profile image if available, otherwise gradient */}
         <div
           className="relative h-44 sm:h-56 overflow-hidden flex-shrink-0"
           style={{
-            background: `linear-gradient(135deg, ${business.imageColor} 0%, ${business.imageColor}cc 60%, ${business.imageColor}80 100%)`
+            background: business.profileImage
+              ? `linear-gradient(135deg, ${business.imageColor}99 0%, ${business.imageColor}55 100%)`
+              : `linear-gradient(135deg, ${business.imageColor} 0%, ${business.imageColor}cc 60%, ${business.imageColor}80 100%)`
           }}
         >
-          <div className="absolute inset-0 opacity-10" style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, white 1.5px, transparent 1.5px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
-            backgroundSize: '32px 32px, 24px 24px'
-          }} />
+          {/* Profile image background (if exists) */}
+          {business.profileImage && (
+             
+            <img
+              src={business.profileImage}
+              alt={business.name}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          {/* Dark gradient overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+
+          {/* Decorative pattern (only when no profile image) */}
+          {!business.profileImage && (
+            <div className="absolute inset-0 opacity-10" style={{
+              backgroundImage: `radial-gradient(circle at 25% 25%, white 1.5px, transparent 1.5px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
+              backgroundSize: '32px 32px, 24px 24px'
+            }} />
+          )}
+
+          {/* Live location badge — top-center if liveTracking enabled */}
+          {business.liveTracking && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+              <div className="bg-emerald-500/90 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                LIVE LOCATION
+              </div>
+            </div>
+          )}
 
           {/* Back button */}
           <Button
@@ -142,14 +204,16 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
             {t('detail_back')}
           </Button>
 
-          {/* Share button */}
+          {/* Share Website button */}
           <Button
             variant="ghost"
             size="sm"
-            className="absolute top-3 right-3 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md w-9 p-0"
+            className="absolute top-3 right-3 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md h-9 px-3"
             onClick={handleShare}
+            title="Share this website"
           >
-            <Share2 className="w-4 h-4" />
+            <Share2 className="w-4 h-4 mr-1.5" />
+            <span className="text-xs font-semibold">Share</span>
           </Button>
 
           {/* Logo + template tag */}
@@ -202,6 +266,32 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
 
               {/* About Tab */}
               <TabsContent value="about" className="space-y-5 mt-0">
+                {/* Gallery images */}
+                {(() => {
+                  const gallery = business.imageUrls ? business.imageUrls.split(',').filter(Boolean) : []
+                  // Include profile image in gallery if not already there
+                  const allImages = business.profileImage && !gallery.includes(business.profileImage)
+                    ? [business.profileImage, ...gallery]
+                    : gallery
+                  if (allImages.length === 0) return null
+                  return (
+                    <div>
+                      <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+                        <span className="w-1 h-5 rounded bg-brand" />
+                        Gallery
+                      </h3>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {allImages.slice(0, 8).map((url, i) => (
+                          <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
+                            { }
+                            <img src={url} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 <div>
                   <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
                     <span className="w-1 h-5 rounded bg-brand" />
@@ -238,6 +328,52 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                     ))}
                   </div>
                 </div>
+
+                {/* Premium website template picker (only for premium businesses) */}
+                {business.premium && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-amber-500" />
+                        Website Template
+                        <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 bg-amber-50 ml-1">
+                          PREMIUM
+                        </Badge>
+                      </h3>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Choose how your business website looks. Visitors will see this template when they open your shared link.
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'elegant', name: 'Elegant', desc: 'Serif + soft', preview: 'from-slate-100 to-stone-200' },
+                          { id: 'classic', name: 'Classic', desc: 'Warm + traditional', preview: 'from-amber-50 to-orange-100' },
+                          { id: 'bold', name: 'Bold', desc: 'High contrast', preview: 'from-zinc-900 to-zinc-700' },
+                          { id: 'boutique', name: 'Boutique', desc: 'Luxury + minimal', preview: 'from-rose-50 to-pink-100' }
+                        ].map((tpl) => {
+                          const isActive = (business.websiteTemplate || 'elegant') === tpl.id
+                          return (
+                            <button
+                              key={tpl.id}
+                              onClick={() => handleTemplateChange(tpl.id)}
+                              className={`rounded-lg overflow-hidden border-2 transition-all text-left ${
+                                isActive ? 'border-brand shadow-md' : 'border-border hover:border-brand/40'
+                              }`}
+                            >
+                              <div className={`h-12 bg-gradient-to-br ${tpl.preview} flex items-center justify-center`}>
+                                {isActive && <Check className="w-4 h-4 text-emerald-600" />}
+                              </div>
+                              <div className="p-2 bg-card">
+                                <div className="font-bold text-xs">{tpl.name}</div>
+                                <div className="text-[10px] text-muted-foreground">{tpl.desc}</div>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
               </TabsContent>
 
               {/* Products Tab */}
@@ -281,19 +417,45 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
                     <MapPin className="w-5 h-5 text-brand flex-shrink-0 mt-0.5" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">{t('detail_address')}</div>
                       <div className="text-sm font-medium mt-0.5">{business.address}</div>
                       <div className="text-sm text-muted-foreground">{business.city}, {business.state}{business.pincode ? ` - ${business.pincode}` : ''}</div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2 h-7 text-xs border-brand/40 text-brand hover:bg-brand-soft"
-                        onClick={() => window.open(`https://www.openstreetmap.org/directions?from=&to=${business.lat}%2C${business.lng}`, '_blank')}
-                      >
-                        <Navigation className="w-3 h-3 mr-1" />
-                        {t('detail_getDirections')}
-                      </Button>
+
+                      {/* Live location indicator */}
+                      {business.liveTracking && (
+                        <div className="mt-2 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md text-xs font-bold text-emerald-700">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          LIVE LOCATION ENABLED
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-brand/40 text-brand hover:bg-brand-soft"
+                          onClick={() => window.open(`https://www.openstreetmap.org/directions?from=&to=${business.lat}%2C${business.lng}`, '_blank')}
+                        >
+                          <Navigation className="w-3 h-3 mr-1" />
+                          {t('detail_getDirections')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-blue-700 hover:bg-blue-50"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(`${business.lat},${business.lng}`)
+                            toast.success('Coordinates copied')
+                          }}
+                        >
+                          <MapPin className="w-3 h-3 mr-1" />
+                          Copy Coordinates
+                        </Button>
+                      </div>
                     </div>
                   </div>
 

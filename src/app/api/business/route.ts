@@ -23,9 +23,30 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Add review
+  // Add review OR update business (depending on action field)
   try {
     const body = await request.json()
+
+    // If action=update, treat as business update (e.g. website template, profile image)
+    if (body.action === 'update') {
+      const { businessId, updates } = body
+      if (!businessId || !updates) {
+        return NextResponse.json({ error: 'Missing businessId or updates' }, { status: 400 })
+      }
+      // Only allow specific fields to be updated
+      const allowed: Record<string, any> = {}
+      const allowedFields = ['websiteTemplate', 'profileImage', 'imageUrls', 'liveTracking', 'premium', 'verified']
+      for (const f of allowedFields) {
+        if (updates[f] !== undefined) allowed[f] = updates[f]
+      }
+      const business = await db.business.update({
+        where: { id: businessId },
+        data: allowed
+      })
+      return NextResponse.json({ business })
+    }
+
+    // Default: add review
     const { businessId, rating, comment, userName, userId } = body
     if (!businessId || !rating || !userName) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
@@ -44,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ review }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/business/review]', err)
+    console.error('[POST /api/business]', err)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
 }

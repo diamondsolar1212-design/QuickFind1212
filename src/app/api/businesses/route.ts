@@ -109,10 +109,14 @@ export async function POST(request: NextRequest) {
         isB2B: !!body.isB2B,
         isB2C: body.isB2C !== false,
         template: body.template || 'retail',
+        websiteTemplate: body.websiteTemplate || 'elegant',
         imageColor: body.imageColor || '#0d9488',
         emoji: body.emoji || '🏪',
         hours: body.hours || '',
         products: body.products || '',
+        imageUrls: body.imageUrls || '',
+        profileImage: body.profileImage || '',
+        liveTracking: !!body.liveTracking,
         ownerId: body.ownerId
       }
     })

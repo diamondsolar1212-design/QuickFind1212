@@ -142,6 +142,19 @@ export default function Home() {
     return () => window.removeEventListener('business-updated', handler)
   }, [])
 
+  // Handle ?biz=<id> URL parameter — auto-open business detail (for shared links)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const bizId = params.get('biz')
+    if (bizId) {
+      setSelectedBusinessId(bizId)
+      // Clean URL after auto-open (so refresh doesn't re-trigger)
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, document.title, newUrl)
+    }
+  }, [])
+
   const getUserLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolocation not supported')

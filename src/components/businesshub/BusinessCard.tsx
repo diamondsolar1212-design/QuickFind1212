@@ -51,18 +51,37 @@ export function BusinessCard({ business, index = 0 }: Props) {
           background: `linear-gradient(135deg, ${business.imageColor} 0%, ${business.imageColor}dd 60%, ${business.imageColor}99 100%)`
         }}
       >
-        {/* Decorative pattern */}
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `radial-gradient(circle at 30% 40%, white 1px, transparent 1.5px)`,
-          backgroundSize: '20px 20px'
-        }} />
+        {/* Profile image (if available) or gradient fallback */}
+        {business.profileImage ? (
+           
+          <img
+            src={business.profileImage}
+            alt={business.name}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : null}
 
-        {/* Centered emoji */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-5xl sm:text-6xl drop-shadow-md group-hover:scale-110 transition-transform duration-300">
-            {business.emoji}
+        {/* Gradient overlay at bottom for badge readability (only when image present) */}
+        {business.profileImage && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        )}
+
+        {/* Decorative pattern (only when no profile image) */}
+        {!business.profileImage && (
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: `radial-gradient(circle at 30% 40%, white 1px, transparent 1.5px)`,
+            backgroundSize: '20px 20px'
+          }} />
+        )}
+
+        {/* Centered emoji (only when no profile image) */}
+        {!business.profileImage && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-5xl sm:text-6xl drop-shadow-md group-hover:scale-110 transition-transform duration-300">
+              {business.emoji}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Open/Closed status pill — bottom-left */}
         <div className="absolute bottom-2 left-2">

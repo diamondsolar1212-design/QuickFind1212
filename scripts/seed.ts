@@ -626,6 +626,47 @@ async function main() {
     }
   }
 
+  // === Add profile images + website templates for premium businesses ===
+  console.log('🖼️  Adding profile images to premium businesses...')
+
+  const premiumUpdates = [
+    { name: 'Bawarchi Restaurant', profileImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80', template: 'bold' },
+    { name: 'Mumbai Wholesale Textiles', profileImage: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&q=80', template: 'elegant' },
+    { name: 'Chandni Chowk Sweets & Snacks', profileImage: 'https://images.unsplash.com/photo-1606471191009-63994c53433b?w=600&q=80', template: 'classic' },
+    { name: 'Indiranagar Coffee Roasters', profileImage: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80', template: 'boutique' },
+    { name: 'Brigade Road Premium Salon', profileImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80', template: 'elegant' },
+    { name: 'Delhi Ayurveda Wellness Clinic', profileImage: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=600&q=80', template: 'classic' },
+    { name: 'Pink City Handicrafts Emporium', profileImage: 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=600&q=80', template: 'boutique' },
+    { name: 'Royal Wedding Planners', profileImage: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80', template: 'elegant' },
+    { name: 'Premium Properties India', profileImage: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&q=80', template: 'classic' },
+    { name: 'MakeMyTrip Verified Travel Agent', profileImage: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&q=80', template: 'bold' },
+    { name: 'Mahalaxmi Steel Industries', profileImage: 'https://images.unsplash.com/photo-1565043666747-69f6646db940?w=600&q=80', template: 'classic' },
+    { name: 'Apollo Family Care Clinic', profileImage: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&q=80', template: 'elegant' }
+  ]
+
+  for (const upd of premiumUpdates) {
+    const biz = await db.business.findFirst({ where: { name: upd.name } })
+    if (biz) {
+      await db.business.update({
+        where: { id: biz.id },
+        data: {
+          profileImage: upd.profileImage,
+          websiteTemplate: upd.template,
+          imageUrls: upd.profileImage // also set as gallery image
+        }
+      })
+    }
+  }
+
+  // Enable live tracking for a few businesses
+  const liveTrackingBusinesses = ['CoolCare AC & Refrigeration', 'QuickFix Home Repairs', 'Spice Junction Pure Veg']
+  for (const name of liveTrackingBusinesses) {
+    const biz = await db.business.findFirst({ where: { name } })
+    if (biz) {
+      await db.business.update({ where: { id: biz.id }, data: { liveTracking: true } })
+    }
+  }
+
   console.log(`✅ Seeded ${businesses.length} businesses, 2 users, and reviews`)
   console.log(`   Customer login: raj@businesshub.in / demo123`)
   console.log(`   Owner login:    owner@businesshub.in / demo123`)

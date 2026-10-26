@@ -35,10 +35,14 @@ export interface Business {
   isB2B: boolean
   isB2C: boolean
   template: string
+  websiteTemplate: string
   imageColor: string
   emoji: string
   hours: string
   products: string
+  imageUrls: string
+  profileImage: string
+  liveTracking: boolean
   reviews?: any[]
   distance?: number
 }

@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Store, UtensilsCrossed, Wrench, Sparkles, ChevronRight, ChevronLeft,
-  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag
+  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown
 } from 'lucide-react'
 import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
@@ -56,6 +56,11 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [profileImage, setProfileImage] = useState('')
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [liveTracking, setLiveTracking] = useState(false)
+  const [websiteTemplate, setWebsiteTemplate] = useState('elegant')
 
   const [form, setForm] = useState({
     template: 'retail',
@@ -74,6 +79,36 @@ export function ListBusinessModal({ open, onClose }: Props) {
     toast.success(`Location set: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
   }
 
+  // Image upload handler — uses /api/upload endpoint
+  const handleImageUpload = async (file: File, kind: 'profile' | 'gallery') => {
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        if (kind === 'profile') {
+          setProfileImage(data.url)
+          toast.success('Profile image uploaded!')
+        } else {
+          setGalleryImages((prev) => [...prev, data.url].slice(0, 6)) // max 6 gallery images
+          toast.success('Image added to gallery!')
+        }
+      } else {
+        toast.error(data.error || 'Upload failed')
+      }
+    } catch {
+      toast.error('Network error during upload')
+    }
+    setUploadingImage(false)
+  }
+
+  const removeGalleryImage = (idx: number) => {
+    setGalleryImages((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   const handleSubmit = async () => {
     if (!user) {
       toast.error('Please login first')
@@ -90,6 +125,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
           ...form,
           emoji: EMOJI_MAP[form.category] || '🏪',
           imageColor: TEMPLATES.find((t) => t.id === form.template)?.color || '#0d9488',
+          profileImage,
+          imageUrls: galleryImages.join(','),
+          liveTracking,
+          websiteTemplate,
           ownerId: user.id
         })
       })
@@ -109,6 +148,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const reset = () => {
     setStep(1)
     setSuccess(null)
+    setProfileImage('')
+    setGalleryImages([])
+    setLiveTracking(false)
+    setWebsiteTemplate('elegant')
     setForm({
       template: 'retail', name: '', description: '', category: 'Grocery & Essentials',
       subcategory: '', tags: '', phone: '', whatsapp: '', email: '', website: '',
@@ -391,12 +434,149 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       onPickLocation={handlePickLocation}
                       height="320px"
                     />
-                    <div className="mt-2 flex items-center gap-2 text-xs">
+                    <div className="mt-2 flex items-center gap-2 text-xs flex-wrap">
                       <Badge variant="outline" className="border-brand/30 text-brand bg-brand-soft/30">
                         Lat: {form.lat.toFixed(4)}, Lng: {form.lng.toFixed(4)}
                       </Badge>
+                      <label className="flex items-center gap-2 cursor-pointer ml-auto">
+                        <Checkbox
+                          checked={liveTracking}
+                          onCheckedChange={(v) => setLiveTracking(!!v)}
+                        />
+                        <span className="text-xs">Enable Live Location Tracking on Profile</span>
+                      </label>
                     </div>
                   </div>
+
+                  {/* Image upload section */}
+                  <Separator className="my-3" />
+
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2 text-sm font-semibold">
+                      <Camera className="w-4 h-4 text-brand" />
+                      Profile Image
+                    </Label>
+                    <div className="flex items-center gap-3">
+                      {/* Preview */}
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30 flex-shrink-0">
+                        {profileImage ? (
+                           
+                          <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <Store className="w-8 h-8 text-muted-foreground/50" />
+                        )}
+                      </div>
+                      {/* Upload button */}
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) handleImageUpload(f, 'profile')
+                          }}
+                          disabled={uploadingImage}
+                        />
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border ${
+                          uploadingImage
+                            ? 'bg-muted text-muted-foreground border-border'
+                            : 'bg-card text-navy border-border hover:border-brand hover:bg-brand-soft/30'
+                        }`}>
+                          {uploadingImage ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3.5 h-3.5" />
+                              {profileImage ? 'Change Image' : 'Upload Image'}
+                            </>
+                          )}
+                        </span>
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">JPG/PNG/WEBP, max 5MB. This image will appear in your profile hero banner.</p>
+                  </div>
+
+                  {/* Gallery images */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Gallery Images (optional)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {galleryImages.map((url, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border group">
+                          { }
+                          <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(idx)}
+                            className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl-md opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {galleryImages.length < 6 && (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (f) handleImageUpload(f, 'gallery')
+                            }}
+                            disabled={uploadingImage}
+                          />
+                          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center hover:border-brand hover:bg-brand-soft/30 transition-colors">
+                            {uploadingImage ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <Plus className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </label>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Up to 6 images. Show your products, store interior, team, etc.</p>
+                  </div>
+
+                  {/* Premium website template picker */}
+                  {form.template === 'premium' && (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          <Crown className="w-4 h-4 text-amber-500" />
+                          Premium Website Template
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'elegant', name: 'Elegant', desc: 'Serif + soft colors' },
+                            { id: 'classic', name: 'Classic', desc: 'Traditional + warm' },
+                            { id: 'bold', name: 'Bold', desc: 'Modern + high contrast' },
+                            { id: 'boutique', name: 'Boutique', desc: 'Luxury + minimal' }
+                          ].map((tpl) => (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              onClick={() => setWebsiteTemplate(tpl.id)}
+                              className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                websiteTemplate === tpl.id
+                                  ? 'border-brand bg-brand-soft/30 shadow-sm'
+                                  : 'border-border hover:border-brand/40'
+                              }`}
+                            >
+                              <div className="font-bold text-sm">{tpl.name}</div>
+                              <div className="text-[10px] text-muted-foreground">{tpl.desc}</div>
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">Premium businesses get a customizable mini-website with their own template.</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

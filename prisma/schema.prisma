@@ -46,11 +46,15 @@ model Business {
   isB2B         Boolean  @default(false)
   isB2C         Boolean  @default(true)
   template      String   @default("retail") // retail | restaurant | service | premium
+  // Premium-only website template variations
+  websiteTemplate String @default("elegant") // elegant | classic | bold | boutique (premium only)
   imageColor    String   @default("#0d9488") // used for thumbnail gradient
   emoji         String   @default("🏪") // category icon
   hours         String   @default("") // JSON string of weekly hours
   products      String   @default("") // JSON string of product/service list
-  imageUrls     String   @default("") // comma separated
+  imageUrls     String   @default("") // comma separated (gallery)
+  profileImage  String   @default("") // main profile image URL
+  liveTracking  Boolean  @default(false) // allow live location sharing on profile
   ownerId       String
   owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   reviews       Review[]
