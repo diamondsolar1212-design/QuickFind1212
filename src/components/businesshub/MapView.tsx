@@ -38,20 +38,21 @@ const USER_LOC_ICON = L.divIcon({
 function FlyToUser() {
   const { userLat, userLng, radius } = useApp()
   const map = useMap()
+  const valid = Number.isFinite(userLat) && Number.isFinite(userLng)
   useEffect(() => {
-    if (userLat && userLng) {
-      map.flyTo([userLat, userLng], 12, { duration: 1.2 })
+    if (valid) {
+      map.flyTo([userLat as number, userLng as number], 12, { duration: 1.2 })
     }
-  }, [userLat, userLng, map])
-  return userLat && userLng ? (
+  }, [userLat, userLng, map, valid])
+  return valid ? (
     <>
-      <Marker position={[userLat, userLng]} icon={USER_LOC_ICON}>
+      <Marker position={[userLat as number, userLng as number]} icon={USER_LOC_ICON}>
         <Popup>
           <div className="text-sm font-medium text-blue-700">📍 You are here</div>
         </Popup>
       </Marker>
       <Circle
-        center={[userLat, userLng]}
+        center={[userLat as number, userLng as number]}
         radius={radius * 1000}
         pathOptions={{ color: '#1e40af', fillColor: '#3b82f6', fillOpacity: 0.05, weight: 1.5, dashArray: '6 4' }}
       />
@@ -80,7 +81,11 @@ export function MapView({ businesses, onPickLocation, pickMode = false, height =
     setIsLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation(pos.coords.latitude, pos.coords.longitude)
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setLocation(lat, lng)
+        }
         setIsLocating(false)
         setLocated(true)
       },
@@ -96,19 +101,20 @@ export function MapView({ businesses, onPickLocation, pickMode = false, height =
 
   // Auto-locate on first mount if not in pickMode
   useEffect(() => {
-    if (!pickMode && !userLat && !isLocating && !located) {
+    if (!pickMode && !Number.isFinite(userLat) && !Number.isFinite(userLng) && !isLocating && !located) {
       getUserLocation()
     }
   }, [])
 
-  const center: [number, number] = userLat && userLng ? [userLat, userLng] : [19.0760, 72.8777]
+  const hasValidUserLoc = Number.isFinite(userLat) && Number.isFinite(userLng)
+  const center: [number, number] = hasValidUserLoc ? [userLat as number, userLng as number] : [19.0760, 72.8777]
 
   return (
     <Card className="overflow-hidden border-border/60 shadow-sm relative">
       <div style={{ height }} className="relative">
         <MapContainer
           center={center}
-          zoom={userLat ? 12 : 5}
+          zoom={hasValidUserLoc ? 12 : 5}
           className="w-full h-full"
           ref={(m) => { if (m) mapRef.current = m }}
           click={(e: any) => {

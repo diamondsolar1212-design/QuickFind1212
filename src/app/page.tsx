@@ -242,7 +242,12 @@ export default function Home() {
     setIsLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation(pos.coords.latitude, pos.coords.longitude)
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+        // Guard against NaN / null coordinates from the browser
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setLocation(lat, lng)
+        }
         setIsLocating(false)
       },
       (err) => {

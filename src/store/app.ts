@@ -139,7 +139,11 @@ export const useApp = create<AppState>()(
 
       setSearchQuery: (q) => set({ searchQuery: q }),
       setCityQuery: (q) => set({ cityQuery: q }),
-      setLocation: (lat, lng) => set({ userLat: lat, userLng: lng }),
+      setLocation: (lat, lng) => {
+        // Reject NaN / non-finite coordinates so map doesn't crash on invalid LatLng
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+        set({ userLat: lat, userLng: lng })
+      },
       setIsLocating: (v) => set({ isLocating: v }),
       setSelectedCategory: (c) => set({ selectedCategory: c }),
       setMinRating: (r) => set({ minRating: r }),
