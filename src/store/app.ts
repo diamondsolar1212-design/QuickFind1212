@@ -37,6 +37,14 @@ export interface Business {
   isB2C: boolean
   template: string
   websiteTemplate: string
+  themeColor: string
+  fontChoice: string
+  layoutStyle: string
+  showGallery: boolean
+  showHours: boolean
+  showReviews: boolean
+  showMap: boolean
+  showProducts: boolean
   imageColor: string
   emoji: string
   hours: string

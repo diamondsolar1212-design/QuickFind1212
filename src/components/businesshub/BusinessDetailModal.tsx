@@ -18,6 +18,11 @@ import { useApp, type Business } from '@/store/app'
 import { useI18n } from '@/store/i18n'
 import { toast } from 'sonner'
 
+function getTagStyle(themeColor: string | undefined) {
+  const c = themeColor || '#0d9488'
+  return { borderColor: c + '40', color: c, backgroundColor: c + '10' }
+}
+
 interface Props {
   business: Business | null
   open: boolean
@@ -257,44 +262,30 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(92vh - 14rem)' }}>
           <div className="p-5 sm:p-7">
             <Tabs defaultValue="about" className="w-full">
-              <TabsList className="grid grid-cols-4 mb-5 bg-muted/50">
+              <TabsList
+                className="mb-5 bg-muted/50 grid"
+                style={{
+                  gridTemplateColumns: 'repeat(' + (2 + (business.showProducts !== false ? 1 : 0) + (business.showReviews !== false ? 1 : 0)) + ', minmax(0, 1fr))'
+                }}
+              >
                 <TabsTrigger value="about" className="text-xs sm:text-sm">{t('detail_about')}</TabsTrigger>
-                <TabsTrigger value="products" className="text-xs sm:text-sm">{t('detail_products')}</TabsTrigger>
+                {business.showProducts !== false && (
+                  <TabsTrigger value="products" className="text-xs sm:text-sm">{t('detail_products')}</TabsTrigger>
+                )}
                 <TabsTrigger value="contact" className="text-xs sm:text-sm">{t('detail_contact')}</TabsTrigger>
-                <TabsTrigger value="reviews" className="text-xs sm:text-sm">{t('detail_reviews')}</TabsTrigger>
+                {business.showReviews !== false && (
+                  <TabsTrigger value="reviews" className="text-xs sm:text-sm">{t('detail_reviews')}</TabsTrigger>
+                )}
               </TabsList>
 
               {/* About Tab */}
               <TabsContent value="about" className="space-y-5 mt-0">
-                {/* Gallery images */}
-                {(() => {
-                  const gallery = business.imageUrls ? business.imageUrls.split(',').filter(Boolean) : []
-                  // Include profile image in gallery if not already there
-                  const allImages = business.profileImage && !gallery.includes(business.profileImage)
-                    ? [business.profileImage, ...gallery]
-                    : gallery
-                  if (allImages.length === 0) return null
-                  return (
-                    <div>
-                      <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
-                        <span className="w-1 h-5 rounded bg-brand" />
-                        Gallery
-                      </h3>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {allImages.slice(0, 8).map((url, i) => (
-                          <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
-                            { }
-                            <img src={url} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover hover:scale-110 transition-transform" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })()}
+                {/* Gallery images — rendered in different styles based on template */}
+                {business.showGallery !== false && <GalleryRenderer business={business} />}
 
                 <div>
                   <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
-                    <span className="w-1 h-5 rounded bg-brand" />
+                    <span className="w-1 h-5 rounded" style={{ background: business.themeColor || '#0d9488' }} />
                     {t('detail_about')}
                   </h3>
                   <p className="text-sm sm:text-base text-foreground/85 leading-relaxed">
@@ -302,32 +293,40 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                   </p>
                   {business.tags && (
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {business.tags.split(',').filter(Boolean).map((tag, i) => (
-                        <Badge key={i} variant="outline" className="text-xs border-brand/30 text-brand bg-brand-soft/30">
-                          #{tag.trim()}
-                        </Badge>
-                      ))}
+                      {business.tags.split(',').filter(Boolean).map((tag, i) => {
+                        return (
+                          <Badge key={i} variant="outline" className="text-xs" style={getTagStyle(business.themeColor)}>
+                            <span>#{tag.trim()}</span>
+                          </Badge>
+                        )
+                      })}
+
                     </div>
                   )}
                 </div>
 
                 <Separator />
 
-                {/* Hours */}
-                <div>
-                  <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-brand" />
-                    {t('detail_hours')}
-                  </h3>
-                  <div className="grid sm:grid-cols-2 gap-1.5">
-                    {days.map((d) => (
-                      <div key={d.key} className="flex justify-between text-sm py-1.5 px-3 rounded-md bg-muted/30">
-                        <span className="text-muted-foreground">{d.label}</span>
-                        <span className="font-medium text-foreground">{hours[d.key] || '—'}</span>
+                {/* Hours (only if showHours enabled) */}
+                {business.showHours !== false && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+                        <Clock className="w-4 h-4" style={{ color: business.themeColor || '#0d9488' }} />
+                        {t('detail_hours')}
+                      </h3>
+                      <div className="grid sm:grid-cols-2 gap-1.5">
+                        {days.map((d) => (
+                          <div key={d.key} className="flex justify-between text-sm py-1.5 px-3 rounded-md bg-muted/30">
+                            <span className="text-muted-foreground">{d.label}</span>
+                            <span className="font-medium text-foreground">{hours[d.key] || '—'}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Premium website template picker (only for premium businesses) */}
                 {business.premium && (
@@ -518,16 +517,18 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Embedded mini map */}
-                <div className="rounded-xl overflow-hidden border border-border/60 h-64 mt-4">
-                  <iframe
-                    title="map"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${business.lng - 0.01}%2C${business.lat - 0.008}%2C${business.lng + 0.01}%2C${business.lat + 0.008}&layer=mapnik&marker=${business.lat}%2C${business.lng}`}
-                  />
-                </div>
+                {/* Embedded mini map (only if showMap enabled) */}
+                {business.showMap !== false && (
+                  <div className="rounded-xl overflow-hidden border border-border/60 h-64 mt-4">
+                    <iframe
+                      title="map"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${business.lng - 0.01}%2C${business.lat - 0.008}%2C${business.lng + 0.01}%2C${business.lat + 0.008}&layer=mapnik&marker=${business.lat}%2C${business.lng}`}
+                    />
+                  </div>
+                )}
               </TabsContent>
 
               {/* Reviews Tab */}
@@ -637,5 +638,97 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+
+// Helper component to render gallery in different template styles
+function GalleryRenderer({ business }: { business: any }) {
+  const gallery = business.imageUrls ? business.imageUrls.split(',').filter(Boolean) : []
+  const allImages = business.profileImage && !gallery.includes(business.profileImage)
+    ? [business.profileImage, ...gallery]
+    : gallery
+  if (allImages.length === 0) return null
+
+  const tpl = business.websiteTemplate || 'elegant'
+  const accent = business.themeColor || '#0d9488'
+
+  if (tpl === 'bold') {
+    return (
+      <div>
+        <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+          Gallery
+        </h3>
+        <div className="rounded-xl overflow-hidden mb-2 border border-border/60">
+          <img src={allImages[0]} alt="Featured" className="w-full h-48 object-cover" />
+        </div>
+        {allImages.length > 1 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {allImages.slice(1, 9).map((url: string, i: number) => (
+              <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
+                <img src={url} alt={'Gallery ' + (i + 2)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (tpl === 'boutique') {
+    return (
+      <div>
+        <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+          Gallery
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          {allImages.slice(0, 6).map((url: string, i: number) => (
+            <div
+              key={i}
+              className={'rounded-xl overflow-hidden border-2 border-border/60 bg-muted hover:shadow-lg transition-all ' + (i === 0 ? 'col-span-2 aspect-[2/1]' : 'aspect-square')}
+            >
+              <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (tpl === 'classic') {
+    return (
+      <div>
+        <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+          Gallery
+        </h3>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {allImages.slice(0, 8).map((url: string, i: number) => (
+            <div key={i} className="w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden border border-border/60 bg-muted">
+              <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Elegant (default): grid layout
+  return (
+    <div>
+      <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
+        <span className="w-1 h-5 rounded" style={{ background: accent }} />
+        Gallery
+      </h3>
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        {allImages.slice(0, 8).map((url: string, i: number) => (
+          <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
+            <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

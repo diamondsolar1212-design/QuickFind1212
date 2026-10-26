@@ -35,7 +35,12 @@ export async function POST(request: NextRequest) {
       }
       // Only allow specific fields to be updated
       const allowed: Record<string, any> = {}
-      const allowedFields = ['websiteTemplate', 'profileImage', 'imageUrls', 'liveTracking', 'premium', 'verified']
+      const allowedFields = [
+        'websiteTemplate', 'profileImage', 'imageUrls', 'liveTracking',
+        'themeColor', 'fontChoice', 'layoutStyle',
+        'showGallery', 'showHours', 'showReviews', 'showMap', 'showProducts',
+        'premium', 'verified'
+      ]
       for (const f of allowedFields) {
         if (updates[f] !== undefined) allowed[f] = updates[f]
       }

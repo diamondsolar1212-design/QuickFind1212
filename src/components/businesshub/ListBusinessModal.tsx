@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Store, UtensilsCrossed, Wrench, Sparkles, ChevronRight, ChevronLeft,
-  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown
+  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown, Eye
 } from 'lucide-react'
 import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
@@ -61,6 +61,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [liveTracking, setLiveTracking] = useState(false)
   const [websiteTemplate, setWebsiteTemplate] = useState('elegant')
+  // New design customization state
+  const [themeColor, setThemeColor] = useState('#0d9488')
+  const [fontChoice, setFontChoice] = useState('sans')
+  const [layoutStyle, setLayoutStyle] = useState('standard')
+  const [showGallery, setShowGallery] = useState(true)
+  const [showHours, setShowHours] = useState(true)
+  const [showReviews, setShowReviews] = useState(true)
+  const [showMap, setShowMap] = useState(true)
+  const [showProducts, setShowProducts] = useState(true)
 
   const [form, setForm] = useState({
     template: 'retail',
@@ -129,6 +138,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
           imageUrls: galleryImages.join(','),
           liveTracking,
           websiteTemplate,
+          themeColor,
+          fontChoice,
+          layoutStyle,
+          showGallery,
+          showHours,
+          showReviews,
+          showMap,
+          showProducts,
           ownerId: user.id
         })
       })
@@ -152,6 +169,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setGalleryImages([])
     setLiveTracking(false)
     setWebsiteTemplate('elegant')
+    setThemeColor('#0d9488')
+    setFontChoice('sans')
+    setLayoutStyle('standard')
+    setShowGallery(true)
+    setShowHours(true)
+    setShowReviews(true)
+    setShowMap(true)
+    setShowProducts(true)
     setForm({
       template: 'retail', name: '', description: '', category: 'Grocery & Essentials',
       subcategory: '', tags: '', phone: '', whatsapp: '', email: '', website: '',
@@ -234,10 +259,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
             </div>
           ) : (
             <>
-              {/* Step 1: Template */}
+              {/* Step 1: Template + Design Customization */}
               {step === 1 && (
-                <div className="space-y-4">
-                  <h3 className="font-serif font-semibold text-lg">{t('list_step1')}</h3>
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="font-serif font-semibold text-lg">{t('list_step1')}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Choose a base template, then customize colors, fonts, layout, and sections.</p>
+                  </div>
+
+                  {/* Base template selection */}
                   <div className="grid sm:grid-cols-2 gap-3">
                     {TEMPLATES.map((tpl) => {
                       const Icon = tpl.icon
@@ -246,7 +276,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         <button
                           key={tpl.id}
                           onClick={() => update('template', tpl.id)}
-                          className={`text-left p-5 rounded-xl border-2 transition-all ${
+                          className={`text-left p-4 rounded-xl border-2 transition-all ${
                             selected
                               ? 'border-brand bg-brand-soft/30 shadow-md'
                               : 'border-border bg-card hover:border-brand/40 hover:bg-muted/30'
@@ -254,17 +284,17 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         >
                           <div className="flex items-start gap-3">
                             <div
-                              className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
+                              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
                               style={{ background: `${tpl.color}20`, color: tpl.color }}
                             >
-                              <Icon className="w-6 h-6" />
+                              <Icon className="w-5 h-5" />
                             </div>
                             <div className="flex-1">
-                              <div className="font-serif font-semibold text-base flex items-center gap-2">
+                              <div className="font-serif font-semibold text-sm flex items-center gap-2">
                                 {t(tpl.name as any)}
                                 {selected && <Check className="w-4 h-4 text-brand" />}
                               </div>
-                              <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                              <div className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
                                 {t(tpl.desc as any)}
                               </div>
                             </div>
@@ -272,6 +302,195 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         </button>
                       )
                     })}
+                  </div>
+
+                  {/* Design Customization Section */}
+                  <Separator />
+
+                  <div className="bg-muted/30 rounded-xl p-4 space-y-4 border border-border/60">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-brand" />
+                      <h4 className="font-bold text-sm text-navy">Design Your Professional Website</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-2">Customize how your business website looks. Live preview updates as you change.</p>
+
+                    {/* Theme Color Picker */}
+                    <div>
+                      <Label className="text-xs font-semibold uppercase tracking-wide">Theme Color</Label>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {[
+                          { name: 'Teal', value: '#0d9488' },
+                          { name: 'Blue', value: '#2563eb' },
+                          { name: 'Purple', value: '#7c3aed' },
+                          { name: 'Rose', value: '#e11d48' },
+                          { name: 'Orange', value: '#ea580c' },
+                          { name: 'Green', value: '#16a34a' },
+                          { name: 'Amber', value: '#d97706' },
+                          { name: 'Slate', value: '#475569' }
+                        ].map((color) => (
+                          <button
+                            key={color.value}
+                            type="button"
+                            onClick={() => setThemeColor(color.value)}
+                            className={`w-9 h-9 rounded-full border-2 transition-all ${
+                              themeColor === color.value
+                                ? 'border-navy scale-110 shadow-md ring-2 ring-brand/30'
+                                : 'border-white hover:scale-105'
+                            }`}
+                            style={{ background: color.value }}
+                            title={color.name}
+                          />
+                        ))}
+                        <label className="cursor-pointer relative w-9 h-9 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-brand">
+                          <input
+                            type="color"
+                            value={themeColor}
+                            onChange={(e) => setThemeColor(e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <Plus className="w-4 h-4 text-muted-foreground" />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Font Choice */}
+                    <div>
+                      <Label className="text-xs font-semibold uppercase tracking-wide">Font Style</Label>
+                      <div className="grid grid-cols-4 gap-2 mt-1.5">
+                        {[
+                          { id: 'sans', name: 'Sans', sample: 'Aa', style: 'font-sans' },
+                          { id: 'serif', name: 'Serif', sample: 'Aa', style: 'font-serif' },
+                          { id: 'modern', name: 'Modern', sample: 'Aa', style: 'font-mono' },
+                          { id: 'classic', name: 'Classic', sample: 'Aa', style: 'font-serif italic' }
+                        ].map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => setFontChoice(f.id)}
+                            className={`p-2 rounded-lg border-2 transition-all text-center ${
+                              fontChoice === f.id
+                                ? 'border-brand bg-brand-soft/30'
+                                : 'border-border hover:border-brand/40'
+                            }`}
+                          >
+                            <div className={`text-xl font-bold ${f.style}`}>{f.sample}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{f.name}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Layout Style */}
+                    <div>
+                      <Label className="text-xs font-semibold uppercase tracking-wide">Layout Style</Label>
+                      <div className="grid grid-cols-3 gap-2 mt-1.5">
+                        {[
+                          { id: 'compact', name: 'Compact', desc: 'Tight spacing' },
+                          { id: 'standard', name: 'Standard', desc: 'Balanced' },
+                          { id: 'spacious', name: 'Spacious', desc: 'Lots of room' }
+                        ].map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => setLayoutStyle(l.id)}
+                            className={`p-2.5 rounded-lg border-2 transition-all text-left ${
+                              layoutStyle === l.id
+                                ? 'border-brand bg-brand-soft/30'
+                                : 'border-border hover:border-brand/40'
+                            }`}
+                          >
+                            <div className="font-bold text-xs">{l.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{l.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Section Toggles */}
+                    <div>
+                      <Label className="text-xs font-semibold uppercase tracking-wide">Sections to Show on Website</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-1.5">
+                        {[
+                          { id: 'showGallery', label: 'Image Gallery', state: showGallery, set: setShowGallery },
+                          { id: 'showProducts', label: 'Products & Services', state: showProducts, set: setShowProducts },
+                          { id: 'showHours', label: 'Business Hours', state: showHours, set: setShowHours },
+                          { id: 'showMap', label: 'Location Map', state: showMap, set: setShowMap },
+                          { id: 'showReviews', label: 'Customer Reviews', state: showReviews, set: setShowReviews }
+                        ].map((s) => (
+                          <label
+                            key={s.id}
+                            className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
+                              s.state
+                                ? 'border-brand bg-brand-soft/20'
+                                : 'border-border hover:border-brand/30'
+                            }`}
+                          >
+                            <Checkbox
+                              checked={s.state}
+                              onCheckedChange={(v) => s.set(!!v)}
+                            />
+                            <span className="text-xs font-medium">{s.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Preview */}
+                  <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
+                    <div className="bg-brand/10 px-4 py-2 flex items-center justify-between border-b border-brand/20">
+                      <span className="text-xs font-bold text-brand flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5" />
+                        LIVE WEBSITE PREVIEW
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{form.template} · {websiteTemplate} · {fontChoice}</span>
+                    </div>
+                    <div
+                      className={`p-4 ${layoutStyle === 'compact' ? 'space-y-2' : layoutStyle === 'spacious' ? 'space-y-5' : 'space-y-3'}`}
+                      style={{ fontFamily: fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : fontChoice === 'modern' ? 'monospace' : 'inherit' }}
+                    >
+                      {/* Mini website preview */}
+                      <div
+                        className="rounded-lg p-3 text-white"
+                        style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${themeColor}cc 100%)` }}
+                      >
+                        <div className="text-base font-bold">{form.name || 'Your Business Name'}</div>
+                        <div className="text-[10px] opacity-90 mt-0.5">{form.category || 'Category'} · {form.city || 'City'}</div>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto">
+                        {showGallery && (
+                          <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-xl flex-shrink-0">
+                            {profileImage ? <img src={profileImage} alt="" className="w-full h-full object-cover rounded-md" /> : '🖼️'}
+                          </div>
+                        )}
+                        {galleryImages.slice(0, 3).map((url, i) => (
+                          <div key={i} className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                        {galleryImages.length < 3 && showGallery && (
+                          <div className="w-12 h-12 rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground text-[10px] flex-shrink-0">
+                            + more
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {form.description || 'Your business description will appear here. Add details in Step 2.'}
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {showHours && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">⏰ Open Now</span>}
+                        {showProducts && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">🛍️ Products</span>}
+                        {showReviews && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">⭐ Reviews</span>}
+                        {showMap && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-semibold">📍 Map</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="w-full py-2 rounded-md text-xs font-bold text-white"
+                        style={{ background: themeColor }}
+                      >
+                        Get Best Price
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

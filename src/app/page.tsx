@@ -24,6 +24,7 @@ import { HomeSections } from '@/components/businesshub/HomeSections'
 import { NearbyPlaceCard } from '@/components/businesshub/NearbyPlaceCard'
 import { UserPanel } from '@/components/businesshub/UserPanel'
 import { AdminPanel } from '@/components/businesshub/AdminPanel'
+import { WelcomePopup } from '@/components/businesshub/WelcomePopup'
 
 // MapView uses react-leaflet which needs `window`. Load it on client only.
 const MapView = dynamic(
@@ -72,6 +73,33 @@ export default function Home() {
   const [showMapMobile, setShowMapMobile] = useState(false)
   const [showUserPanel, setShowUserPanel] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false)
+
+  // Show welcome popup once per browser (not for logged-in users)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const seen = localStorage.getItem('businesshub-welcome-seen')
+      if (!seen) {
+        const t = setTimeout(() => setShowWelcomePopup(true), 2000)
+        return () => clearTimeout(t)
+      }
+    } catch {}
+  }, [])
+
+  const handleCloseWelcome = () => {
+    setShowWelcomePopup(false)
+    try { localStorage.setItem('businesshub-welcome-seen', '1') } catch {}
+  }
+
+  const handleStartFromWelcome = () => {
+    handleCloseWelcome()
+    if (!user) {
+      setShowAuthModal(true)
+    } else {
+      setShowListModal(true)
+    }
+  }
 
   // Nearby POIs from OpenStreetMap (Overpass API)
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([])
@@ -390,16 +418,17 @@ export default function Home() {
 
             <div className="flex items-center gap-2">
               <Button
-                size="sm"
                 onClick={() => {
                   if (!user) setShowAuthModal(true)
                   else setShowListModal(true)
                 }}
-                className="bg-brand hover:bg-brand/90 text-brand-foreground font-bold text-xs h-8"
+                className="relative h-10 px-4 sm:px-5 bg-gradient-to-r from-brand to-amber-500 hover:from-brand/90 hover:to-amber-500/90 text-brand-foreground font-bold text-sm shadow-lg shadow-brand/30 ring-2 ring-brand/20 hover:shadow-xl hover:shadow-brand/40 transition-all hover:scale-105 group"
               >
-                <Store className="w-3.5 h-3.5 mr-1" />
+                <Store className="w-4 h-4 mr-1.5 group-hover:scale-110 transition-transform" />
                 <span className="hidden sm:inline">{t('nav_listBusiness')}</span>
                 <span className="sm:hidden">List</span>
+                {/* Pulse ring */}
+                <span className="absolute inset-0 rounded-md ring-2 ring-brand/40 animate-ping opacity-30 pointer-events-none" />
               </Button>
             </div>
           </div>
@@ -808,6 +837,14 @@ export default function Home() {
       {/* ===== Admin Panel (admin only) ===== */}
       {showAdminPanel && user?.isAdmin && (
         <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
+
+      {/* ===== Welcome Popup (shows once for new visitors) ===== */}
+      {showWelcomePopup && (
+        <WelcomePopup
+          onClose={handleCloseWelcome}
+          onStart={handleStartFromWelcome}
+        />
       )}
 
       {/* ===== Mobile filters drawer (simple) ===== */}
