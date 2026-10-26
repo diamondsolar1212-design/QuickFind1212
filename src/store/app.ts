@@ -47,6 +47,23 @@ export interface Business {
   distance?: number
 }
 
+// Nearby Place from OpenStreetMap (Overpass API) — not in our DB
+export interface NearbyPlace {
+  id: string
+  name: string
+  category: string
+  emoji: string
+  imageColor: string
+  type: string
+  address: string
+  phone: string
+  website: string
+  lat: number
+  lng: number
+  distance: number
+  source: 'openstreetmap'
+}
+
 interface AppState {
   user: User | null
   setUser: (user: User | null) => void

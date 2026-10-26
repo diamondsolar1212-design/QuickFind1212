@@ -31,7 +31,13 @@ export async function GET(request: NextRequest) {
 
     let businesses = await db.business.findMany({
       take: 500,
-      orderBy: [{ premium: 'desc' }, { rating: 'desc' }, { reviewCount: 'desc' }],
+      // Sort order: Premium first, then Verified, then rating, then reviewCount
+      orderBy: [
+        { premium: 'desc' },
+        { verified: 'desc' },
+        { rating: 'desc' },
+        { reviewCount: 'desc' }
+      ],
       include: { reviews: { take: 5, orderBy: { createdAt: 'desc' } } }
     })
 
@@ -65,8 +71,10 @@ export async function GET(request: NextRequest) {
         distance: haversine(userLat, userLng, b.lat, b.lng)
       }))
       const filtered = withDistance.filter((b) => b.distance <= radius)
+      // Sort: Premium first → Verified next → then by distance
       filtered.sort((a, b) => {
         if (a.premium !== b.premium) return a.premium ? -1 : 1
+        if (a.verified !== b.verified) return a.verified ? -1 : 1
         return a.distance - b.distance
       })
       return NextResponse.json({ businesses: filtered.slice(0, limit), total: filtered.length })

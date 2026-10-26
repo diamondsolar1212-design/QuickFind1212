@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useApp, type Business } from '@/store/app'
+import { useApp, type Business, type NearbyPlace } from '@/store/app'
 import { useI18n } from '@/store/i18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,7 @@ import { ListBusinessModal } from '@/components/businesshub/ListBusinessModal'
 import { AuthModal } from '@/components/businesshub/AuthModal'
 import { CategoriesGrid } from '@/components/businesshub/CategoriesGrid'
 import { HomeSections } from '@/components/businesshub/HomeSections'
+import { NearbyPlaceCard } from '@/components/businesshub/NearbyPlaceCard'
 
 // MapView uses react-leaflet which needs `window`. Load it on client only.
 const MapView = dynamic(
@@ -69,12 +70,53 @@ export default function Home() {
   const [showMapMobile, setShowMapMobile] = useState(false)
   const [showPostRequirement, setShowPostRequirement] = useState(false)
 
+  // Nearby POIs from OpenStreetMap (Overpass API)
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([])
+  const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [nearbyError, setNearbyError] = useState<string | null>(null)
+
   useEffect(() => {
     fetch('/api/categories')
       .then((r) => r.json())
       .then((data) => setCategories(data.categories || []))
       .catch(() => {})
   }, [])
+
+  // Fetch nearby places from OpenStreetMap (Overpass API)
+  const fetchNearbyPlaces = useCallback(async (lat: number, lng: number, radiusKm: number) => {
+    setNearbyLoading(true)
+    setNearbyError(null)
+    try {
+      // Convert km to meters, cap at 5km
+      const radiusMeters = Math.min(Math.max(Math.round(radiusKm * 1000), 500), 5000)
+      const res = await fetch(`/api/nearby?lat=${lat}&lng=${lng}&radius=${radiusMeters}&limit=15`)
+      const data = await res.json()
+      if (res.ok && data.nearby) {
+        setNearbyPlaces(data.nearby)
+      } else {
+        setNearbyPlaces([])
+        setNearbyError(data.error || 'No nearby places found')
+      }
+    } catch {
+      setNearbyPlaces([])
+      setNearbyError('Could not load nearby places')
+    }
+    setNearbyLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (userLat && userLng) {
+      // Use setTimeout to break synchronous setState chain
+      const timer = setTimeout(() => {
+        fetchNearbyPlaces(userLat, userLng, Math.min(radius, 5))
+      }, 0)
+      return () => clearTimeout(timer)
+    } else {
+      // Clear nearby places async (no location)
+      const timer = setTimeout(() => setNearbyPlaces([]), 0)
+      return () => clearTimeout(timer)
+    }
+  }, [userLat, userLng, radius, fetchNearbyPlaces])
 
   const fetchBusinesses = useCallback(async () => {
     setLoading(true)
@@ -97,14 +139,21 @@ export default function Home() {
       const data = await res.json()
       let list: Business[] = data.businesses || []
 
-      if (!userLat) {
-        if (sortBy === 'rating') list.sort((a, b) => b.rating - a.rating)
-        else if (sortBy === 'reviews') list.sort((a, b) => b.reviewCount - a.reviewCount)
-      } else if (sortBy === 'rating') {
-        list.sort((a, b) => b.rating - a.rating)
-      } else if (sortBy === 'reviews') {
-        list.sort((a, b) => b.reviewCount - a.reviewCount)
+      // Client-side sort — premium first, verified next, then by selected sort
+      const sortWithPriority = (a: Business, b: Business, sortFn: (a: Business, b: Business) => number) => {
+        if (a.premium !== b.premium) return a.premium ? -1 : 1
+        if (a.verified !== b.verified) return a.verified ? -1 : 1
+        return sortFn(a, b)
       }
+
+      if (sortBy === 'rating') {
+        list.sort((a, b) => sortWithPriority(a, b, (x, y) => y.rating - x.rating))
+      } else if (sortBy === 'reviews') {
+        list.sort((a, b) => sortWithPriority(a, b, (x, y) => y.reviewCount - x.reviewCount))
+      } else if (sortBy === 'distance' && userLat) {
+        list.sort((a, b) => sortWithPriority(a, b, (x, y) => (x.distance || 0) - (y.distance || 0)))
+      }
+      // For 'relevance', we keep server's order (already premium → verified → rating)
 
       setBusinesses(list)
     } catch {
@@ -547,6 +596,95 @@ export default function Home() {
                     {businesses.map((b, i) => (
                       <BusinessCard key={b.id} business={b} index={i} />
                     ))}
+                  </div>
+                )}
+
+                {/* ===== Nearby Places from OpenStreetMap (real nearby POIs from Overpass API) ===== */}
+                {userLat && userLng && (
+                  <div className="mt-6">
+                    {/* Section header */}
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b-2 border-blue-200/60">
+                      <div>
+                        <h2 className="text-base font-bold text-navy flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-blue-700" />
+                          Nearby Places
+                          <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-700 bg-blue-50 font-semibold ml-1">
+                            LIVE OSM DATA
+                          </Badge>
+                        </h2>
+                        <p className="text-xs text-muted-foreground">
+                          Real businesses around your location · fetched from OpenStreetMap API
+                        </p>
+                      </div>
+                      {nearbyLoading && (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-700" />
+                      )}
+                    </div>
+
+                    {/* Loading state */}
+                    {nearbyLoading && (
+                      <div className="grid grid-cols-1 gap-3">
+                        {[1, 2, 3].map((i) => (
+                          <Card key={i}>
+                            <CardContent className="p-4 flex gap-4">
+                              <Skeleton className="w-24 h-24 rounded-lg flex-shrink-0" />
+                              <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-3 w-1/2" />
+                                <Skeleton className="h-3 w-full" />
+                                <Skeleton className="h-7 w-32" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Error state */}
+                    {!nearbyLoading && nearbyError && nearbyPlaces.length === 0 && (
+                      <Card className="border-dashed border-blue-200/60 bg-blue-50/30">
+                        <CardContent className="py-8 text-center">
+                          <div className="w-12 h-12 rounded-full bg-blue-100 mx-auto flex items-center justify-center mb-2">
+                            <MapPin className="w-6 h-6 text-blue-700" />
+                          </div>
+                          <h3 className="font-bold text-sm text-navy mb-1">No nearby places found</h3>
+                          <p className="text-xs text-muted-foreground">{nearbyError}</p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-3 h-8 text-xs border-blue-500/40 text-blue-700 hover:bg-blue-100"
+                            onClick={() => userLat && userLng && fetchNearbyPlaces(userLat, userLng, Math.min(radius, 5))}
+                          >
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5" />
+                            Retry
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Nearby places list */}
+                    {!nearbyLoading && nearbyPlaces.length > 0 && (
+                      <>
+                        <div className="grid grid-cols-1 gap-3">
+                          {nearbyPlaces.map((p, i) => (
+                            <NearbyPlaceCard key={p.id} place={p} index={i} />
+                          ))}
+                        </div>
+                        <div className="text-center text-[10px] text-muted-foreground mt-3 flex items-center justify-center gap-1">
+                          <MapPin className="w-2.5 h-2.5" />
+                          <span>Data from OpenStreetMap contributors · {nearbyPlaces.length} places within {Math.min(radius, 5)} km radius</span>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Empty state (no location enabled) */}
+                    {!nearbyLoading && !nearbyError && nearbyPlaces.length === 0 && (
+                      <Card className="border-dashed border-blue-200/60 bg-blue-50/30">
+                        <CardContent className="py-6 text-center">
+                          <p className="text-xs text-muted-foreground">Searching for nearby places...</p>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 )}
               </div>
