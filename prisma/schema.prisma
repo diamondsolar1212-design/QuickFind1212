@@ -49,6 +49,15 @@ model Business {
   template      String   @default("retail") // retail | restaurant | service | premium
   // Premium-only website template variations
   websiteTemplate String @default("elegant") // elegant | classic | bold | boutique (premium only)
+  // Custom design options for professional website builder
+  themeColor      String   @default("#0d9488") // primary accent color of website
+  fontChoice      String   @default("sans") // sans | serif | modern | classic
+  layoutStyle     String   @default("standard") // compact | standard | spacious
+  showGallery     Boolean  @default(true)
+  showHours       Boolean  @default(true)
+  showReviews     Boolean  @default(true)
+  showMap         Boolean  @default(true)
+  showProducts    Boolean  @default(true)
   imageColor    String   @default("#0d9488") // used for thumbnail gradient
   emoji         String   @default("🏪") // category icon
   hours         String   @default("") // JSON string of weekly hours
