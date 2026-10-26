@@ -155,7 +155,7 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden p-0 gap-0 bg-card">
+      <DialogContent className="max-w-7xl sm:max-w-7xl w-[95vw] max-h-[95vh] overflow-hidden p-0 gap-0 bg-card">
         {/* Hero banner — uses profile image if available, otherwise gradient */}
         <div
           className="relative h-52 sm:h-72 overflow-hidden flex-shrink-0"
