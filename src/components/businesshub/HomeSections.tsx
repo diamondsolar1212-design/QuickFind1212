@@ -109,15 +109,62 @@ interface Props {
   businesses: Business[]
   onCategoryPick: (cat: string) => void
   onBusinessPick: (id: string) => void
+  onSearchByTag?: (tag: string) => void
+  onSearchByCity?: (city: string) => void
+  onGoToTab?: (tab: 'discover' | 'map' | 'categories') => void
 }
 
-export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Props) {
+export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSearchByTag, onSearchByCity, onGoToTab }: Props) {
   const { t } = useI18n()
 
   // Pick featured businesses (premium first, then by rating)
   const featured = [...businesses]
     .sort((a, b) => (b.premium ? 1 : 0) - (a.premium ? 1 : 0) || b.rating - a.rating)
     .slice(0, 8)
+
+  // Map trending products to actual businesses by name match
+  const findBusinessBySupplier = (supplierName: string): string => {
+    const match = businesses.find(b =>
+      b.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+      supplierName.toLowerCase().includes(b.name.toLowerCase().split(' ')[0])
+    )
+    return match?.id || featured[0]?.id || ''
+  }
+
+  // Map industry to a tag-based search
+  const handleIndustryClick = (industry: { name: string; emoji: string }) => {
+    // Try to match industry to a tag or category
+    const tagMap: Record<string, string> = {
+      'Agriculture & Farming': 'grocery',
+      'Apparel & Textiles': 'textile',
+      'Automobile Parts': 'auto parts',
+      'Chemicals & Dyes': 'spices',
+      'Construction Materials': 'construction',
+      'Electronics & Electrical': 'electronics',
+      'Food & Beverages': 'restaurant',
+      'Healthcare & Medical': 'doctor',
+      'Heavy Machinery': 'repair',
+      'Home & Lifestyle': 'home service',
+      'Packaging & Printing': 'wholesale',
+      'Plastic & Rubber': 'wholesale'
+    }
+    const tag = tagMap[industry.name] || industry.name.toLowerCase().split(' ')[0]
+    if (onSearchByTag) onSearchByTag(tag)
+    else onCategoryPick(industry.name)
+  }
+
+  // Travel booking quick link click — search by travel-related tags
+  const handleTravelLinkClick = (label: string) => {
+    const tagMap: Record<string, string> = {
+      'Flights': 'travel',
+      'Hotels': 'hotel',
+      'Bus': 'travel',
+      'Trains': 'travel',
+      'Car Rental': 'travel'
+    }
+    const tag = tagMap[label] || 'travel'
+    if (onSearchByTag) onSearchByTag(tag)
+  }
 
   return (
     <div className="space-y-8">
@@ -175,7 +222,12 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
             </h2>
             <p className="text-xs text-muted-foreground">Popular categories across India</p>
           </div>
-          <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 font-semibold text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onGoToTab?.('categories')}
+            className="text-blue-700 hover:text-blue-800 font-semibold text-xs"
+          >
             View All
             <ChevronRight className="w-3.5 h-3.5" />
           </Button>
@@ -210,7 +262,16 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
             </h2>
             <p className="text-xs text-muted-foreground">Most searched products & services this week</p>
           </div>
-          <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 font-semibold text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              // Trigger a search for "trending" or show all
+              if (onSearchByTag) onSearchByTag('')
+              else onCategoryPick('All')
+            }}
+            className="text-blue-700 hover:text-blue-800 font-semibold text-xs"
+          >
             View All
             <ChevronRight className="w-3.5 h-3.5" />
           </Button>
@@ -219,7 +280,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
           {TRENDING_PRODUCTS.map((p, i) => (
             <button
               key={i}
-              onClick={() => onBusinessPick(featured[i % featured.length]?.id || '')}
+              onClick={() => onBusinessPick(findBusinessBySupplier(p.supplier))}
               className="group bg-card border border-border/70 rounded-lg overflow-hidden hover:shadow-md hover:border-brand/40 transition-all text-left"
             >
               {/* Product image area */}
@@ -264,6 +325,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
           {THEMATIC_ZONES.map((zone) => (
             <Card
               key={zone.title}
+              onClick={() => onCategoryPick(zone.title)}
               className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all cursor-pointer group"
             >
               {/* Gradient header */}
@@ -280,7 +342,12 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
                   {zone.services.map((svc) => (
                     <button
                       key={svc}
-                      onClick={() => onCategoryPick(zone.title)}
+                      onClick={() => {
+                        // Search by service name as tag
+                        const tag = svc.toLowerCase().replace(/s$/, '').split(' ')[0]
+                        if (onSearchByTag) onSearchByTag(svc.toLowerCase())
+                        else onCategoryPick(zone.title)
+                      }}
                       className="flex items-center justify-between w-full text-xs hover:text-blue-700 transition-colors group/item"
                     >
                       <span className="font-medium text-foreground/85 group-hover/item:text-blue-700">{svc}</span>
@@ -304,7 +371,15 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
             </h2>
             <p className="text-xs text-muted-foreground">Verified & trusted suppliers near you</p>
           </div>
-          <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 font-semibold text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (onSearchByTag) onSearchByTag('')
+              else onCategoryPick('All')
+            }}
+            className="text-blue-700 hover:text-blue-800 font-semibold text-xs"
+          >
             View All
             <ChevronRight className="w-3.5 h-3.5" />
           </Button>
@@ -373,6 +448,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
             return (
               <button
                 key={item.label}
+                onClick={() => handleTravelLinkClick(item.label)}
                 className="flex flex-col items-center gap-2 p-3 bg-card rounded-lg hover:shadow-md transition-all border border-border/50 hover:border-blue-300"
               >
                 <div
@@ -403,6 +479,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
           {INDUSTRIES.map((ind) => (
             <button
               key={ind.name}
+              onClick={() => handleIndustryClick(ind)}
               className="group flex items-center gap-3 p-3 bg-card border border-border/60 rounded-lg hover:shadow-md hover:border-blue-300 transition-all"
             >
               <div className="w-10 h-10 rounded-lg bg-blue-soft flex items-center justify-center text-xl flex-shrink-0">
@@ -435,6 +512,7 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick }: Pro
           {TOP_CITIES.map((city) => (
             <button
               key={city.name}
+              onClick={() => onSearchByCity?.(city.name)}
               className="group bg-card border border-border/70 rounded-lg p-3 hover:shadow-md hover:border-inquiry/40 transition-all flex items-center gap-3"
             >
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-navy to-blue-700 flex items-center justify-center text-xl flex-shrink-0">

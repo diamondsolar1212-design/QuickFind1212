@@ -17,7 +17,14 @@ export async function GET() {
       'Electronics': '📱',
       'Health & Wellness': '🌿',
       'Handicrafts & Art': '🎨',
-      'Beauty & Personal Care': '💇'
+      'Beauty & Personal Care': '💇',
+      'Real Estate': '🏠',
+      'Doctors': '⚕️',
+      'Wedding Planning': '💍',
+      'Education': '🎓',
+      'Travel Booking': '✈️',
+      'B2B Suppliers': '🏭',
+      'Repair Services': '🛠️'
     }
 
     for (const b of businesses) {

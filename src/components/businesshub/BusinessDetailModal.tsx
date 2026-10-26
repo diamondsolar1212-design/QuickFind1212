@@ -79,9 +79,21 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
         })
       })
       if (res.ok) {
+        const data = await res.json()
         toast.success('Review submitted successfully!')
         setReviewComment('')
         setReviewRating(5)
+        // Refresh business data to show new review + updated rating
+        if (business?.id) {
+          try {
+            const fresh = await fetch(`/api/business?id=${business.id}`)
+            const freshData = await fresh.json()
+            if (freshData.business) {
+              // Update via window event so parent can refresh too
+              window.dispatchEvent(new CustomEvent('business-updated', { detail: freshData.business }))
+            }
+          } catch {}
+        }
       } else {
         toast.error('Failed to submit review')
       }

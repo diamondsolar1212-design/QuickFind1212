@@ -433,6 +433,168 @@ async function main() {
         { name: "Fafda Jalebi Combo", price: "₹180", img: "🍯" },
         { name: "Wedding Catering Plate", price: "₹220/plate", img: "🍽️" }
       ]), ownerId: owner.id
+    },
+
+    // ===== REAL ESTATE =====
+    {
+      name: "Premium Properties India",
+      description: "Verified residential and commercial property dealers. Buy, sell, rent — flats, plots, shops, offices. RERA registered. Loans and legal assistance tie-ups. Specialized in Mumbai, Pune, Bengaluru.",
+      category: "Real Estate", subcategory: "Property Dealers",
+      tags: "real estate,property,flats,plots,rent,buy,sell,rera",
+      phone: "+91 98200 11122",
+      whatsapp: "+91 98200 11122",
+      email: "premium.properties@gmail.com",
+      address: "Linking Road, Bandra West",
+      city: "Mumbai", state: "Maharashtra", pincode: "400050",
+      lat: 19.0610, lng: 72.8350,
+      rating: 4.4, reviewCount: 312,
+      verified: true, premium: true, isB2B: true, isB2C: true,
+      template: "premium", imageColor: "#0891b2", emoji: "🏠",
+      hours: HOURS_PREMIUM, products: JSON.stringify([
+        { name: "1BHK Flat Sale (Bandra)", price: "₹85 L onwards", img: "🏢" },
+        { name: "Commercial Office Space", price: "₹45,000/month", img: "🏢" },
+        { name: "Plot 1000sqft (Pune)", price: "₹35 L", img: "🏞️" },
+        { name: "Property Legal Verification", price: "₹5,000", img: "📋" }
+      ]), ownerId: owner.id
+    },
+
+    // ===== DOCTORS / HEALTHCARE =====
+    {
+      name: "Apollo Family Care Clinic",
+      description: "Multi-speciality family clinic with experienced general physicians, pediatricians, and gynecologists. Online and in-person consultations. Home sample collection for lab tests. 24x7 emergency.",
+      category: "Doctors", subcategory: "General Physicians",
+      tags: "doctor,clinic,physician,pediatrician,healthcare,consultation",
+      phone: "+91 98330 22233",
+      whatsapp: "+91 98330 22233",
+      email: "apollo.familycare@gmail.com",
+      address: "Andheri West, SV Road",
+      city: "Mumbai", state: "Maharashtra", pincode: "400058",
+      lat: 19.1197, lng: 72.8468,
+      rating: 4.6, reviewCount: 421,
+      verified: true, premium: false, isB2B: false, isB2C: true,
+      template: "service", imageColor: "#15803d", emoji: "⚕️",
+      hours: HOURS_SERVICE, products: JSON.stringify([
+        { name: "General Consultation", price: "₹500", img: "👨‍⚕️" },
+        { name: "Pediatric Consultation", price: "₹700", img: "👶" },
+        { name: "Home Blood Sample Collection", price: "₹300", img: "🩸" },
+        { name: "Annual Health Checkup Package", price: "₹3,999", img: "📋" }
+      ]), ownerId: owner.id
+    },
+
+    // ===== WEDDING PLANNING =====
+    {
+      name: "Royal Wedding Planners",
+      description: "Complete wedding planning and management services. Theme decor, catering, photography, mehendi artists, bridal makeup, DJ, venue booking. Specialised in Gujarati, Marwari, and South Indian weddings.",
+      category: "Wedding Planning", subcategory: "Wedding Planners",
+      tags: "wedding,planning,catering,decor,photography,bridal,mehendi",
+      phone: "+91 94140 40404",
+      whatsapp: "+91 94140 40404",
+      email: "royal.weddings@gmail.com",
+      address: "MI Road, Near Ajmeri Gate",
+      city: "Jaipur", state: "Rajasthan", pincode: "302001",
+      lat: 26.9145, lng: 75.7870,
+      rating: 4.7, reviewCount: 156,
+      verified: true, premium: true, isB2B: true, isB2C: true,
+      template: "premium", imageColor: "#c026d3", emoji: "💍",
+      hours: HOURS_PREMIUM, products: JSON.stringify([
+        { name: "Complete Wedding Package (2-day)", price: "₹3,50,000 onwards", img: "💍" },
+        { name: "Theme Decor & Flowers", price: "₹75,000 onwards", img: "💐" },
+        { name: "Candid Photography + Video", price: "₹45,000", img: "📸" },
+        { name: "Bridal Makeup Trial", price: "₹2,500", img: "👰" }
+      ]), ownerId: owner.id
+    },
+
+    // ===== EDUCATION =====
+    {
+      name: "Bright Future Coaching Classes",
+      description: "Premier coaching institute for JEE, NEET, CET, and board exams (CBSE/ICSE/State). Experienced faculty, small batches, regular tests, and doubt-solving sessions. Online + offline modes.",
+      category: "Education", subcategory: "Coaching Institutes",
+      tags: "education,coaching,jee,neet,cet,tuition,classes",
+      phone: "+91 80440 30303",
+      whatsapp: "+91 80440 30303",
+      email: "brightfuture.classes@gmail.com",
+      address: "Brigade Road, Ashoka Nagar",
+      city: "Bengaluru", state: "Karnataka", pincode: "560025",
+      lat: 12.9716, lng: 75.6060,
+      rating: 4.5, reviewCount: 289,
+      verified: true, premium: false, isB2B: false, isB2C: true,
+      template: "service", imageColor: "#7c3aed", emoji: "🎓",
+      hours: HOURS_SERVICE, products: JSON.stringify([
+        { name: "JEE 1-Year Program", price: "₹65,000", img: "📚" },
+        { name: "NEET Crash Course (3 months)", price: "₹35,000", img: "🩺" },
+        { name: "Class 10 Tuition (All subjects)", price: "₹2,500/month", img: "📖" },
+        { name: "Online Test Series (1 year)", price: "₹4,500", img: "💻" }
+      ]), ownerId: owner.id
+    },
+
+    // ===== TRAVEL BOOKING =====
+    {
+      name: "MakeMyTrip Verified Travel Agent",
+      description: "Authorized travel agent for flight bookings, hotel reservations, holiday packages, and visa assistance. Best deals on domestic & international flights. Group booking discounts available.",
+      category: "Travel Booking", subcategory: "Travel Agents",
+      tags: "travel,flights,hotels,holiday package,visa,train,bus",
+      phone: "+91 98100 55555",
+      whatsapp: "+91 98100 55555",
+      email: "travels.mmt.agent@gmail.com",
+      address: "Connaught Place, Block C",
+      city: "Delhi", state: "Delhi", pincode: "110001",
+      lat: 28.6315, lng: 77.2167,
+      rating: 4.5, reviewCount: 567,
+      verified: true, premium: true, isB2B: false, isB2C: true,
+      template: "premium", imageColor: "#0e7490", emoji: "✈️",
+      hours: HOURS_PREMIUM, products: JSON.stringify([
+        { name: "Mumbai to Goa Flight (Round trip)", price: "₹4,500 onwards", img: "✈️" },
+        { name: "Goa Holiday Package (3N/4D)", price: "₹12,999/person", img: "🏖️" },
+        { name: "Hotel Booking (3-star)", price: "₹1,800/night", img: "🏨" },
+        { name: "Visa Assistance (Tourist)", price: "₹2,500", img: "📋" }
+      ]), ownerId: owner.id
+    },
+
+    // ===== B2B SUPPLIERS (more) =====
+    {
+      name: "Mahalaxmi Steel Industries",
+      description: "B2B manufacturer and wholesale supplier of TMT steel bars, MS angles, channels, and structural steel. ISO 9001 certified. Bulk supply to construction companies, fabricators, and infrastructure projects.",
+      category: "B2B Suppliers", subcategory: "Steel & Metals",
+      tags: "b2b,steel,tmt bars,wholesale,manufacturer,construction",
+      phone: "+91 98330 33333",
+      whatsapp: "+91 98330 33333",
+      email: "sales@mahalaxmi.steel.in",
+      website: "https://mahalaxmi-steel.in",
+      address: "Kurla Industrial Estate",
+      city: "Mumbai", state: "Maharashtra", pincode: "400070",
+      lat: 19.0736, lng: 72.8858,
+      rating: 4.4, reviewCount: 198,
+      verified: true, premium: true, isB2B: true, isB2C: false,
+      template: "premium", imageColor: "#475569", emoji: "🏭",
+      hours: HOURS_PREMIUM, products: JSON.stringify([
+        { name: "TMT Steel Bars Fe500 12mm (per ton)", price: "₹58,500", img: "🔩" },
+        { name: "MS Angle 50x50x6mm (per ton)", price: "₹52,000", img: "📐" },
+        { name: "GI Wire Mesh Roll", price: "₹1,800", img: "🕸️" },
+        { name: "Bulk Order Quotation (10+ tons)", price: "On request", img: "📋" }
+      ]), ownerId: owner.id
+    },
+
+    // ===== REPAIR SERVICES (Plumber + Electrician) =====
+    {
+      name: "QuickFix Home Repairs",
+      description: "Trusted home repair service for plumbing, electrical, carpentry, and pest control. Verified technicians, transparent pricing, 30-day service warranty. Same-day service available in metro cities.",
+      category: "Repair Services", subcategory: "Home Repair",
+      tags: "repair,plumber,electrician,carpenter,pest control,home service",
+      phone: "+91 94260 60606",
+      whatsapp: "+91 94260 60606",
+      email: "quickfix.repairs@gmail.com",
+      address: "Satellite Road, Vastrapur",
+      city: "Ahmedabad", state: "Gujarat", pincode: "380015",
+      lat: 23.0379, lng: 72.5290,
+      rating: 4.3, reviewCount: 234,
+      verified: true, premium: false, isB2B: true, isB2C: true,
+      template: "service", imageColor: "#dc2626", emoji: "🔧",
+      hours: HOURS_SERVICE, products: JSON.stringify([
+        { name: "Plumber Visit (within 1 hr)", price: "₹299 onwards", img: "🚿" },
+        { name: "Electrician Service", price: "₹349 onwards", img: "💡" },
+        { name: "Carpenter Repair", price: "₹399 onwards", img: "🪚" },
+        { name: "Pest Control (1BHK)", price: "₹1,200", img: "🐛" }
+      ]), ownerId: owner.id
     }
   ]
 

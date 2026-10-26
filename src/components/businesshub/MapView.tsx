@@ -85,8 +85,7 @@ export function MapView({ businesses, onPickLocation, pickMode = false, height =
         setLocated(true)
       },
       (err) => {
-        // Fallback to Mumbai centre
-        setLocation(19.0760, 72.8777)
+        // Don't auto-fallback. Just stop loading.
         setIsLocating(false)
         setLocated(true)
         console.warn('Geolocation error:', err.message)

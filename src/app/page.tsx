@@ -134,6 +134,16 @@ export default function Home() {
     return () => { cancelled = true }
   }, [selectedBusinessId])
 
+  // Listen for business-updated events (e.g. after review submission)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail) setSelectedBusiness(detail)
+    }
+    window.addEventListener('business-updated', handler)
+    return () => window.removeEventListener('business-updated', handler)
+  }, [])
+
   const getUserLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolocation not supported')
@@ -145,9 +155,14 @@ export default function Home() {
         setLocation(pos.coords.latitude, pos.coords.longitude)
         setIsLocating(false)
       },
-      () => {
-        setLocation(19.0760, 72.8777)
+      (err) => {
+        // Don't auto-fallback to Mumbai. Inform user instead.
         setIsLocating(false)
+        if (err.code === err.PERMISSION_DENIED) {
+          alert('Location permission denied. Please allow location access in your browser settings, or search by city name instead.')
+        } else {
+          alert('Could not detect your location. Please try again or search by city.')
+        }
       },
       { enableHighAccuracy: true, timeout: 8000 }
     )
@@ -414,6 +429,9 @@ export default function Home() {
                   setSelectedCategory(cat)
                 }}
                 onBusinessPick={(id) => setSelectedBusinessId(id)}
+                onSearchByTag={(tag) => setSearchQuery(tag)}
+                onSearchByCity={(city) => setCityQuery(city)}
+                onGoToTab={(tab) => setActiveTab(tab)}
               />
             ) : (
               <>
