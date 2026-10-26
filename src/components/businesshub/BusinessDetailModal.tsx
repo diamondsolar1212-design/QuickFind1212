@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
 import { useApp, type Business } from '@/store/app'
 import { useI18n } from '@/store/i18n'
 import { toast } from 'sonner'
+import { generateBusinessWebsite } from '@/lib/template-engine'
 
 function getTagStyle(themeColor: string | undefined) {
   const c = themeColor || '#0d9488'
@@ -280,9 +281,9 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
 
               {/* About Tab */}
               <TabsContent value="about" className="space-y-5 mt-0">
-                {/* If one of the 5 new premium HTML templates, render full styled website */}
+                {/* If one of the 5 new premium HTML templates, render full HTML website via iframe */}
                 {['calm-sage', 'jungle-gold', 'athletic-bold', 'tech-lime', 'journalism-red'].includes(business.template) ? (
-                  <WebsiteTemplateRenderer business={business} />
+                  <HtmlTemplateRenderer business={business} />
                 ) : (
                   <>
                     {/* Gallery images — rendered in different styles based on template */}
@@ -743,7 +744,46 @@ function GalleryRenderer({ business }: { business: any }) {
   )
 }
 
-// Helper: render business website with template-specific full styling
+// Helper: render full HTML template website via iframe
+function HtmlTemplateRenderer({ business }: { business: any }) {
+  const html = useMemo(() => {
+    return generateBusinessWebsite({
+      name: business.name,
+      description: business.description,
+      category: business.category,
+      subcategory: business.subcategory,
+      city: business.city,
+      state: business.state,
+      address: business.address,
+      phone: business.phone,
+      whatsapp: business.whatsapp,
+      email: business.email,
+      website: business.website,
+      rating: business.rating,
+      reviewCount: business.reviewCount,
+      profileImage: business.profileImage,
+      imageUrls: business.imageUrls,
+      products: business.products,
+      hours: business.hours,
+      themeColor: business.themeColor,
+      template: business.template
+    })
+  }, [business])
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-border/60 shadow-lg">
+      <iframe
+        srcDoc={html}
+        title={`${business.name} Website`}
+        className="w-full"
+        style={{ height: '80vh', minHeight: '600px', border: 'none' }}
+        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+      />
+    </div>
+  )
+}
+
+// Helper: render business website with template-specific full styling (OLD — kept for fallback)
 function WebsiteTemplateRenderer({ business }: { business: any }) {
   const tpl = business.template || 'retail'
   const accent = business.themeColor || '#0d9488'
