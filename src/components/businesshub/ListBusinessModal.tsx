@@ -288,34 +288,184 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   <div className="grid lg:grid-cols-[1fr_420px] gap-5">
                     {/* ===== LEFT: Customization ===== */}
                     <div className="space-y-4 min-w-0">
-                      {/* Base template selection */}
+                      {/* Base template selection — visual previews */}
                       <div>
-                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Base Template</Label>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Choose Template</Label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
                           {TEMPLATES.map((tpl) => {
-                            const Icon = tpl.icon
                             const selected = form.template === tpl.id
+
+                            // Template-specific visual preview data
+                            const PREVIEW_STYLES: Record<string, {
+                              bg: string
+                              heroBg: string
+                              heroText: string
+                              textColor: string
+                              font: string
+                              uppercase: boolean
+                              imgFilter: string
+                              label: string
+                              ctaText: string
+                              ctaBg: string
+                              ctaColor: string
+                            }> = {
+                              'retail': {
+                                bg: '#ffffff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
+                                font: 'sans', uppercase: false, imgFilter: 'none', label: 'Store',
+                                ctaText: 'Get Best Price', ctaBg: tpl.color, ctaColor: '#fff'
+                              },
+                              'restaurant': {
+                                bg: '#ffffff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
+                                font: 'sans', uppercase: false, imgFilter: 'none', label: 'Dining',
+                                ctaText: 'Book Table', ctaBg: tpl.color, ctaColor: '#fff'
+                              },
+                              'service': {
+                                bg: '#ffffff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
+                                font: 'sans', uppercase: false, imgFilter: 'none', label: 'Service',
+                                ctaText: 'Book Now', ctaBg: tpl.color, ctaColor: '#fff'
+                              },
+                              'premium': {
+                                bg: '#faf5ff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
+                                font: 'serif', uppercase: false, imgFilter: 'none', label: 'Boutique',
+                                ctaText: 'Enquire', ctaBg: tpl.color, ctaColor: '#fff'
+                              },
+                              'calm-sage': {
+                                bg: '#f4ede0', heroBg: '#8a9a87', heroText: '#f4ede0', textColor: '#2c2620',
+                                font: 'serif', uppercase: false, imgFilter: 'brightness(0.9) saturate(0.85)', label: 'Studio',
+                                ctaText: 'Reserve', ctaBg: '#b16a48', ctaColor: '#f4ede0'
+                              },
+                              'jungle-gold': {
+                                bg: '#05140A', heroBg: '#0D2818', heroText: '#F5F5DC', textColor: '#F5F5DC',
+                                font: 'serif', uppercase: false, imgFilter: 'brightness(0.6)', label: 'Atelier',
+                                ctaText: 'Enquire', ctaBg: '#C9A227', ctaColor: '#05140A'
+                              },
+                              'athletic-bold': {
+                                bg: '#0a0a0a', heroBg: '#141414', heroText: '#f5f5f5', textColor: '#f5f5f5',
+                                font: 'sans', uppercase: true, imgFilter: 'grayscale(100%) contrast(1.3) brightness(0.5)', label: 'FORGE',
+                                ctaText: 'BOOK NOW', ctaBg: '#FF5400', ctaColor: '#000'
+                              },
+                              'tech-lime': {
+                                bg: '#0d0e14', heroBg: '#1a1d28', heroText: '#f0ebe1', textColor: '#f0ebe1',
+                                font: 'monospace', uppercase: false, imgFilter: 'brightness(0.5) saturate(0.8)', label: '// Lab',
+                                ctaText: 'Explore', ctaBg: '#d4ff3a', ctaColor: '#0d0e14'
+                              },
+                              'journalism-red': {
+                                bg: '#080808', heroBg: '#111111', heroText: '#f5f5f5', textColor: '#f5f5f5',
+                                font: 'sans', uppercase: true, imgFilter: 'brightness(0.6) saturate(0.7)', label: 'REVIEW',
+                                ctaText: 'READ MORE', ctaBg: '#ff2a2a', ctaColor: '#000'
+                              }
+                            }
+
+                            const ps = PREVIEW_STYLES[tpl.id] || PREVIEW_STYLES['retail']
+
                             return (
                               <button
                                 key={tpl.id}
                                 onClick={() => update('template', tpl.id)}
-                                className={`text-left p-3 rounded-lg border-2 transition-all relative ${
-                                  selected ? 'border-brand bg-brand-soft/30 shadow-sm' : 'border-border bg-card hover:border-brand/40'
+                                className={`text-left rounded-lg border-2 overflow-hidden transition-all relative ${
+                                  selected ? 'border-brand shadow-md scale-[1.02]' : 'border-border hover:border-brand/40 hover:scale-[1.01]'
                                 }`}
                               >
                                 {tpl.premium && (
-                                  <span className="absolute top-1.5 right-1.5 text-amber-500">
+                                  <span className="absolute top-1.5 right-1.5 z-10 text-amber-500 bg-black/60 rounded-full p-0.5">
                                     <Crown className="w-3 h-3" />
                                   </span>
                                 )}
+                                {selected && (
+                                  <span className="absolute top-1.5 left-1.5 z-10 bg-brand text-brand-foreground rounded-full p-0.5">
+                                    <Check className="w-3 h-3" />
+                                  </span>
+                                )}
+
+                                {/* Mini website preview */}
                                 <div
-                                  className="w-8 h-8 rounded-md flex items-center justify-center text-base mb-1.5"
-                                  style={{ background: tpl.color + '20', color: tpl.color }}
+                                  className="p-2 space-y-1.5"
+                                  style={{
+                                    background: ps.bg,
+                                    color: ps.textColor,
+                                    fontFamily: ps.font === 'serif' ? 'Georgia, serif' : ps.font === 'monospace' ? 'monospace' : 'inherit'
+                                  }}
                                 >
-                                  <Icon className="w-4 h-4" />
+                                  {/* Hero bar */}
+                                  <div
+                                    className="rounded p-1.5 flex items-center justify-between"
+                                    style={{ background: ps.heroBg, color: ps.heroText }}
+                                  >
+                                    <div
+                                      className="text-[9px] font-bold leading-none"
+                                      style={{
+                                        textTransform: ps.uppercase ? 'uppercase' : 'none',
+                                        letterSpacing: ps.uppercase ? '-0.02em' : '0'
+                                      }}
+                                    >
+                                      {tpl.emoji} Business
+                                    </div>
+                                    <div className="text-[7px] opacity-70">{ps.label}</div>
+                                  </div>
+
+                                  {/* Image placeholders */}
+                                  <div className="flex gap-1">
+                                    <div
+                                      className="w-8 h-8 rounded overflow-hidden flex-shrink-0 flex items-center justify-center"
+                                      style={{
+                                        background: ps.bg === '#ffffff' ? '#f0f0f0' : 'rgba(255,255,255,0.05)',
+                                        filter: ps.imgFilter === 'none' ? 'none' : 'grayscale(100%) brightness(0.6)'
+                                      }}
+                                    >
+                                      <span className="text-xs">{tpl.emoji}</span>
+                                    </div>
+                                    <div className="flex-1 space-y-0.5">
+                                      <div className="h-1.5 rounded" style={{ background: ps.textColor + '20', width: '80%' }} />
+                                      <div className="h-1 rounded" style={{ background: ps.textColor + '15', width: '60%' }} />
+                                      <div className="h-1 rounded" style={{ background: ps.textColor + '10', width: '70%' }} />
+                                    </div>
+                                  </div>
+
+                                  {/* Product chips */}
+                                  <div className="flex gap-0.5">
+                                    <span
+                                      className="text-[6px] px-1 py-0.5 rounded font-medium"
+                                      style={{ background: tpl.color + '20', color: tpl.color }}
+                                    >
+                                      ₹450
+                                    </span>
+                                    <span
+                                      className="text-[6px] px-1 py-0.5 rounded font-medium"
+                                      style={{ background: tpl.color + '20', color: tpl.color }}
+                                    >
+                                      ₹320
+                                    </span>
+                                  </div>
+
+                                  {/* CTA button */}
+                                  <div
+                                    className="text-[7px] font-bold text-center py-1 rounded"
+                                    style={{
+                                      background: ps.ctaBg,
+                                      color: ps.ctaColor,
+                                      textTransform: ps.uppercase ? 'uppercase' : 'none',
+                                      letterSpacing: ps.uppercase ? '0.05em' : '0'
+                                    }}
+                                  >
+                                    {ps.ctaText}
+                                  </div>
                                 </div>
-                                <div className="font-bold text-xs leading-tight">{typeof tpl.name === 'string' && tpl.name.startsWith('list_') ? t(tpl.name as any) : tpl.name}</div>
-                                <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-tight">{typeof tpl.desc === 'string' && tpl.desc.startsWith('list_') ? t(tpl.desc as any) : tpl.desc}</div>
+
+                                {/* Template name */}
+                                <div
+                                  className="px-2 py-1.5 border-t"
+                                  style={{
+                                    background: ps.bg,
+                                    borderColor: ps.textColor + '10'
+                                  }}
+                                >
+                                  <div
+                                    className="font-bold text-[10px] leading-tight"
+                                    style={{ color: ps.textColor }}
+                                  >
+                                    {typeof tpl.name === 'string' && tpl.name.startsWith('list_') ? t(tpl.name as any) : tpl.name}
+                                  </div>
+                                </div>
                               </button>
                             )
                           })}
