@@ -292,7 +292,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       {/* Base template selection — visual previews */}
                       <div>
                         <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Choose Template</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {TEMPLATES.map((tpl) => {
                             const selected = form.template === tpl.id
 
@@ -379,16 +379,16 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                 )}
 
                                 {/* Real HTML template preview via iframe */}
-                                <div style={{ height: '160px', overflow: 'hidden', pointerEvents: 'none' }}>
+                                <div style={{ height: '240px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
                                   <iframe
                                     srcDoc={generateBusinessWebsite({
-                                      name: form.name || 'Your Business',
-                                      description: form.description || 'Premium business website preview',
+                                      name: form.name || 'Sample Business',
+                                      description: form.description || 'Premium business website with quality products and services.',
                                       category: form.category || 'Category',
-                                      city: form.city || 'City',
-                                      state: form.state || 'State',
-                                      address: form.address || 'Address',
-                                      phone: form.phone || '+91 00000 00000',
+                                      city: form.city || 'Mumbai',
+                                      state: form.state || 'Maharashtra',
+                                      address: form.address || 'Main Road',
+                                      phone: form.phone || '+91 98765 43210',
                                       rating: 4.5,
                                       reviewCount: 100,
                                       profileImage: profileImage,
@@ -400,12 +400,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                     })}
                                     title={tpl.id + ' preview'}
                                     style={{
-                                      width: '400px',
-                                      height: '400px',
+                                      width: '600px',
+                                      height: '600px',
                                       border: 'none',
-                                      transform: 'scale(0.45)',
-                                  transformOrigin: 'top left',
-                                  pointerEvents: 'none'
+                                      transform: 'scale(0.42)',
+                                      transformOrigin: 'top left',
+                                      pointerEvents: 'none',
+                                      position: 'absolute',
+                                      top: '0',
+                                      left: '0'
                                     }}
                                     sandbox="allow-same-origin"
                                     loading="lazy"
