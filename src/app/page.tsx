@@ -21,6 +21,7 @@ import { ListBusinessModal } from '@/components/businesshub/ListBusinessModal'
 import { AuthModal } from '@/components/businesshub/AuthModal'
 import { CategoriesGrid } from '@/components/businesshub/CategoriesGrid'
 import { ThemePicker } from '@/components/businesshub/ThemePicker'
+import { HomeSections } from '@/components/businesshub/HomeSections'
 
 // MapView uses react-leaflet which needs `window`. Load it on client only.
 const MapView = dynamic(
@@ -405,6 +406,17 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Home sections shown when no active search/filter */}
+            {!searchQuery && !cityQuery && selectedCategory === 'All' && !userLat && !verifiedOnly && !premiumOnly && !businessType ? (
+              <HomeSections
+                businesses={businesses}
+                onCategoryPick={(cat) => {
+                  setSelectedCategory(cat)
+                }}
+                onBusinessPick={(id) => setSelectedBusinessId(id)}
+              />
+            ) : (
+              <>
             {/* Top bar: results count + actions */}
             <div className="flex items-center justify-between flex-wrap gap-2 bg-card border border-border/60 rounded-lg px-4 py-2.5 shadow-sm">
               <div className="flex items-center gap-3 flex-wrap">
@@ -528,6 +540,8 @@ export default function Home() {
                 </div>
               </aside>
             </div>
+              </>
+            )}
           </div>
         )}
       </main>

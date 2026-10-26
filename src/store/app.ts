@@ -43,7 +43,7 @@ export interface Business {
   distance?: number
 }
 
-export type DesignTheme = 'justdial' | 'dark-gold' | 'mint' | 'editorial'
+export type DesignTheme = 'combined' | 'justdial' | 'dark-gold' | 'mint' | 'editorial'
 
 interface AppState {
   user: User | null
@@ -102,9 +102,9 @@ export const useApp = create<AppState>()(
       setUser: (user) => set({ user }),
       logout: () => set({ user: null }),
 
-      theme: 'justdial',
+      theme: 'combined',
       setTheme: (theme) => set({ theme }),
-      showThemePicker: true,
+      showThemePicker: false,
       setShowThemePicker: (v) => set({ showThemePicker: v }),
 
       searchQuery: '',
