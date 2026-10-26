@@ -20,7 +20,6 @@ import { BusinessDetailModal } from '@/components/businesshub/BusinessDetailModa
 import { ListBusinessModal } from '@/components/businesshub/ListBusinessModal'
 import { AuthModal } from '@/components/businesshub/AuthModal'
 import { CategoriesGrid } from '@/components/businesshub/CategoriesGrid'
-import { ThemePicker } from '@/components/businesshub/ThemePicker'
 import { HomeSections } from '@/components/businesshub/HomeSections'
 
 // MapView uses react-leaflet which needs `window`. Load it on client only.
@@ -49,7 +48,6 @@ const TOP_CATEGORIES = [
 export default function Home() {
   const {
     user, logout,
-    theme,
     searchQuery, setSearchQuery,
     cityQuery, setCityQuery,
     userLat, userLng, setLocation, isLocating, setIsLocating,
@@ -171,9 +169,9 @@ export default function Home() {
   const handleSearch = () => fetchBusinesses()
 
   return (
-    <div data-theme={theme} className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* ===== TOP HEADER ===== */}
-      <header className={`sticky top-0 z-50 shadow-md ${theme === 'editorial' ? 'bg-card text-foreground border-b-4 border-brand' : 'bg-navy text-navy-foreground'}`}>
+      <header className="sticky top-0 z-50 bg-navy text-navy-foreground shadow-md">
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
           {/* Row 1: logo + search + actions */}
           <div className="h-16 flex items-center gap-3 sm:gap-5">
@@ -637,9 +635,6 @@ export default function Home() {
 
       {/* ===== Post Requirement Modal ===== */}
       <PostRequirementModal open={showPostRequirement} onClose={() => setShowPostRequirement(false)} />
-
-      {/* ===== Theme Picker — switch between 4 design options ===== */}
-      <ThemePicker />
 
       {/* ===== Mobile filters drawer (simple) ===== */}
       {showFiltersMobile && (
