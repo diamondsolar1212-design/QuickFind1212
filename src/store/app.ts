@@ -9,6 +9,7 @@ export interface User {
   name?: string | null
   phone?: string | null
   role: 'CUSTOMER' | 'BUSINESS_OWNER'
+  isAdmin?: boolean
 }
 
 export interface Business {

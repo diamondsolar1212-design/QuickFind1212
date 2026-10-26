@@ -17,6 +17,7 @@ model User {
   phone     String?
   password  String
   role      String     @default("CUSTOMER") // CUSTOMER | BUSINESS_OWNER
+  isAdmin   Boolean    @default(false)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   businesses Business[]

@@ -22,6 +22,8 @@ import { AuthModal } from '@/components/businesshub/AuthModal'
 import { CategoriesGrid } from '@/components/businesshub/CategoriesGrid'
 import { HomeSections } from '@/components/businesshub/HomeSections'
 import { NearbyPlaceCard } from '@/components/businesshub/NearbyPlaceCard'
+import { UserPanel } from '@/components/businesshub/UserPanel'
+import { AdminPanel } from '@/components/businesshub/AdminPanel'
 
 // MapView uses react-leaflet which needs `window`. Load it on client only.
 const MapView = dynamic(
@@ -69,6 +71,8 @@ export default function Home() {
   const [showFiltersMobile, setShowFiltersMobile] = useState(false)
   const [showMapMobile, setShowMapMobile] = useState(false)
   const [showPostRequirement, setShowPostRequirement] = useState(false)
+  const [showUserPanel, setShowUserPanel] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
 
   // Nearby POIs from OpenStreetMap (Overpass API)
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([])
@@ -306,13 +310,31 @@ export default function Home() {
               </Button>
 
               {user ? (
-                <div className="flex items-center gap-2">
-                  <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-navy-foreground/10">
+                <div className="flex items-center gap-1.5">
+                  {/* Admin Panel button (only for admins) */}
+                  {user.isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowAdminPanel(true)}
+                      className="text-navy-foreground hover:text-red-400 hover:bg-transparent text-xs font-semibold"
+                      title="Admin Panel"
+                    >
+                      <ShieldCheck className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline">Admin</span>
+                    </Button>
+                  )}
+                  {/* My Account button */}
+                  <button
+                    onClick={() => setShowUserPanel(true)}
+                    className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-navy-foreground/10 hover:bg-navy-foreground/20 transition-colors"
+                    title="My Account"
+                  >
                     <div className="w-6 h-6 rounded-full bg-brand text-brand-foreground flex items-center justify-center text-[11px] font-bold">
                       {user.name?.[0] || user.email[0].toUpperCase()}
                     </div>
-                    <span className="text-xs font-medium">{user.name?.split(' ')[0] || user.email.split('@')[0]}</span>
-                  </div>
+                    <span className="text-xs font-medium hidden sm:inline">{user.name?.split(' ')[0] || user.email.split('@')[0]}</span>
+                  </button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -791,6 +813,16 @@ export default function Home() {
 
       {/* ===== Post Requirement Modal ===== */}
       <PostRequirementModal open={showPostRequirement} onClose={() => setShowPostRequirement(false)} />
+
+      {/* ===== User Panel (logged-in users) ===== */}
+      {showUserPanel && user && (
+        <UserPanel onClose={() => setShowUserPanel(false)} />
+      )}
+
+      {/* ===== Admin Panel (admin only) ===== */}
+      {showAdminPanel && user?.isAdmin && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
 
       {/* ===== Mobile filters drawer (simple) ===== */}
       {showFiltersMobile && (

@@ -75,6 +75,18 @@ async function main() {
     }
   })
 
+  // Create admin user
+  await db.user.create({
+    data: {
+      email: 'admin@businesshub.in',
+      name: 'Platform Admin',
+      phone: '+91 90000 00000',
+      password: 'admin123',
+      role: 'CUSTOMER',
+      isAdmin: true
+    }
+  })
+
   const businesses = [
     // ====== MUMBAI ======
     {
