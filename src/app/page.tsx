@@ -265,7 +265,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* ===== TOP HEADER ===== */}
       <header className="sticky top-0 z-50 bg-navy text-navy-foreground shadow-md">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8">
           {/* Row 1: logo + search + actions */}
           <div className="h-16 flex items-center gap-3 sm:gap-5">
             {/* Logo */}
@@ -438,7 +438,7 @@ export default function Home() {
       {/* ===== HORIZONTAL CATEGORY CHIPS STRIP ===== */}
       {activeTab !== 'categories' && (
         <div className="bg-card border-b border-border/60 shadow-sm">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-8 py-2">
             <div className="flex items-center gap-2 overflow-x-auto chip-strip">
               <button
                 onClick={() => setSelectedCategory('All')}
@@ -473,7 +473,7 @@ export default function Home() {
       )}
 
       {/* ===== MAIN CONTENT ===== */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-8 py-4 sm:py-6">
         {activeTab === 'categories' ? (
           <div className="space-y-5">
             <div className="bg-gradient-to-r from-navy to-navy/80 text-navy-foreground rounded-lg px-5 py-4">
@@ -761,7 +761,7 @@ export default function Home() {
 
       {/* ===== FOOTER (IndiaMART style) ===== */}
       <footer className="bg-navy text-navy-foreground mt-auto">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-3">
