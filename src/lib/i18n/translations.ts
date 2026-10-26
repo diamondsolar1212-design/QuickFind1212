@@ -11,6 +11,10 @@ export const translations = {
     nav_logout: 'Logout',
     nav_myAccount: 'My Account',
     nav_myBusinesses: 'My Businesses',
+    nav_postRequirement: 'Post Your Requirement',
+    nav_forBuyers: 'For Buyers',
+    nav_forSellers: 'For Sellers',
+    nav_allCategories: 'All Categories',
 
     // Hero
     hero_badge: 'India\'s Premium B2B + B2C Marketplace',
@@ -63,6 +67,20 @@ export const translations = {
     card_whatsapp: 'WhatsApp',
     card_viewDetails: 'View Details',
     card_reviews: '{count} reviews',
+    card_getBestPrice: 'Get Best Price',
+    card_sendInquiry: 'Send Inquiry',
+    card_visitStore: 'Visit Store',
+    card_postRequirement: 'Post Requirement',
+    card_trustSeal: 'TrustSEAL Verified',
+    card_supplier: 'Supplier',
+    card_manufacturer: 'Manufacturer',
+    card_wholesaler: 'Wholesaler',
+    card_retailer: 'Retailer',
+    card_serviceProvider: 'Service Provider',
+    card_yearEstablished: 'Est. {year}',
+    card_responseRate: '{rate}% response rate',
+    card_verifiedSupplier: 'Verified Supplier',
+    card_topSupplier: 'Top Supplier',
 
     // Business Detail
     detail_about: 'About',
@@ -176,6 +194,10 @@ export const translations = {
     nav_logout: 'लॉगआउट',
     nav_myAccount: 'मेरा खाता',
     nav_myBusinesses: 'मेरे व्यवसाय',
+    nav_postRequirement: 'अपनी आवश्यकता दर्ज करें',
+    nav_forBuyers: 'खरीदारों के लिए',
+    nav_forSellers: 'विक्रेताओं के लिए',
+    nav_allCategories: 'सभी श्रेणियाँ',
 
     // Hero
     hero_badge: 'भारत का प्रीमियम B2B + B2C मार्केटप्लेस',
@@ -228,6 +250,20 @@ export const translations = {
     card_whatsapp: 'व्हाट्सऐप',
     card_viewDetails: 'विवरण देखें',
     card_reviews: '{count} समीक्षाएँ',
+    card_getBestPrice: 'बेहतरीन मूल्य पाएं',
+    card_sendInquiry: 'पूछताछ भेजें',
+    card_visitStore: 'स्टोर देखें',
+    card_postRequirement: 'आवश्यकता दर्ज करें',
+    card_trustSeal: 'TrustSEAL सत्यापित',
+    card_supplier: 'आपूर्तिकर्ता',
+    card_manufacturer: 'निर्माता',
+    card_wholesaler: 'थोक व्यापारी',
+    card_retailer: 'रिटेलर',
+    card_serviceProvider: 'सेवा प्रदाता',
+    card_yearEstablished: 'स्थापित {year}',
+    card_responseRate: '{rate}% प्रतिक्रिया दर',
+    card_verifiedSupplier: 'सत्यापित आपूर्तिकर्ता',
+    card_topSupplier: 'शीर्ष आपूर्तिकर्ता',
 
     // Business Detail
     detail_about: 'परिचय',

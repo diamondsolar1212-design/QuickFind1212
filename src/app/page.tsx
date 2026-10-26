@@ -11,8 +11,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Search, MapPin, LocateFixed, Store, LayoutGrid, Map as MapIcon, Languages,
-  ShieldCheck, Users, Building2, Star, Loader2, ChevronRight, Sparkles,
-  TrendingUp, Crown, Fingerprint
+  ShieldCheck, Users, Building2, Star, Loader2, ChevronRight, ChevronLeft,
+  TrendingUp, Crown, Sparkles, Megaphone, X, ChevronDown, Menu, Phone,
+  Tag, MessageCircle, IndianRupee, Award, Briefcase, Truck
 } from 'lucide-react'
 import { BusinessCard } from '@/components/businesshub/BusinessCard'
 import { FilterPanel } from '@/components/businesshub/FilterPanel'
@@ -24,8 +25,25 @@ import { CategoriesGrid } from '@/components/businesshub/CategoriesGrid'
 // MapView uses react-leaflet which needs `window`. Load it on client only.
 const MapView = dynamic(
   () => import('@/components/businesshub/MapView').then((m) => m.MapView),
-  { ssr: false, loading: () => <Skeleton className="h-[600px] rounded-xl" /> }
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-full rounded-md" />
+  }
 )
+
+const TOP_CATEGORIES = [
+  { name: 'Grocery & Essentials', emoji: '🛒', color: '#16a34a' },
+  { name: 'Restaurants', emoji: '🍽️', color: '#dc2626' },
+  { name: 'Home Services', emoji: '🔧', color: '#0891b2' },
+  { name: 'Textiles & Apparel', emoji: '🧵', color: '#7c3aed' },
+  { name: 'Food & Sweets', emoji: '🍯', color: '#c026d3' },
+  { name: 'Food & Beverages', emoji: '☕', color: '#92400e' },
+  { name: 'Automobile', emoji: '🚗', color: '#475569' },
+  { name: 'Electronics', emoji: '📱', color: '#0284c7' },
+  { name: 'Health & Wellness', emoji: '🌿', color: '#15803d' },
+  { name: 'Beauty & Personal Care', emoji: '💇', color: '#be185d' },
+  { name: 'Handicrafts & Art', emoji: '🎨', color: '#db2777' }
+]
 
 export default function Home() {
   const {
@@ -47,8 +65,10 @@ export default function Home() {
   const [categories, setCategories] = useState<{ name: string; emoji: string; count: number; subcategories: string[] }[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false)
+  const [showMapMobile, setShowMapMobile] = useState(false)
+  const [showPostRequirement, setShowPostRequirement] = useState(false)
 
-  // Fetch categories once
   useEffect(() => {
     fetch('/api/categories')
       .then((r) => r.json())
@@ -56,7 +76,6 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
-  // Fetch businesses whenever filters change
   const fetchBusinesses = useCallback(async () => {
     setLoading(true)
     try {
@@ -78,7 +97,6 @@ export default function Home() {
       const data = await res.json()
       let list: Business[] = data.businesses || []
 
-      // Client-side sort (since premium + distance sort is already done server-side when lat/lng present)
       if (!userLat) {
         if (sortBy === 'rating') list.sort((a, b) => b.rating - a.rating)
         else if (sortBy === 'reviews') list.sort((a, b) => b.reviewCount - a.reviewCount)
@@ -100,11 +118,8 @@ export default function Home() {
     return () => clearTimeout(timeout)
   }, [fetchBusinesses])
 
-  // Fetch selected business detail
   useEffect(() => {
-    if (!selectedBusinessId) {
-      return
-    }
+    if (!selectedBusinessId) return
     let cancelled = false
     fetch(`/api/business?id=${selectedBusinessId}`)
       .then((r) => r.json())
@@ -114,9 +129,7 @@ export default function Home() {
       .catch(() => {
         if (!cancelled) setSelectedBusiness(null)
       })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [selectedBusinessId])
 
   const getUserLocation = () => {
@@ -130,11 +143,9 @@ export default function Home() {
         setLocation(pos.coords.latitude, pos.coords.longitude)
         setIsLocating(false)
       },
-      (err) => {
-        // Fallback to Mumbai
+      () => {
         setLocation(19.0760, 72.8777)
         setIsLocating(false)
-        console.warn('Geo error:', err.message)
       },
       { enableHighAccuracy: true, timeout: 8000 }
     )
@@ -144,392 +155,426 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* ===== Top Navbar ===== */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand/80 flex items-center justify-center text-brand-foreground shadow-sm">
-              <Store className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-serif font-bold text-lg leading-none">
-                Business<span className="text-brand">Hub</span>
+      {/* ===== TOP NAVY HEADER ===== */}
+      <header className="sticky top-0 z-50 bg-navy text-navy-foreground shadow-md">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6">
+          {/* Row 1: logo + search + actions */}
+          <div className="h-16 flex items-center gap-3 sm:gap-5">
+            {/* Logo */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-10 h-10 rounded-md bg-brand flex items-center justify-center text-brand-foreground font-black text-lg shadow-sm">
+                B
               </div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">India</div>
-            </div>
-          </div>
-
-          {/* Center nav (desktop) */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('discover')} className={activeTab === 'discover' ? 'bg-brand-soft text-brand' : ''}>
-              <LayoutGrid className="w-4 h-4 mr-1.5" />
-              {t('nav_discover')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('map')} className={activeTab === 'map' ? 'bg-brand-soft text-brand' : ''}>
-              <MapIcon className="w-4 h-4 mr-1.5" />
-              {t('nav_map')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('categories')} className={activeTab === 'categories' ? 'bg-brand-soft text-brand' : ''}>
-              <Sparkles className="w-4 h-4 mr-1.5" />
-              {t('nav_categories')}
-            </Button>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggle}
-              className="text-muted-foreground hover:text-brand gap-1.5 font-medium"
-              title="Switch language"
-            >
-              <Languages className="w-4 h-4" />
-              <span className="text-xs hidden sm:inline">{lang === 'en' ? 'हिं' : 'EN'}</span>
-            </Button>
-            {user ? (
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
-                  <div className="w-7 h-7 rounded-full bg-brand text-brand-foreground flex items-center justify-center text-xs font-semibold">
-                    {user.name?.[0] || user.email[0].toUpperCase()}
-                  </div>
-                  <div className="text-xs">
-                    <div className="font-medium leading-none">{user.name || user.email}</div>
-                    <div className="text-muted-foreground">{user.role === 'BUSINESS_OWNER' ? 'Owner' : 'Customer'}</div>
-                  </div>
+              <div className="hidden sm:block">
+                <div className="font-bold text-lg leading-none">
+                  Business<span className="text-brand">Hub</span>
                 </div>
-                <Button variant="outline" size="sm" onClick={logout} className="text-xs">
-                  {t('nav_logout')}
+                <div className="text-[10px] text-navy-foreground/70 uppercase tracking-wider mt-0.5">India · B2B + B2C</div>
+              </div>
+            </div>
+
+            {/* Search bar — prominent, IndiaMART style */}
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-stretch bg-white rounded-md overflow-hidden border-2 border-brand shadow-sm">
+                <div className="hidden sm:flex items-center pl-3 text-muted-foreground">
+                  <Search className="w-4 h-4" />
+                </div>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search products, suppliers, buyers, services..."
+                  className="flex-1 h-10 sm:h-11 px-3 sm:pl-2 text-sm text-foreground placeholder:text-muted-foreground bg-transparent outline-none min-w-0"
+                />
+                <div className="hidden sm:flex items-center px-2 border-l border-border">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <input
+                  value={cityQuery}
+                  onChange={(e) => setCityQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="City"
+                  className="hidden sm:block w-24 h-10 sm:h-11 px-2 text-sm text-foreground placeholder:text-muted-foreground bg-transparent outline-none"
+                />
+                <Button
+                  onClick={handleSearch}
+                  className="rounded-none h-10 sm:h-11 bg-brand hover:bg-brand/90 text-brand-foreground font-bold px-4 sm:px-6"
+                >
+                  <Search className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">{t('hero_searchBtn')}</span>
                 </Button>
               </div>
-            ) : (
-              <Button size="sm" variant="outline" onClick={() => setShowAuthModal(true)} className="border-brand/30 text-brand hover:bg-brand-soft">
-                {t('nav_login')}
-              </Button>
-            )}
-            <Button
-              size="sm"
-              className="bg-brand hover:bg-brand/90 text-brand-foreground hidden sm:flex"
-              onClick={() => {
-                if (!user) {
-                  setShowAuthModal(true)
-                } else {
-                  setShowListModal(true)
-                }
-              }}
-            >
-              <Store className="w-4 h-4 mr-1.5" />
-              {t('nav_listBusiness')}
-            </Button>
-          </div>
-        </div>
+            </div>
 
-        {/* Mobile nav */}
-        <div className="md:hidden border-t border-border/60 px-2 py-1.5 flex items-center gap-1 overflow-x-auto">
-          <Button variant="ghost" size="sm" onClick={() => setActiveTab('discover')} className={activeTab === 'discover' ? 'bg-brand-soft text-brand' : ''}>
-            <LayoutGrid className="w-3.5 h-3.5 mr-1" />
-            <span className="text-xs">{t('nav_discover')}</span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setActiveTab('map')} className={activeTab === 'map' ? 'bg-brand-soft text-brand' : ''}>
-            <MapIcon className="w-3.5 h-3.5 mr-1" />
-            <span className="text-xs">{t('nav_map')}</span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setActiveTab('categories')} className={activeTab === 'categories' ? 'bg-brand-soft text-brand' : ''}>
-            <Sparkles className="w-3.5 h-3.5 mr-1" />
-            <span className="text-xs">{t('nav_categories')}</span>
-          </Button>
+            {/* Right actions */}
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <button
+                onClick={getUserLocation}
+                disabled={isLocating}
+                title={t('hero_useLocation')}
+                className="hidden sm:flex items-center gap-1.5 text-navy-foreground hover:text-brand text-xs font-medium disabled:opacity-60"
+              >
+                {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />}
+                <span className="hidden md:inline">{userLat ? `${userLat.toFixed(2)}, ${userLng?.toFixed(2)}` : t('hero_useLocation')}</span>
+              </button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggle}
+                className="text-navy-foreground hover:text-brand hover:bg-transparent px-2"
+              >
+                <Languages className="w-4 h-4" />
+                <span className="text-xs ml-1">{lang === 'en' ? 'हिं' : 'EN'}</span>
+              </Button>
+
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-navy-foreground/10">
+                    <div className="w-6 h-6 rounded-full bg-brand text-brand-foreground flex items-center justify-center text-[11px] font-bold">
+                      {user.name?.[0] || user.email[0].toUpperCase()}
+                    </div>
+                    <span className="text-xs font-medium">{user.name?.split(' ')[0] || user.email.split('@')[0]}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={logout}
+                    className="text-navy-foreground hover:text-brand hover:bg-transparent text-xs"
+                  >
+                    {t('nav_logout')}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowAuthModal(true)}
+                  className="text-navy-foreground hover:text-brand hover:bg-transparent font-semibold text-sm"
+                >
+                  {t('nav_login')}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: tab nav + Post Requirement CTA */}
+          <div className="h-10 flex items-center justify-between border-t border-navy-foreground/10">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab('discover')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                  activeTab === 'discover' ? 'text-brand border-b-2 border-brand' : 'text-navy-foreground/80 hover:text-brand'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                {t('nav_discover')}
+              </button>
+              <button
+                onClick={() => setActiveTab('map')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                  activeTab === 'map' ? 'text-brand border-b-2 border-brand' : 'text-navy-foreground/80 hover:text-brand'
+                }`}
+              >
+                <MapIcon className="w-3.5 h-3.5" />
+                {t('nav_map')}
+              </button>
+              <button
+                onClick={() => setActiveTab('categories')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                  activeTab === 'categories' ? 'text-brand border-b-2 border-brand' : 'text-navy-foreground/80 hover:text-brand'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                {t('nav_categories')}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setShowPostRequirement(true)}
+                className="bg-inquiry hover:bg-inquiry/90 text-inquiry-foreground font-bold text-xs h-8"
+              >
+                <Megaphone className="w-3.5 h-3.5 mr-1" />
+                <span className="hidden sm:inline">{t('nav_postRequirement')}</span>
+                <span className="sm:hidden">Post</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!user) setShowAuthModal(true)
+                  else setShowListModal(true)
+                }}
+                className="bg-brand hover:bg-brand/90 text-brand-foreground font-bold text-xs h-8"
+              >
+                <Store className="w-3.5 h-3.5 mr-1" />
+                <span className="hidden sm:inline">{t('nav_listBusiness')}</span>
+                <span className="sm:hidden">List</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* ===== Hero (only on discover tab) ===== */}
-      {activeTab === 'discover' && (
-        <section className="relative overflow-hidden bg-gradient-to-br from-brand-soft/30 via-background to-gold-soft/20 border-b border-border/40">
-          {/* Decorative pattern */}
-          <div className="absolute inset-0 opacity-[0.04]" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, ${'#0d9488'} 1px, transparent 0)`,
-            backgroundSize: '24px 24px'
-          }} />
-
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-            <div className="text-center max-w-3xl mx-auto">
-              <Badge className="inline-flex items-center gap-1.5 mb-5 bg-brand-soft text-brand border-brand/20 hover:bg-brand-soft font-medium">
-                <Sparkles className="w-3 h-3" />
-                {t('hero_badge')}
-              </Badge>
-
-              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-4">
-                {t('hero_title')}
-                <br />
-                <span className="gradient-text">{t('hero_title_accent')}</span>
-              </h1>
-
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-8">
-                {t('hero_subtitle')}
-              </p>
-
-              {/* Search bar */}
-              <div className="bg-card rounded-2xl shadow-lg border border-border/60 p-3 max-w-3xl mx-auto">
-                <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      placeholder={t('hero_searchPlaceholder')}
-                      className="pl-9 h-11 bg-background"
-                    />
-                  </div>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      value={cityQuery}
-                      onChange={(e) => setCityQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      placeholder={t('hero_locationPlaceholder')}
-                      className="pl-9 h-11 bg-background"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSearch}
-                    className="h-11 bg-brand hover:bg-brand/90 text-brand-foreground font-medium px-6"
-                  >
-                    <Search className="w-4 h-4 mr-1.5" />
-                    {t('hero_searchBtn')}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between mt-2 px-1">
-                  <button
-                    onClick={getUserLocation}
-                    disabled={isLocating}
-                    className="text-xs text-brand hover:underline flex items-center gap-1.5 font-medium disabled:opacity-60"
-                  >
-                    {isLocating ? <Loader2 className="w-3 h-3 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />}
-                    {isLocating ? t('hero_locating') : t('hero_useLocation')}
-                  </button>
-                  <div className="text-[10px] text-muted-foreground">
-                    {userLat ? `📍 ${userLat.toFixed(2)}, ${userLng?.toFixed(2)}` : 'No location set'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 max-w-2xl mx-auto">
-                <div className="text-center">
-                  <div className="font-serif text-2xl sm:text-3xl font-bold text-brand flex items-center justify-center gap-1">
-                    <Building2 className="w-5 h-5" />
-                    10K+
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">{t('hero_stats_businesses')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-serif text-2xl sm:text-3xl font-bold text-brand flex items-center justify-center gap-1">
-                    <MapPin className="w-5 h-5" />
-                    50+
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">{t('hero_stats_cities')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-serif text-2xl sm:text-3xl font-bold text-brand flex items-center justify-center gap-1">
-                    <LayoutGrid className="w-5 h-5" />
-                    25+
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">{t('hero_stats_categories')}</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-serif text-2xl sm:text-3xl font-bold text-brand flex items-center justify-center gap-1">
-                    <Star className="w-5 h-5" />
-                    50K+
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">{t('hero_stats_reviews')}</div>
-                </div>
-              </div>
+      {/* ===== HORIZONTAL CATEGORY CHIPS STRIP ===== */}
+      {activeTab !== 'categories' && (
+        <div className="bg-card border-b border-border/60 shadow-sm">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2">
+            <div className="flex items-center gap-2 overflow-x-auto chip-strip">
+              <button
+                onClick={() => setSelectedCategory('All')}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  selectedCategory === 'All'
+                    ? 'bg-navy text-navy-foreground border-navy'
+                    : 'bg-background text-foreground border-border hover:border-brand hover:text-brand'
+                }`}
+              >
+                All Categories
+              </button>
+              {TOP_CATEGORIES.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={() => {
+                    setSelectedCategory(c.name)
+                    setActiveTab('discover')
+                  }}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1 ${
+                    selectedCategory === c.name
+                      ? 'bg-brand text-brand-foreground border-brand'
+                      : 'bg-background text-foreground border-border hover:border-brand hover:text-brand'
+                  }`}
+                >
+                  <span>{c.emoji}</span>
+                  <span>{c.name}</span>
+                </button>
+              ))}
             </div>
           </div>
-        </section>
+        </div>
       )}
 
-      {/* ===== Main content ===== */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      {/* ===== MAIN CONTENT ===== */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
         {activeTab === 'categories' ? (
-          <div className="space-y-6">
-            <div className="text-center max-w-2xl mx-auto mb-6">
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold mb-2">{t('cat_title')}</h2>
-              <p className="text-sm text-muted-foreground">{t('cat_subtitle', { count: categories.length })}</p>
+          <div className="space-y-5">
+            <div className="bg-gradient-to-r from-navy to-navy/80 text-navy-foreground rounded-lg px-5 py-4">
+              <h2 className="text-xl sm:text-2xl font-bold mb-1">{t('cat_title')}</h2>
+              <p className="text-sm text-navy-foreground/80">{t('cat_subtitle', { count: categories.length })}</p>
             </div>
             {categories.length === 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {[1,2,3,4,5,6,7,8].map((i) => (
-                  <Skeleton key={i} className="h-32 rounded-xl" />
+                  <Skeleton key={i} className="h-32 rounded-lg" />
                 ))}
               </div>
             ) : (
-              <CategoriesGrid
-                categories={categories}
-                onPick={() => setActiveTab('discover')}
-              />
+              <CategoriesGrid categories={categories} onPick={() => setActiveTab('discover')} />
             )}
           </div>
         ) : activeTab === 'map' ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <h2 className="font-serif text-2xl font-bold flex items-center gap-2">
+                <h2 className="text-lg font-bold flex items-center gap-2 text-navy">
                   <MapIcon className="w-5 h-5 text-brand" />
                   {t('tab_map')}
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  {userLat
-                    ? t('results_found', { count: businesses.length })
-                    : 'Use your location to see businesses nearest to you'}
+                <p className="text-xs text-muted-foreground">
+                  {userLat ? t('results_found', { count: businesses.length }) : 'Use your location to see nearest businesses'}
                 </p>
               </div>
               <Button
                 onClick={getUserLocation}
                 disabled={isLocating}
                 variant="outline"
-                className="border-brand/40 text-brand hover:bg-brand-soft"
+                className="border-brand text-brand hover:bg-brand-soft h-9"
               >
                 {isLocating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LocateFixed className="w-4 h-4 mr-2" />}
                 {t('hero_useLocation')}
               </Button>
             </div>
-            {loading ? (
-              <Skeleton className="h-[600px] rounded-xl" />
-            ) : (
-              <MapView businesses={businesses} height="650px" />
-            )}
+            <div className="h-[600px] sm:h-[650px]">
+              {loading ? (
+                <Skeleton className="h-full rounded-lg" />
+              ) : (
+                <MapView businesses={businesses} height="100%" />
+              )}
+            </div>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-            {/* Filter sidebar */}
-            <aside className="hidden lg:block">
-              <FilterPanel categories={categories} />
-            </aside>
-
-            {/* Mobile filter dropdown */}
-            <details className="lg:hidden bg-card rounded-xl border border-border/60">
-              <summary className="px-4 py-3 cursor-pointer flex items-center justify-between font-medium text-sm">
-                <span className="flex items-center gap-2">
-                  <Search className="w-4 h-4 text-brand" />
-                  {t('filter_title')}
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </summary>
-              <div className="p-4 pt-0">
-                <FilterPanel categories={categories} />
+          <div className="space-y-4">
+            {/* Top bar: results count + actions */}
+            <div className="flex items-center justify-between flex-wrap gap-2 bg-card border border-border/60 rounded-lg px-4 py-2.5 shadow-sm">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-sm font-bold text-navy">
+                  {loading ? 'Searching...' : t('results_found', { count: businesses.length })}
+                </h2>
+                {selectedCategory !== 'All' && (
+                  <Badge variant="outline" className="border-brand text-brand bg-brand-soft/40 font-medium">
+                    {selectedCategory}
+                    <button
+                      onClick={() => setSelectedCategory('All')}
+                      className="ml-1 hover:bg-brand/20 rounded-full p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {userLat && (
+                  <Badge variant="outline" className="border-navy/30 text-navy bg-background font-medium">
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {userLat.toFixed(2)}, {userLng?.toFixed(2)}
+                  </Badge>
+                )}
               </div>
-            </details>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowFiltersMobile(true)}
+                  className="lg:hidden h-8 text-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" />
+                  Filters
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowMapMobile(true)}
+                  className="xl:hidden h-8 text-xs border-brand text-brand hover:bg-brand-soft"
+                >
+                  <MapIcon className="w-3.5 h-3.5 mr-1" />
+                  Map
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setActiveTab('map')}
+                  className="hidden xl:inline-flex h-8 text-xs text-navy"
+                >
+                  <MapIcon className="w-3.5 h-3.5 mr-1" />
+                  Full Map
+                </Button>
+              </div>
+            </div>
 
-            {/* Results */}
-            <div>
-              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <div>
-                  <h2 className="font-serif text-xl sm:text-2xl font-bold">
-                    {loading ? 'Searching...' : t('results_found', { count: businesses.length })}
-                  </h2>
-                  {selectedCategory !== 'All' && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="border-brand/30 text-brand bg-brand-soft/30">
-                        {selectedCategory}
-                      </Badge>
-                      <button onClick={() => setSelectedCategory('All')} className="text-xs text-muted-foreground hover:text-brand hover:underline">
-                        Clear
-                      </button>
-                    </div>
-                  )}
+            {/* 3-column layout: filters | results | map */}
+            <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] xl:grid-cols-[240px_1fr_400px] gap-4">
+              {/* Filter sidebar (desktop) */}
+              <aside className="hidden lg:block">
+                <div className="sticky top-32">
+                  <FilterPanel categories={categories} />
                 </div>
-                <div className="flex items-center gap-2">
-                  {(selectedCategory !== 'All' || minRating > 0 || businessType || verifiedOnly || premiumOnly) && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground hover:text-brand">
-                      {t('filter_clear')}
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setActiveTab('map')}
-                    className="border-brand/30 text-brand hover:bg-brand-soft"
-                  >
-                    <MapIcon className="w-4 h-4 mr-1.5" />
-                    {t('tab_map')}
-                  </Button>
-                </div>
+              </aside>
+
+              {/* Results */}
+              <div>
+                {loading ? (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {[1,2,3,4,5,6].map((i) => (
+                      <Card key={i}>
+                        <CardContent className="p-4 space-y-2">
+                          <div className="flex gap-3">
+                            <Skeleton className="w-14 h-14 rounded-md" />
+                            <div className="flex-1 space-y-1.5">
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-3 w-1/2" />
+                              <Skeleton className="h-3 w-2/3" />
+                            </div>
+                          </div>
+                          <Skeleton className="h-9 w-full" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : businesses.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="py-12 text-center">
+                      <div className="w-14 h-14 rounded-full bg-muted mx-auto flex items-center justify-center mb-3">
+                        <Search className="w-7 h-7 text-muted-foreground" />
+                      </div>
+                      <h3 className="font-bold mb-1 text-navy">{t('no_results')}</h3>
+                      <p className="text-sm text-muted-foreground">{t('no_results_hint')}</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {businesses.map((b, i) => (
+                      <BusinessCard key={b.id} business={b} index={i} />
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {loading ? (
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {[1,2,3,4,5,6].map((i) => (
-                    <Card key={i} className="overflow-hidden">
-                      <Skeleton className="h-32" />
-                      <CardContent className="pt-8 pb-4 px-5 space-y-2">
-                        <Skeleton className="h-5 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                        <Skeleton className="h-3 w-full" />
-                        <Skeleton className="h-3 w-2/3" />
-                        <Skeleton className="h-9 w-full mt-3" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : businesses.length === 0 ? (
-                <Card className="border-dashed border-border/60">
-                  <CardContent className="py-16 text-center">
-                    <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center mb-4">
-                      <Search className="w-8 h-8 text-muted-foreground" />
+              {/* Sticky map (desktop xl only) */}
+              <aside className="hidden xl:block">
+                <div className="sticky top-32">
+                  <div className="bg-card border border-border/60 rounded-lg overflow-hidden shadow-sm">
+                    <div className="flex items-center justify-between px-3 py-2 bg-navy text-navy-foreground">
+                      <div className="flex items-center gap-2 text-xs font-bold">
+                        <MapIcon className="w-3.5 h-3.5 text-brand" />
+                        LIVE MAP
+                      </div>
+                      <span className="text-[10px] bg-brand text-brand-foreground px-1.5 py-0.5 rounded font-semibold">
+                        {businesses.length} PINNED
+                      </span>
                     </div>
-                    <h3 className="font-serif text-lg font-semibold mb-1">{t('no_results')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('no_results_hint')}</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {businesses.map((b, i) => (
-                    <BusinessCard key={b.id} business={b} index={i} />
-                  ))}
+                    <div className="h-[480px]">
+                      <MapView businesses={businesses} height="100%" />
+                    </div>
+                  </div>
                 </div>
-              )}
+              </aside>
             </div>
           </div>
         )}
       </main>
 
-      {/* ===== Footer ===== */}
-      <footer className="bg-card border-t border-border/60 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      {/* ===== FOOTER (IndiaMART style) ===== */}
+      <footer className="bg-navy text-navy-foreground mt-auto">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand/80 flex items-center justify-center text-brand-foreground">
-                  <Store className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-md bg-brand flex items-center justify-center text-brand-foreground font-black">
+                  B
                 </div>
                 <div>
-                  <div className="font-serif font-bold text-lg leading-none">
+                  <div className="font-bold text-lg leading-none">
                     Business<span className="text-brand">Hub</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">India</div>
+                  <div className="text-[10px] text-navy-foreground/70 uppercase tracking-wider mt-0.5">India · B2B + B2C</div>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
+              <p className="text-sm text-navy-foreground/80 leading-relaxed max-w-md mb-3">
                 {t('footer_aboutDesc')}
               </p>
-              <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified listings</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand" /> Live map</span>
-                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-amber-600" /> 10K+ users</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-[11px] bg-navy-foreground/10 px-2 py-1 rounded">
+                  <ShieldCheck className="w-3 h-3 text-verified" /> Verified Suppliers
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] bg-navy-foreground/10 px-2 py-1 rounded">
+                  <MapPin className="w-3 h-3 text-brand" /> Live Map Location
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] bg-navy-foreground/10 px-2 py-1 rounded">
+                  <Tag className="w-3 h-3 text-inquiry" /> Best Price Quotes
+                </span>
               </div>
             </div>
             <div>
-              <h4 className="font-serif font-semibold text-sm mb-3">{t('footer_quickLinks')}</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <h4 className="font-bold text-sm mb-3 text-brand">{t('footer_quickLinks')}</h4>
+              <ul className="space-y-1.5 text-sm text-navy-foreground/80">
                 <li><button onClick={() => setActiveTab('discover')} className="hover:text-brand">{t('nav_discover')}</button></li>
                 <li><button onClick={() => setActiveTab('map')} className="hover:text-brand">{t('nav_map')}</button></li>
                 <li><button onClick={() => setActiveTab('categories')} className="hover:text-brand">{t('nav_categories')}</button></li>
                 <li><button onClick={() => setShowListModal(true)} className="hover:text-brand">{t('footer_listFree')}</button></li>
+                <li><button onClick={() => setShowPostRequirement(true)} className="hover:text-brand">{t('nav_postRequirement')}</button></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-serif font-semibold text-sm mb-3">{t('footer_forBusiness')}</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <h4 className="font-bold text-sm mb-3 text-brand">{t('footer_forBusiness')}</h4>
+              <ul className="space-y-1.5 text-sm text-navy-foreground/80">
                 <li><button onClick={() => setShowListModal(true)} className="hover:text-brand">{t('footer_listFree')}</button></li>
                 <li><button className="hover:text-brand">{t('footer_premium')}</button></li>
                 <li><button className="hover:text-brand">{t('footer_advertise')}</button></li>
@@ -537,18 +582,18 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-border/60 mt-8 pt-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="border-t border-navy-foreground/15 mt-6 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-navy-foreground/70">
             <div>© 2026 BusinessHub India. {t('footer_rights')}</div>
             <div className="flex items-center gap-3">
-              <span>Made with care in India</span>
+              <button onClick={toggle} className="hover:text-brand font-semibold">{lang === 'en' ? 'हिंदी' : 'English'}</button>
               <span>·</span>
-              <button onClick={toggle} className="hover:text-brand font-medium">{lang === 'en' ? 'हिंदी' : 'English'}</button>
+              <span>Made with care in India 🇮🇳</span>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* ===== Modals ===== */}
+      {/* ===== MODALS ===== */}
       <BusinessDetailModal
         business={selectedBusiness}
         open={!!selectedBusinessId && !!selectedBusiness}
@@ -557,17 +602,210 @@ export default function Home() {
       <ListBusinessModal open={showListModal} onClose={() => setShowListModal(false)} />
       <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
-      {/* Mobile list business FAB */}
+      {/* ===== Post Requirement Modal ===== */}
+      <PostRequirementModal open={showPostRequirement} onClose={() => setShowPostRequirement(false)} />
+
+      {/* ===== Mobile filters drawer (simple) ===== */}
+      {showFiltersMobile && (
+        <div className="fixed inset-0 z-[100] lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowFiltersMobile(false)} />
+          <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-background shadow-xl overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold">{t('filter_title')}</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowFiltersMobile(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <FilterPanel categories={categories} />
+          </div>
+        </div>
+      )}
+
+      {/* ===== Mobile map overlay ===== */}
+      {showMapMobile && (
+        <div className="fixed inset-0 z-[100] xl:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMapMobile(false)} />
+          <div className="absolute bottom-0 left-0 right-0 h-[80vh] bg-background shadow-xl rounded-t-xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-navy text-navy-foreground">
+              <span className="text-xs font-bold flex items-center gap-1.5">
+                <MapIcon className="w-3.5 h-3.5 text-brand" />
+                LIVE MAP · {businesses.length} BUSINESSES
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setShowMapMobile(false)} className="text-navy-foreground hover:bg-transparent">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="h-[calc(80vh-40px)]">
+              <MapView businesses={businesses} height="100%" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Floating Post Requirement button (mobile) ===== */}
       <button
-        onClick={() => {
-          if (!user) setShowAuthModal(true)
-          else setShowListModal(true)
-        }}
-        className="sm:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-brand text-brand-foreground shadow-lg hover:bg-brand/90 flex items-center justify-center"
-        aria-label="List your business"
+        onClick={() => setShowPostRequirement(true)}
+        className="sm:hidden fixed bottom-4 right-4 z-40 h-12 px-4 rounded-full bg-inquiry text-inquiry-foreground shadow-lg hover:bg-inquiry/90 flex items-center gap-1.5 font-bold text-xs"
       >
-        <Store className="w-6 h-6" />
+        <Megaphone className="w-4 h-4" />
+        Post Requirement
       </button>
     </div>
+  )
+}
+
+// ===== Inline Post Requirement Modal =====
+function PostRequirementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n()
+  const [submitted, setSubmitted] = useState(false)
+  const [form, setForm] = useState({
+    product: '', quantity: '', unit: 'pieces', city: '', name: '', phone: '', details: ''
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.product || !form.name || !form.phone) return
+    setSubmitted(true)
+  }
+
+  const reset = () => {
+    setSubmitted(false)
+    setForm({ product: '', quantity: '', unit: 'pieces', city: '', name: '', phone: '', details: '' })
+    onClose()
+  }
+
+  return (
+    <>
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={reset} />
+          <div className="relative bg-card rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-inquiry to-inquiry/80 text-inquiry-foreground px-5 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Megaphone className="w-5 h-5" />
+                  {t('nav_postRequirement')}
+                </h3>
+                <p className="text-xs text-inquiry-foreground/80 mt-0.5">
+                  Get best price quotes from verified suppliers
+                </p>
+              </div>
+              <button onClick={reset} className="p-1 hover:bg-inquiry-foreground/10 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {submitted ? (
+              <div className="p-8 text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-verified-soft mx-auto flex items-center justify-center">
+                  <ShieldCheck className="w-9 h-9 text-verified" />
+                </div>
+                <h3 className="font-bold text-lg text-navy">Requirement Posted!</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  Verified suppliers near you will contact you shortly with their best price quotes.
+                  You'll receive calls on <span className="font-semibold text-navy">{form.phone}</span>.
+                </p>
+                <Button onClick={reset} className="bg-brand hover:bg-brand/90 text-brand-foreground font-semibold">
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="p-5 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Product / Service Required *
+                  </label>
+                  <input
+                    value={form.product}
+                    onChange={(e) => setForm({ ...form, product: e.target.value })}
+                    placeholder="e.g. TMT Steel Bars, Office Chairs, Catering Service..."
+                    className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Quantity</label>
+                    <input
+                      value={form.quantity}
+                      onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                      placeholder="500"
+                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Unit</label>
+                    <select
+                      value={form.unit}
+                      onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                    >
+                      <option value="pieces">Pieces</option>
+                      <option value="kg">Kg</option>
+                      <option value="tons">Tons</option>
+                      <option value="liters">Liters</option>
+                      <option value="boxes">Boxes</option>
+                      <option value="units">Units</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Your City *</label>
+                  <input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    placeholder="Mumbai"
+                    className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Your Name *</label>
+                    <input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="Raj Kumar"
+                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase">Phone *</label>
+                    <input
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      className="mt-1 w-full h-10 px-3 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase">Additional Details</label>
+                  <textarea
+                    value={form.details}
+                    onChange={(e) => setForm({ ...form, details: e.target.value })}
+                    placeholder="Brand preference, delivery timeline, payment terms..."
+                    className="mt-1 w-full min-h-[60px] px-3 py-2 text-sm border border-border rounded-md bg-background focus:border-brand outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full h-11 bg-inquiry hover:bg-inquiry/90 text-inquiry-foreground font-bold rounded-md flex items-center justify-center gap-2"
+                >
+                  <Megaphone className="w-4 h-4" />
+                  Submit Requirement
+                </button>
+                <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-verified" />
+                  Your details are safe. We don't share without consent.
+                </p>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
