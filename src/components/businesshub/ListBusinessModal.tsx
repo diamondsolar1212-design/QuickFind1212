@@ -31,10 +31,17 @@ interface Props {
 }
 
 const TEMPLATES = [
-  { id: 'retail', icon: Store, name: 'list_template_retail', desc: 'list_template_retail_desc', color: '#16a34a', emoji: '🏪' },
-  { id: 'restaurant', icon: UtensilsCrossed, name: 'list_template_restaurant', desc: 'list_template_restaurant_desc', color: '#dc2626', emoji: '🍽️' },
-  { id: 'service', icon: Wrench, name: 'list_template_service', desc: 'list_template_service_desc', color: '#0891b2', emoji: '🔧' },
-  { id: 'premium', icon: Sparkles, name: 'list_template_premium', desc: 'list_template_premium_desc', color: '#7c3aed', emoji: '✨' }
+  // Base templates (free)
+  { id: 'retail', icon: Store, name: 'list_template_retail', desc: 'list_template_retail_desc', color: '#16a34a', emoji: '🏪', premium: false },
+  { id: 'restaurant', icon: UtensilsCrossed, name: 'list_template_restaurant', desc: 'list_template_restaurant_desc', color: '#dc2626', emoji: '🍽️', premium: false },
+  { id: 'service', icon: Wrench, name: 'list_template_service', desc: 'list_template_service_desc', color: '#0891b2', emoji: '🔧', premium: false },
+  // Premium templates (paid/luxury)
+  { id: 'premium', icon: Sparkles, name: 'list_template_premium', desc: 'list_template_premium_desc', color: '#7c3aed', emoji: '✨', premium: true },
+  { id: 'calm-sage', icon: Sparkles, name: 'Calm Sage', desc: 'Serene yoga studio style — soft sand/sage tones', color: '#8a9a87', emoji: '🌿', premium: true },
+  { id: 'jungle-gold', icon: Crown, name: 'Jungle Gold', desc: 'Editorial monograph — deep green + gold luxury', color: '#C9A227', emoji: '📖', premium: true },
+  { id: 'athletic-bold', icon: Crown, name: 'Athletic Bold', desc: 'High-intensity gym — black + orange energy', color: '#FF5400', emoji: '💪', premium: true },
+  { id: 'tech-lime', icon: Sparkles, name: 'Tech Lime', desc: 'Dark technical — lime green modern accents', color: '#d4ff3a', emoji: '⚡', premium: true },
+  { id: 'journalism-red', icon: Crown, name: 'Journalism Red', desc: 'Tech review style — black + red editorial', color: '#ff2a2a', emoji: '📰', premium: true }
 ]
 
 const CATEGORIES = [
@@ -70,6 +77,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [showReviews, setShowReviews] = useState(true)
   const [showMap, setShowMap] = useState(true)
   const [showProducts, setShowProducts] = useState(true)
+  // Products catalog (image + name + price + details)
+  const [catalogProducts, setCatalogProducts] = useState<Array<{
+    id: string
+    name: string
+    price: string
+    details: string
+    image: string
+  }>>([])
 
   const [form, setForm] = useState({
     template: 'retail',
@@ -146,6 +161,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
           showReviews,
           showMap,
           showProducts,
+          products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
           ownerId: user.id
         })
       })
@@ -177,6 +193,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setShowReviews(true)
     setShowMap(true)
     setShowProducts(true)
+    setCatalogProducts([])
     setForm({
       template: 'retail', name: '', description: '', category: 'Grocery & Essentials',
       subcategory: '', tags: '', phone: '', whatsapp: '', email: '', website: '',
@@ -259,235 +276,363 @@ export function ListBusinessModal({ open, onClose }: Props) {
             </div>
           ) : (
             <>
-              {/* Step 1: Template + Design Customization */}
+              {/* Step 1: Template + Design Customization (split layout) */}
               {step === 1 && (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <div>
                     <h3 className="font-serif font-semibold text-lg">{t('list_step1')}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Choose a base template, then customize colors, fonts, layout, and sections.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Choose template, customize design, manage products. Live preview on right updates as you change.</p>
                   </div>
 
-                  {/* Base template selection */}
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {TEMPLATES.map((tpl) => {
-                      const Icon = tpl.icon
-                      const selected = form.template === tpl.id
-                      return (
-                        <button
-                          key={tpl.id}
-                          onClick={() => update('template', tpl.id)}
-                          className={`text-left p-4 rounded-xl border-2 transition-all ${
-                            selected
-                              ? 'border-brand bg-brand-soft/30 shadow-md'
-                              : 'border-border bg-card hover:border-brand/40 hover:bg-muted/30'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
-                              style={{ background: `${tpl.color}20`, color: tpl.color }}
-                            >
-                              <Icon className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-serif font-semibold text-sm flex items-center gap-2">
-                                {t(tpl.name as any)}
-                                {selected && <Check className="w-4 h-4 text-brand" />}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                                {t(tpl.desc as any)}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Design Customization Section */}
-                  <Separator />
-
-                  <div className="bg-muted/30 rounded-xl p-4 space-y-4 border border-border/60">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-brand" />
-                      <h4 className="font-bold text-sm text-navy">Design Your Professional Website</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground -mt-2">Customize how your business website looks. Live preview updates as you change.</p>
-
-                    {/* Theme Color Picker */}
-                    <div>
-                      <Label className="text-xs font-semibold uppercase tracking-wide">Theme Color</Label>
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        {[
-                          { name: 'Teal', value: '#0d9488' },
-                          { name: 'Blue', value: '#2563eb' },
-                          { name: 'Purple', value: '#7c3aed' },
-                          { name: 'Rose', value: '#e11d48' },
-                          { name: 'Orange', value: '#ea580c' },
-                          { name: 'Green', value: '#16a34a' },
-                          { name: 'Amber', value: '#d97706' },
-                          { name: 'Slate', value: '#475569' }
-                        ].map((color) => (
-                          <button
-                            key={color.value}
-                            type="button"
-                            onClick={() => setThemeColor(color.value)}
-                            className={`w-9 h-9 rounded-full border-2 transition-all ${
-                              themeColor === color.value
-                                ? 'border-navy scale-110 shadow-md ring-2 ring-brand/30'
-                                : 'border-white hover:scale-105'
-                            }`}
-                            style={{ background: color.value }}
-                            title={color.name}
-                          />
-                        ))}
-                        <label className="cursor-pointer relative w-9 h-9 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-brand">
-                          <input
-                            type="color"
-                            value={themeColor}
-                            onChange={(e) => setThemeColor(e.target.value)}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                          />
-                          <Plus className="w-4 h-4 text-muted-foreground" />
-                        </label>
+                  {/* Split layout: customization LEFT, live preview RIGHT */}
+                  <div className="grid lg:grid-cols-[1fr_360px] gap-4">
+                    {/* ===== LEFT: Customization ===== */}
+                    <div className="space-y-4 min-w-0">
+                      {/* Base template selection */}
+                      <div>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Base Template</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {TEMPLATES.map((tpl) => {
+                            const Icon = tpl.icon
+                            const selected = form.template === tpl.id
+                            return (
+                              <button
+                                key={tpl.id}
+                                onClick={() => update('template', tpl.id)}
+                                className={`text-left p-3 rounded-lg border-2 transition-all relative ${
+                                  selected ? 'border-brand bg-brand-soft/30 shadow-sm' : 'border-border bg-card hover:border-brand/40'
+                                }`}
+                              >
+                                {tpl.premium && (
+                                  <span className="absolute top-1.5 right-1.5 text-amber-500">
+                                    <Crown className="w-3 h-3" />
+                                  </span>
+                                )}
+                                <div
+                                  className="w-8 h-8 rounded-md flex items-center justify-center text-base mb-1.5"
+                                  style={{ background: tpl.color + '20', color: tpl.color }}
+                                >
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div className="font-bold text-xs leading-tight">{typeof tpl.name === 'string' && tpl.name.startsWith('list_') ? t(tpl.name as any) : tpl.name}</div>
+                                <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-tight">{typeof tpl.desc === 'string' && tpl.desc.startsWith('list_') ? t(tpl.desc as any) : tpl.desc}</div>
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Font Choice */}
-                    <div>
-                      <Label className="text-xs font-semibold uppercase tracking-wide">Font Style</Label>
-                      <div className="grid grid-cols-4 gap-2 mt-1.5">
-                        {[
-                          { id: 'sans', name: 'Sans', sample: 'Aa', style: 'font-sans' },
-                          { id: 'serif', name: 'Serif', sample: 'Aa', style: 'font-serif' },
-                          { id: 'modern', name: 'Modern', sample: 'Aa', style: 'font-mono' },
-                          { id: 'classic', name: 'Classic', sample: 'Aa', style: 'font-serif italic' }
-                        ].map((f) => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => setFontChoice(f.id)}
-                            className={`p-2 rounded-lg border-2 transition-all text-center ${
-                              fontChoice === f.id
-                                ? 'border-brand bg-brand-soft/30'
-                                : 'border-border hover:border-brand/40'
-                            }`}
-                          >
-                            <div className={`text-xl font-bold ${f.style}`}>{f.sample}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">{f.name}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                      <Separator />
 
-                    {/* Layout Style */}
-                    <div>
-                      <Label className="text-xs font-semibold uppercase tracking-wide">Layout Style</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-1.5">
-                        {[
-                          { id: 'compact', name: 'Compact', desc: 'Tight spacing' },
-                          { id: 'standard', name: 'Standard', desc: 'Balanced' },
-                          { id: 'spacious', name: 'Spacious', desc: 'Lots of room' }
-                        ].map((l) => (
-                          <button
-                            key={l.id}
-                            type="button"
-                            onClick={() => setLayoutStyle(l.id)}
-                            className={`p-2.5 rounded-lg border-2 transition-all text-left ${
-                              layoutStyle === l.id
-                                ? 'border-brand bg-brand-soft/30'
-                                : 'border-border hover:border-brand/40'
-                            }`}
-                          >
-                            <div className="font-bold text-xs">{l.name}</div>
-                            <div className="text-[10px] text-muted-foreground">{l.desc}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Section Toggles */}
-                    <div>
-                      <Label className="text-xs font-semibold uppercase tracking-wide">Sections to Show on Website</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-1.5">
-                        {[
-                          { id: 'showGallery', label: 'Image Gallery', state: showGallery, set: setShowGallery },
-                          { id: 'showProducts', label: 'Products & Services', state: showProducts, set: setShowProducts },
-                          { id: 'showHours', label: 'Business Hours', state: showHours, set: setShowHours },
-                          { id: 'showMap', label: 'Location Map', state: showMap, set: setShowMap },
-                          { id: 'showReviews', label: 'Customer Reviews', state: showReviews, set: setShowReviews }
-                        ].map((s) => (
-                          <label
-                            key={s.id}
-                            className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
-                              s.state
-                                ? 'border-brand bg-brand-soft/20'
-                                : 'border-border hover:border-brand/30'
-                            }`}
-                          >
-                            <Checkbox
-                              checked={s.state}
-                              onCheckedChange={(v) => s.set(!!v)}
+                      {/* Theme Color picker */}
+                      <div>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Theme Color</Label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {[
+                            { name: 'Teal', value: '#0d9488' },
+                            { name: 'Blue', value: '#2563eb' },
+                            { name: 'Purple', value: '#7c3aed' },
+                            { name: 'Rose', value: '#e11d48' },
+                            { name: 'Orange', value: '#ea580c' },
+                            { name: 'Green', value: '#16a34a' },
+                            { name: 'Amber', value: '#d97706' },
+                            { name: 'Slate', value: '#475569' }
+                          ].map((color) => (
+                            <button
+                              key={color.value}
+                              type="button"
+                              onClick={() => setThemeColor(color.value)}
+                              className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                themeColor === color.value ? 'border-navy scale-110 shadow-md' : 'border-white hover:scale-105'
+                              }`}
+                              style={{ background: color.value }}
+                              title={color.name}
                             />
-                            <span className="text-xs font-medium">{s.label}</span>
+                          ))}
+                          <label className="cursor-pointer relative w-8 h-8 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-brand">
+                            <input
+                              type="color"
+                              value={themeColor}
+                              onChange={(e) => setThemeColor(e.target.value)}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
                           </label>
-                        ))}
+                        </div>
+                      </div>
+
+                      {/* Font + Layout in grid */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs font-semibold uppercase tracking-wide mb-1.5 block">Font</Label>
+                          <select
+                            value={fontChoice}
+                            onChange={(e) => setFontChoice(e.target.value)}
+                            className="w-full h-9 px-2 text-sm border border-border rounded-md bg-background"
+                          >
+                            <option value="sans">Sans</option>
+                            <option value="serif">Serif</option>
+                            <option value="modern">Modern</option>
+                            <option value="classic">Classic</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-semibold uppercase tracking-wide mb-1.5 block">Layout</Label>
+                          <select
+                            value={layoutStyle}
+                            onChange={(e) => setLayoutStyle(e.target.value)}
+                            className="w-full h-9 px-2 text-sm border border-border rounded-md bg-background"
+                          >
+                            <option value="compact">Compact</option>
+                            <option value="standard">Standard</option>
+                            <option value="spacious">Spacious</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Section Toggles */}
+                      <div>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Sections to Show</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'showGallery', label: 'Image Gallery', state: showGallery, set: setShowGallery },
+                            { id: 'showProducts', label: 'Products Catalog', state: showProducts, set: setShowProducts },
+                            { id: 'showHours', label: 'Business Hours', state: showHours, set: setShowHours },
+                            { id: 'showMap', label: 'Location Map', state: showMap, set: setShowMap },
+                            { id: 'showReviews', label: 'Customer Reviews', state: showReviews, set: setShowReviews }
+                          ].map((s) => (
+                            <label key={s.id} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition-all ${s.state ? 'border-brand bg-brand-soft/20' : 'border-border hover:border-brand/30'}`}>
+                              <Checkbox checked={s.state} onCheckedChange={(v) => s.set(!!v)} />
+                              <span className="text-xs font-medium">{s.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Products Catalog Manager */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-xs font-semibold uppercase tracking-wide">Products Catalog</Label>
+                          <button
+                            type="button"
+                            onClick={() => setCatalogProducts([...catalogProducts, { id: Date.now().toString(), name: '', price: '', details: '', image: '' }])}
+                            className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" /> Add Product
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-2">Add products with image, name, price, and details. These show on your website.</p>
+
+                        {catalogProducts.length === 0 ? (
+                          <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                            <p className="text-xs text-muted-foreground">No products yet. Click "Add Product" to create your catalog.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {catalogProducts.map((prod, idx) => (
+                              <div key={prod.id} className="border border-border rounded-lg p-3 bg-muted/20">
+                                <div className="flex items-start gap-3">
+                                  {/* Product image */}
+                                  <label className="cursor-pointer flex-shrink-0">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const f = e.target.files?.[0]
+                                        if (!f) return
+                                        setUploadingImage(true)
+                                        try {
+                                          const fd = new FormData()
+                                          fd.append('file', f)
+                                          const res = await fetch('/api/upload', { method: 'POST', body: fd })
+                                          const data = await res.json()
+                                          if (res.ok && data.url) {
+                                            const updated = [...catalogProducts]
+                                            updated[idx] = { ...prod, image: data.url }
+                                            setCatalogProducts(updated)
+                                            toast.success('Product image uploaded!')
+                                          }
+                                        } catch { toast.error('Upload failed') }
+                                        setUploadingImage(false)
+                                      }}
+                                    />
+                                    <div className="w-14 h-14 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-card hover:border-brand">
+                                      {prod.image ? (
+                                        <img src={prod.image} alt="" className="w-full h-full object-cover" />
+                                      ) : uploadingImage ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                                      ) : (
+                                        <Camera className="w-4 h-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </label>
+
+                                  {/* Product fields */}
+                                  <div className="flex-1 min-w-0 space-y-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="Product name"
+                                      value={prod.name}
+                                      onChange={(e) => {
+                                        const updated = [...catalogProducts]
+                                        updated[idx] = { ...prod, name: e.target.value }
+                                        setCatalogProducts(updated)
+                                      }}
+                                      className="w-full h-7 px-2 text-xs border border-border rounded bg-background"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Price (e.g. ₹450)"
+                                      value={prod.price}
+                                      onChange={(e) => {
+                                        const updated = [...catalogProducts]
+                                        updated[idx] = { ...prod, price: e.target.value }
+                                        setCatalogProducts(updated)
+                                      }}
+                                      className="w-full h-7 px-2 text-xs border border-border rounded bg-background"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Details (e.g. 5kg, organic, etc.)"
+                                      value={prod.details}
+                                      onChange={(e) => {
+                                        const updated = [...catalogProducts]
+                                        updated[idx] = { ...prod, details: e.target.value }
+                                        setCatalogProducts(updated)
+                                      }}
+                                      className="w-full h-7 px-2 text-xs border border-border rounded bg-background"
+                                    />
+                                  </div>
+
+                                  {/* Delete button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setCatalogProducts(catalogProducts.filter((_, i) => i !== idx))}
+                                    className="text-red-500 hover:bg-red-50 rounded p-1 flex-shrink-0"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ===== RIGHT: LIVE PREVIEW (sticky) ===== */}
+                    <div className="hidden lg:block">
+                      <div className="sticky top-4">
+                        <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
+                          <div className="bg-brand/10 px-3 py-2 flex items-center justify-between border-b border-brand/20">
+                            <span className="text-xs font-bold text-brand flex items-center gap-1.5">
+                              <Eye className="w-3.5 h-3.5" />
+                              LIVE PREVIEW
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{form.template}</span>
+                          </div>
+                          <div
+                            className={`p-3 ${layoutStyle === 'compact' ? 'space-y-2' : layoutStyle === 'spacious' ? 'space-y-4' : 'space-y-3'}`}
+                            style={{ fontFamily: fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : fontChoice === 'modern' ? 'monospace' : 'inherit' }}
+                          >
+                            {/* Mini website preview */}
+                            <div
+                              className="rounded-lg p-3 text-white"
+                              style={{ background: 'linear-gradient(135deg, ' + themeColor + ' 0%, ' + themeColor + 'cc 100%)' }}
+                            >
+                              <div className="text-base font-bold">{form.name || 'Your Business Name'}</div>
+                              <div className="text-[10px] opacity-90 mt-0.5">{form.category || 'Category'} · {form.city || 'City'}</div>
+                            </div>
+
+                            {/* Gallery row */}
+                            {showGallery && (
+                              <div className="flex gap-1.5 overflow-x-auto">
+                                {profileImage && (
+                                  <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                                    <img src={profileImage} alt="" className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                {galleryImages.slice(0, 3).map((url, i) => (
+                                  <div key={i} className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                  </div>
+                                ))}
+                                {!profileImage && galleryImages.length === 0 && (
+                                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-xl flex-shrink-0">🖼️</div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Description */}
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {form.description || 'Your business description will appear here. Add details in Step 2.'}
+                            </p>
+
+                            {/* Products preview */}
+                            {showProducts && catalogProducts.length > 0 && (
+                              <div className="space-y-1.5">
+                                <div className="text-[10px] font-bold uppercase text-muted-foreground">Products</div>
+                                {catalogProducts.slice(0, 3).map((p, i) => (
+                                  <div key={i} className="flex items-center gap-2 p-1.5 rounded bg-muted/40">
+                                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-sm flex-shrink-0 overflow-hidden">
+                                      {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : '📦'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-[11px] font-semibold truncate">{p.name || 'Product name'}</div>
+                                      <div className="text-[10px] text-muted-foreground">{p.price || '₹0'}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Section badges */}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {showHours && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">⏰ Open</span>}
+                              {showProducts && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">🛍️ Products</span>}
+                              {showReviews && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">⭐ Reviews</span>}
+                              {showMap && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-semibold">📍 Map</span>}
+                            </div>
+
+                            {/* CTA button */}
+                            <button
+                              type="button"
+                              className="w-full py-2 rounded-md text-xs font-bold text-white"
+                              style={{ background: themeColor }}
+                            >
+                              Get Best Price
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mobile preview note */}
+                        <p className="text-[10px] text-muted-foreground text-center mt-2">
+                          Preview updates live as you customize
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Live Preview */}
-                  <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
-                    <div className="bg-brand/10 px-4 py-2 flex items-center justify-between border-b border-brand/20">
+                  {/* Mobile preview (shown below on small screens) */}
+                  <div className="lg:hidden bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
+                    <div className="bg-brand/10 px-3 py-2 border-b border-brand/20">
                       <span className="text-xs font-bold text-brand flex items-center gap-1.5">
                         <Eye className="w-3.5 h-3.5" />
-                        LIVE WEBSITE PREVIEW
+                        LIVE PREVIEW
                       </span>
-                      <span className="text-[10px] text-muted-foreground">{form.template} · {websiteTemplate} · {fontChoice}</span>
                     </div>
-                    <div
-                      className={`p-4 ${layoutStyle === 'compact' ? 'space-y-2' : layoutStyle === 'spacious' ? 'space-y-5' : 'space-y-3'}`}
-                      style={{ fontFamily: fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : fontChoice === 'modern' ? 'monospace' : 'inherit' }}
-                    >
-                      {/* Mini website preview */}
-                      <div
-                        className="rounded-lg p-3 text-white"
-                        style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${themeColor}cc 100%)` }}
-                      >
+                    <div className="p-3 space-y-2" style={{ fontFamily: fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : 'inherit' }}>
+                      <div className="rounded-lg p-3 text-white" style={{ background: 'linear-gradient(135deg, ' + themeColor + ' 0%, ' + themeColor + 'cc 100%)' }}>
                         <div className="text-base font-bold">{form.name || 'Your Business Name'}</div>
                         <div className="text-[10px] opacity-90 mt-0.5">{form.category || 'Category'} · {form.city || 'City'}</div>
                       </div>
-                      <div className="flex gap-2 overflow-x-auto">
-                        {showGallery && (
-                          <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-xl flex-shrink-0">
-                            {profileImage ? <img src={profileImage} alt="" className="w-full h-full object-cover rounded-md" /> : '🖼️'}
-                          </div>
-                        )}
-                        {galleryImages.slice(0, 3).map((url, i) => (
-                          <div key={i} className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
-                            <img src={url} alt="" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
-                        {galleryImages.length < 3 && showGallery && (
-                          <div className="w-12 h-12 rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground text-[10px] flex-shrink-0">
-                            + more
-                          </div>
-                        )}
-                      </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">
-                        {form.description || 'Your business description will appear here. Add details in Step 2.'}
+                        {form.description || 'Your business description will appear here.'}
                       </p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {showHours && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">⏰ Open Now</span>}
-                        {showProducts && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">🛍️ Products</span>}
-                        {showReviews && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">⭐ Reviews</span>}
-                        {showMap && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-semibold">📍 Map</span>}
-                      </div>
-                      <button
-                        type="button"
-                        className="w-full py-2 rounded-md text-xs font-bold text-white"
-                        style={{ background: themeColor }}
-                      >
+                      <button type="button" className="w-full py-2 rounded-md text-xs font-bold text-white" style={{ background: themeColor }}>
                         Get Best Price
                       </button>
                     </div>

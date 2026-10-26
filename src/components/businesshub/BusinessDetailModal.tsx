@@ -283,6 +283,9 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                 {/* Gallery images — rendered in different styles based on template */}
                 {business.showGallery !== false && <GalleryRenderer business={business} />}
 
+                {/* Products catalog with image, name, price, details */}
+                <ProductsRenderer business={business} />
+
                 <div>
                   <h3 className="font-serif font-semibold text-lg mb-2 flex items-center gap-2">
                     <span className="w-1 h-5 rounded" style={{ background: business.themeColor || '#0d9488' }} />
@@ -726,6 +729,146 @@ function GalleryRenderer({ business }: { business: any }) {
         {allImages.slice(0, 8).map((url: string, i: number) => (
           <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border/60 bg-muted">
             <img src={url} alt={'Gallery ' + (i + 1)} className="w-full h-full object-cover hover:scale-110 transition-transform" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Helper: render products catalog with image, name, price, details
+function ProductsRenderer({ business }: { business: any }) {
+  if (business.showProducts === false) return null
+  const products = (() => {
+    try { return business.products ? JSON.parse(business.products) : [] } catch { return [] }
+  })()
+  if (!products || products.length === 0) return null
+
+  const accent = business.themeColor || '#0d9488'
+  const tpl = business.websiteTemplate || 'elegant'
+
+  // Different product card styles per template
+  if (tpl === 'athletic-bold') {
+    // Dark cards with orange accents
+    return (
+      <div>
+        <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-white" style={{ background: accent, padding: '0.5rem 1rem', borderRadius: '0.5rem' }}>
+          PRODUCTS
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {products.map((p: any, i: number) => (
+            <div key={i} className="bg-card border-2 border-border rounded-lg overflow-hidden hover:border-current transition-all" style={{ borderColor: accent + '40' }}>
+              <div className="aspect-square bg-muted overflow-hidden">
+                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+              </div>
+              <div className="p-3">
+                <div className="font-bold text-sm">{p.name || 'Product'}</div>
+                <div className="text-lg font-bold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+                {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (tpl === 'jungle-gold') {
+    // Editorial luxury style
+    return (
+      <div>
+        <h3 className="font-serif italic text-lg mb-3 flex items-center gap-2" style={{ color: accent }}>
+          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+          Catalogue
+        </h3>
+        <div className="grid grid-cols-2 gap-4">
+          {products.map((p: any, i: number) => (
+            <div key={i} className="border border-border/40 p-4">
+              <div className="aspect-[4/3] bg-muted overflow-hidden mb-3">
+                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+              </div>
+              <div className="font-serif text-base">{p.name || 'Product'}</div>
+              <div className="font-serif italic text-sm mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+              {p.details && <div className="text-xs text-muted-foreground mt-2">{p.details}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (tpl === 'calm-sage') {
+    // Soft, calm cards
+    return (
+      <div>
+        <h3 className="font-serif italic text-lg mb-3 flex items-center gap-2" style={{ color: accent }}>
+          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+          Offerings
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {products.map((p: any, i: number) => (
+            <div key={i} className="rounded-xl overflow-hidden border border-border/40" style={{ background: accent + '08' }}>
+              <div className="aspect-square bg-muted overflow-hidden">
+                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+              </div>
+              <div className="p-3">
+                <div className="font-serif text-sm">{p.name || 'Product'}</div>
+                <div className="text-sm font-semibold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+                {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (tpl === 'tech-lime' || tpl === 'journalism-red') {
+    // Modern dark cards with accent
+    return (
+      <div>
+        <h3 className="font-mono text-sm uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: accent }}>
+          <span className="w-1 h-5 rounded" style={{ background: accent }} />
+          Products
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {products.map((p: any, i: number) => (
+            <div key={i} className="bg-card border rounded-lg overflow-hidden hover:shadow-md transition-all" style={{ borderColor: accent + '30' }}>
+              <div className="aspect-square bg-muted overflow-hidden relative">
+                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                <div className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>
+                  {p.price || '₹0'}
+                </div>
+              </div>
+              <div className="p-3">
+                <div className="font-bold text-sm">{p.name || 'Product'}</div>
+                {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Default elegant style
+  return (
+    <div>
+      <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
+        <span className="w-1 h-5 rounded" style={{ background: accent }} />
+        Products & Services
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {products.map((p: any, i: number) => (
+          <div key={i} className="bg-card border border-border/60 rounded-lg overflow-hidden hover:shadow-md transition-all">
+            <div className="aspect-square bg-muted overflow-hidden">
+              {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+            </div>
+            <div className="p-3">
+              <div className="font-bold text-sm">{p.name || 'Product'}</div>
+              <div className="text-sm font-semibold mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
+              {p.details && <div className="text-xs text-muted-foreground mt-1">{p.details}</div>}
+            </div>
           </div>
         ))}
       </div>
