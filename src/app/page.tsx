@@ -434,9 +434,9 @@ export default function Home() {
             ) : (
               <>
             {/* Top bar: results count + actions */}
-            <div className="flex items-center justify-between flex-wrap gap-2 bg-card border border-border/60 rounded-lg px-4 py-2.5 shadow-sm">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-sm font-bold text-navy">
+            <div className="flex items-center justify-between flex-wrap gap-3 bg-card border border-border/60 rounded-xl px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-bold text-navy">
                   {loading ? 'Searching...' : t('results_found', { count: businesses.length })}
                 </h2>
                 {selectedCategory !== 'All' && (
@@ -451,9 +451,9 @@ export default function Home() {
                   </Badge>
                 )}
                 {userLat && (
-                  <Badge variant="outline" className="border-navy/30 text-navy bg-background font-medium">
+                  <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 bg-emerald-50 font-medium">
                     <MapPin className="w-3 h-3 mr-1" />
-                    {userLat.toFixed(2)}, {userLng?.toFixed(2)}
+                    Near you
                   </Badge>
                 )}
               </div>
@@ -500,19 +500,21 @@ export default function Home() {
               {/* Results */}
               <div>
                 {loading ? (
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {[1,2,3,4,5,6].map((i) => (
+                  <div className="grid grid-cols-1 gap-3">
+                    {[1,2,3,4].map((i) => (
                       <Card key={i}>
-                        <CardContent className="p-4 space-y-2">
-                          <div className="flex gap-3">
-                            <Skeleton className="w-14 h-14 rounded-md" />
-                            <div className="flex-1 space-y-1.5">
-                              <Skeleton className="h-4 w-3/4" />
-                              <Skeleton className="h-3 w-1/2" />
-                              <Skeleton className="h-3 w-2/3" />
+                        <CardContent className="p-4 flex gap-4">
+                          <Skeleton className="w-44 h-32 rounded-lg flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <div className="flex justify-between">
+                              <Skeleton className="h-5 w-2/3" />
+                              <Skeleton className="h-6 w-12" />
                             </div>
+                            <Skeleton className="h-3 w-1/2" />
+                            <Skeleton className="h-3 w-full" />
+                            <Skeleton className="h-3 w-3/4" />
+                            <Skeleton className="h-9 w-32 mt-3" />
                           </div>
-                          <Skeleton className="h-9 w-full" />
                         </CardContent>
                       </Card>
                     ))}
@@ -528,7 +530,7 @@ export default function Home() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {businesses.map((b, i) => (
                       <BusinessCard key={b.id} business={b} index={i} />
                     ))}
@@ -539,14 +541,17 @@ export default function Home() {
               {/* Sticky map (desktop xl only) */}
               <aside className="hidden xl:block">
                 <div className="sticky top-32">
-                  <div className="bg-card border border-border/60 rounded-lg overflow-hidden shadow-sm">
-                    <div className="flex items-center justify-between px-3 py-2 bg-navy text-navy-foreground">
-                      <div className="flex items-center gap-2 text-xs font-bold">
-                        <MapIcon className="w-3.5 h-3.5 text-brand" />
+                  <div className="bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                    <div className="flex items-center justify-between px-3 py-2.5 bg-card border-b border-border/60">
+                      <div className="flex items-center gap-2 text-xs font-bold text-navy">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
                         LIVE MAP
                       </div>
-                      <span className="text-[10px] bg-brand text-brand-foreground px-1.5 py-0.5 rounded font-semibold">
-                        {businesses.length} PINNED
+                      <span className="text-[10px] bg-brand text-brand-foreground px-2 py-0.5 rounded-full font-semibold">
+                        {businesses.length} pinned
                       </span>
                     </div>
                     <div className="h-[480px]">
