@@ -212,6 +212,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   const steps = [1, 2, 3, 4]
 
+
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-7xl sm:max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto p-0 gap-0 bg-card">
@@ -286,7 +288,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   </div>
 
                   {/* Split layout: customization LEFT, live preview RIGHT */}
-                  <div className="grid lg:grid-cols-[1fr_420px] gap-5">
+                  <div className="grid lg:grid-cols-[1fr_560px] gap-4">
                     {/* ===== LEFT: Customization ===== */}
                     <div className="space-y-4 min-w-0">
                       {/* Base template selection — visual previews */}
@@ -639,8 +641,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
                             </span>
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{form.template}</span>
                           </div>
-                          {/* Real HTML website preview via iframe */}
-                          <div style={{ height: '500px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+                          {/* Real HTML website preview via iframe — full height, no scrollbar */}
+                          <div style={{ 
+                            height: 'calc(95vh - 180px)', 
+                            minHeight: '500px',
+                            overflow: 'hidden', 
+                            position: 'relative', 
+                            background: '#fff'
+                          }}>
                             <iframe
                               srcDoc={generateBusinessWebsite({
                                 name: form.name || 'Your Business Name',

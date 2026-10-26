@@ -103,8 +103,25 @@ function generateCalmSage(b: BusinessData, images: string[], products: any[], ho
   .contact-label{font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.24em;text-transform:uppercase;color:#7a6e60;margin-bottom:0.5rem}
   footer{background:#2c2620;color:#f4ede0;padding:3rem 2rem;text-align:center;font-size:0.875rem}
   a{color:#b16a48;text-decoration:none}
-</style></head><body>
-  <div class="hero">
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(44,38,32,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(244,237,224,0.1)}
+  .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-logo{font-family:'Fraunces',serif;font-size:1.2rem;color:#f4ede0;text-decoration:none;letter-spacing:0.01em}
+  .topbar-nav{display:flex;gap:2rem}
+  .topbar-nav a{font-family:'Inter',sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(244,237,224,0.7);text-decoration:none;transition:color 0.3s}
+  .topbar-nav a:hover{color:#b16a48}
+::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+      <div class="topbar-nav">
+        <a href="#about">About</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#products">Products</a>
+        <a href="tel:${b.phone}">Contact</a>
+      </div>
+    </div>
+  </nav>
+  <div class="hero" style="margin-top:60px">
     ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:linear-gradient(135deg,#8a9a87,#5d6e5a)"></div>'}
     <div class="hero-veil"></div>
     <div class="hero-content">
@@ -187,8 +204,25 @@ function generateJungleGold(b: BusinessData, images: string[], products: any[], 
   .contact-val{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:#F5F5DC}
   a{color:#C9A227;text-decoration:none}
   footer{background:#05140A;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.25em;color:rgba(245,245,220,0.4);text-transform:uppercase}
-</style></head><body>
-  <div class="hero">
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,20,10,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(201,162,39,0.2)}
+  .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-logo{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:#F5F5DC;text-decoration:none;font-weight:600}
+  .topbar-nav{display:flex;gap:2rem}
+  .topbar-nav a{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,245,220,0.6);text-decoration:none;transition:color 0.3s}
+  .topbar-nav a:hover{color:#C9A227}
+::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+      <div class="topbar-nav">
+        <a href="#about">Preface</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#products">Catalogue</a>
+        <a href="tel:${b.phone}">Contact</a>
+      </div>
+    </div>
+  </nav>
+  <div class="hero" style="margin-top:60px">
     ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#0D2818"></div>'}
     <div class="hero-veil"></div>
     <div class="hero-content">
@@ -266,8 +300,25 @@ function generateAthleticBold(b: BusinessData, images: string[], products: any[]
   .contact-val{font-family:'Oswald',sans-serif;font-size:1rem;color:#f5f5f5}
   a{color:#FF5400;text-decoration:none}
   footer{background:#050505;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;color:#555;text-transform:uppercase}
-</style></head><body>
-  <div class="hero">
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,84,0,0.2)}
+  .topbar-inner{max-width:1200px;margin:0 auto;padding:0.8rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#f5f5f5;text-decoration:none;letter-spacing:0.02em;text-transform:uppercase}
+  .topbar-nav{display:flex;gap:2rem}
+  .topbar-nav a{font-family:'Oswald',sans-serif;font-size:0.75rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(245,245,245,0.6);text-decoration:none;transition:color 0.3s}
+  .topbar-nav a:hover{color:#FF5400}
+::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+      <div class="topbar-nav">
+        <a href="#about">Programs</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#products">Products</a>
+        <a href="tel:${b.phone}">Book Now</a>
+      </div>
+    </div>
+  </nav>
+  <div class="hero" style="margin-top:50px">
     ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#141414"></div>'}
     <div class="hero-veil"></div>
     <div class="hero-content">
@@ -345,8 +396,26 @@ function generateTechLime(b: BusinessData, images: string[], products: any[], ho
   .contact-val{font-size:1rem;color:#f0ebe1}
   a{color:#d4ff3a;text-decoration:none}
   footer{background:#15171f;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6d7a}
-</style></head><body>
-  <div class="hero">
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(13,14,20,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(240,235,225,0.08)}
+  .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.2rem;color:#f0ebe1;text-decoration:none;display:flex;align-items:center;gap:8px}
+  .topbar-logo-mark{width:26px;height:26px;background:#d4ff3a;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#0d0e14;font-size:14px;font-weight:900;transform:rotate(-8deg)}
+  .topbar-nav{display:flex;gap:2rem}
+  .topbar-nav a{font-size:14px;color:#a8a496;text-decoration:none;transition:color 0.2s}
+  .topbar-nav a:hover{color:#d4ff3a}
+::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="topbar-logo"><span class="topbar-logo-mark">${escapeHtml(b.name.charAt(0))}</span>${escapeHtml(b.name)}</a>
+      <div class="topbar-nav">
+        <a href="#about">About</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#products">Products</a>
+        <a href="tel:${b.phone}">Contact</a>
+      </div>
+    </div>
+  </nav>
+  <div class="hero" style="margin-top:60px">
     ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#1a1d28"></div>'}
     <div class="hero-veil"></div>
     <div class="hero-content">
@@ -424,8 +493,26 @@ function generateJournalismRed(b: BusinessData, images: string[], products: any[
   .contact-val{font-size:1rem;color:#f5f5f5}
   a{color:#ff2a2a;text-decoration:none}
   footer{background:#080808;padding:2rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#555;text-transform:uppercase;letter-spacing:0.15em}
-</style></head><body>
-  <div class="hero">
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(8,8,8,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.05)}
+  .topbar-inner{max-width:1400px;margin:0 auto;padding:0.9rem 2rem;display:flex;align-items:center;justify-content:space-between}
+  .topbar-logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.1rem;color:#f5f5f5;text-decoration:none;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:-0.02em}
+  .topbar-logo-mark{width:32px;height:32px;background:#ff2a2a;display:inline-flex;align-items:center;justify-content:center;color:#000;font-size:16px;font-weight:900}
+  .topbar-nav{display:flex;gap:2rem}
+  .topbar-nav a{font-size:13px;font-weight:500;color:#888;text-decoration:none;transition:color 0.2s;text-transform:uppercase;letter-spacing:0.02em}
+  .topbar-nav a:hover{color:#ff2a2a}
+::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="topbar-logo"><span class="topbar-logo-mark">${escapeHtml(b.name.charAt(0))}</span>${escapeHtml(b.name)}</a>
+      <div class="topbar-nav">
+        <a href="#about">Reviews</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#products">Picks</a>
+        <a href="tel:${b.phone}">Contact</a>
+      </div>
+    </div>
+  </nav>
+  <div class="hero" style="margin-top:55px">
     ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : '<div style="position:absolute;inset:0;background:#111111"></div>'}
     <div class="hero-veil"></div>
     <div class="hero-content">
@@ -501,8 +588,25 @@ function generateDefault(b: BusinessData, images: string[], products: any[], hou
     .contact-val{font-size:0.95rem;color:#1a1a1a}
     a{color:${accent};text-decoration:none}
     footer{background:#1a1a1a;color:#9ca3af;padding:2rem;text-align:center;font-size:0.8rem}
-  </style></head><body>
-    <div class="hero">
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(26,26,26,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.08)}
+    .topbar-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
+    .topbar-logo{font-size:1.2rem;font-weight:700;color:#fff;text-decoration:none}
+    .topbar-nav{display:flex;gap:2rem}
+    .topbar-nav a{font-size:0.85rem;color:rgba(255,255,255,0.6);text-decoration:none;transition:color 0.2s}
+    .topbar-nav a:hover{color:${accent}}
+  ::-webkit-scrollbar{display:none}html{scrollbar-width:none}</style></head><body>
+    <nav class="topbar">
+      <div class="topbar-inner">
+        <a href="#" class="topbar-logo">${escapeHtml(b.name)}</a>
+        <div class="topbar-nav">
+          <a href="#about">About</a>
+          <a href="#gallery">Gallery</a>
+          <a href="#products">Products</a>
+          <a href="tel:${b.phone}">Contact</a>
+        </div>
+      </div>
+    </nav>
+    <div class="hero" style="margin-top:60px">
       ${b.profileImage ? `<img src="${b.profileImage}" alt="${escapeHtml(b.name)}">` : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,${accent},${accent}cc)"></div>`}
       <div class="hero-veil"></div>
       <div class="hero-content">
