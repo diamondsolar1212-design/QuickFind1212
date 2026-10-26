@@ -69,6 +69,15 @@ function navBgStyle(b: BusinessData, fallback: string): string {
   return fallback
 }
 
+// Inline script injected at end of each template body.
+// It intercepts ALL <a href="#..."> clicks inside the iframe and smooth-scrolls
+// to the target section via scrollIntoView(). This is needed because:
+//   1. Plain hash navigation on `about:srcdoc` URLs (used by iframe srcDoc) is unreliable.
+//   2. Previously, sandbox="allow-top-navigation" let hash clicks escape and load the
+//      parent app URL — showing the marketplace inside the preview iframe.
+// Now we run without allow-top-navigation, but still intercept clicks for smooth UX.
+const NAV_INTERCEPTOR_SCRIPT = `<script>(function(){document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener('click',function(e){var href=a.getAttribute('href');if(!href||href==='#'||href.length<2)return;var target=document.getElementById(href.slice(1));if(target){e.preventDefault();e.stopPropagation();target.scrollIntoView({behavior:'smooth',block:'start'});return false;}else{e.preventDefault();e.stopPropagation();window.scrollTo({top:0,behavior:'smooth'});return false;}});});})();</script>`
+
 // Star rating HTML (out of 5)
 function starsHtml(rating: number): string {
   const full = Math.floor(rating)
@@ -153,7 +162,7 @@ function generateCalmSage(b: BusinessData, images: string[], products: any[], ho
       <div class="hero-label">${escapeHtml(b.category)} · ${escapeHtml(b.city)}</div>
       <h1 class="hero-title">${escapeHtml(b.name)}</h1>
       <p class="hero-tag">${escapeHtml(b.description.substring(0, 150))}</p>
-      <a href="tel:${b.phone}" class="cta">Contact →</a>
+      <a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}" class="cta">Contact →</a>
     </div>
   </div>
 
@@ -190,13 +199,14 @@ function generateCalmSage(b: BusinessData, images: string[], products: any[], ho
     <h2 class="section-title" style="font-family:'Fraunces',serif;font-weight:300;font-size:clamp(2rem,4vw,3rem);line-height:1.05;margin-bottom:1.5rem;">Get in Touch</h2>
     <div class="contact-grid">
       <div class="contact-item"><div class="contact-label">Address</div>${escapeHtml(b.address)}, ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</div>
-      <div class="contact-item"><div class="contact-label">Phone</div><a href="tel:${b.phone}">${b.phone}</a></div>
-      ${b.email ? `<div class="contact-item"><div class="contact-label">Email</div><a href="mailto:${b.email}">${b.email}</a></div>` : ''}
-      ${b.whatsapp ? `<div class="contact-item"><div class="contact-label">WhatsApp</div><a href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div>` : ''}
+      <div class="contact-item"><div class="contact-label">Phone</div><a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}">${b.phone}</a></div>
+      ${b.email ? `<div class="contact-item"><div class="contact-label">Email</div><a target="_blank" rel="noopener noreferrer" href="mailto:${b.email}">${b.email}</a></div>` : ''}
+      ${b.whatsapp ? `<div class="contact-item"><div class="contact-label">WhatsApp</div><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div>` : ''}
     </div>
   </section>
 
   <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name)} · ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</footer>
+${NAV_INTERCEPTOR_SCRIPT}
 </body></html>`
 }
 
@@ -308,12 +318,13 @@ function generateJungleGold(b: BusinessData, images: string[], products: any[], 
   <section id="contact" class="contact">
     <div class="contact-grid">
       <div><div class="contact-label">Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
-      <div><div class="contact-label">Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
-      ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
-      ${b.whatsapp ? `<div><div class="contact-label">WhatsApp</div><div class="contact-val"><a href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
+      <div><div class="contact-label">Phone</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}">${b.phone}</a></div></div>
+      ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+      ${b.whatsapp ? `<div><div class="contact-label">WhatsApp</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
     </div>
   </section>
   <footer>— ${escapeHtml(b.name)} · ${new Date().getFullYear()} —</footer>
+${NAV_INTERCEPTOR_SCRIPT}
 </body></html>`
 }
 
@@ -391,7 +402,7 @@ function generateAthleticBold(b: BusinessData, images: string[], products: any[]
       <div class="eyebrow">/ ${escapeHtml(b.category).toUpperCase()} /</div>
       <h1 class="hero-title">${escapeHtml(b.name)}</h1>
       <div class="hero-sub">${b.city.toUpperCase()} · ${b.state.toUpperCase()}</div>
-      <a href="tel:${b.phone}" class="cta">Book Now →</a>
+      <a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}" class="cta">Book Now →</a>
     </div>
   </div>
 
@@ -423,12 +434,13 @@ function generateAthleticBold(b: BusinessData, images: string[], products: any[]
     <h2 class="section-title">JOIN THE MOVEMENT</h2>
     <div class="contact-grid" style="margin-top:2rem;">
       <div><div class="contact-label">/ Location</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
-      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
-      ${b.email ? `<div><div class="contact-label">/ Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
-      ${b.whatsapp ? `<div><div class="contact-label">/ WhatsApp</div><div class="contact-val"><a href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
+      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}">${b.phone}</a></div></div>
+      ${b.email ? `<div><div class="contact-label">/ Email</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+      ${b.whatsapp ? `<div><div class="contact-label">/ WhatsApp</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
     </div>
   </section>
   <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name).toUpperCase()} · ALL RIGHTS RESERVED</footer>
+${NAV_INTERCEPTOR_SCRIPT}
 </body></html>`
 }
 
@@ -509,7 +521,7 @@ function generateTechLime(b: BusinessData, images: string[], products: any[], ho
       <div class="eyebrow">// ${escapeHtml(b.category)}</div>
       <h1 class="hero-title">${escapeHtml(b.name)}</h1>
       <p class="hero-sub">${escapeHtml(b.description.substring(0, 120))}</p>
-      <a href="tel:${b.phone}" class="btn">Get Best Price →</a>
+      <a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}" class="btn">Get Best Price →</a>
     </div>
   </div>
 
@@ -541,12 +553,13 @@ function generateTechLime(b: BusinessData, images: string[], products: any[], ho
     <h2 class="section-title">Contact Us</h2>
     <div class="contact-grid" style="margin-top:2rem;">
       <div><div class="contact-label">// Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
-      <div><div class="contact-label">// Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
-      ${b.email ? `<div><div class="contact-label">// Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
-      ${b.whatsapp ? `<div><div class="contact-label">// WhatsApp</div><div class="contact-val"><a href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
+      <div><div class="contact-label">// Phone</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}">${b.phone}</a></div></div>
+      ${b.email ? `<div><div class="contact-label">// Email</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+      ${b.whatsapp ? `<div><div class="contact-label">// WhatsApp</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
     </div>
   </section>
   <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name)} · Made with precision</footer>
+${NAV_INTERCEPTOR_SCRIPT}
 </body></html>`
 }
 
@@ -627,7 +640,7 @@ function generateJournalismRed(b: BusinessData, images: string[], products: any[
       <div class="eyebrow">NEW · ${escapeHtml(b.category).toUpperCase()}</div>
       <h1 class="hero-title">${escapeHtml(b.name)}</h1>
       <div class="hero-sub">${b.city.toUpperCase()} · EST. ${new Date().getFullYear()}</div>
-      <a href="tel:${b.phone}" class="btn">Read More →</a>
+      <a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}" class="btn">Read More →</a>
     </div>
   </div>
 
@@ -659,12 +672,13 @@ function generateJournalismRed(b: BusinessData, images: string[], products: any[
     <h2 class="section-title">Reach Out</h2>
     <div class="contact-grid" style="margin-top:2rem;">
       <div><div class="contact-label">/ Location</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}</div></div>
-      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
-      ${b.email ? `<div><div class="contact-label">/ Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
-      ${b.whatsapp ? `<div><div class="contact-label">/ WhatsApp</div><div class="contact-val"><a href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
+      <div><div class="contact-label">/ Phone</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}">${b.phone}</a></div></div>
+      ${b.email ? `<div><div class="contact-label">/ Email</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+      ${b.whatsapp ? `<div><div class="contact-label">/ WhatsApp</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
     </div>
   </section>
   <footer>© ${new Date().getFullYear()} ${escapeHtml(b.name).toUpperCase()} · ALL RIGHTS RESERVED</footer>
+${NAV_INTERCEPTOR_SCRIPT}
 </body></html>`
 }
 
@@ -742,7 +756,7 @@ function generateDefault(b: BusinessData, images: string[], products: any[], hou
         <div class="hero-label">${escapeHtml(b.category)} \u00b7 ${escapeHtml(b.city)}</div>
         <h1 class="hero-title">${escapeHtml(b.name)}</h1>
         <p class="hero-sub">${escapeHtml(b.description.substring(0, 150))}</p>
-        <a href="tel:${b.phone}" class="btn">Get Best Price</a>
+        <a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}" class="btn">Get Best Price</a>
       </div>
     </div>
     <section id="about" class="section">
@@ -769,11 +783,12 @@ function generateDefault(b: BusinessData, images: string[], products: any[], hou
       <h2 class="section-title">Get in Touch</h2>
       <div class="contact-grid" style="margin-top:1.5rem;">
         <div><div class="contact-label">Address</div><div class="contact-val">${escapeHtml(b.address)}, ${escapeHtml(b.city)}, ${escapeHtml(b.state)}</div></div>
-        <div><div class="contact-label">Phone</div><div class="contact-val"><a href="tel:${b.phone}">${b.phone}</a></div></div>
-        ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
-        ${b.whatsapp ? `<div><div class="contact-label">WhatsApp</div><div class="contact-val"><a href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
+        <div><div class="contact-label">Phone</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="tel:${b.phone}">${b.phone}</a></div></div>
+        ${b.email ? `<div><div class="contact-label">Email</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="mailto:${b.email}">${b.email}</a></div></div>` : ''}
+        ${b.whatsapp ? `<div><div class="contact-label">WhatsApp</div><div class="contact-val"><a target="_blank" rel="noopener noreferrer" href="https://wa.me/${b.whatsapp.replace(/[^0-9]/g, '')}">${b.whatsapp}</a></div></div>` : ''}
       </div>
     </section>
     <footer>\u00a9 ${new Date().getFullYear()} ${escapeHtml(b.name)}</footer>
-  </body></html>`
+  ${NAV_INTERCEPTOR_SCRIPT}
+</body></html>`
 }

@@ -675,7 +675,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                 pointerEvents: 'auto',
                                 display: 'block'
                               }}
-                              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
+                              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
                             />
                           </div>
                         </div>
@@ -715,7 +715,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         })}
                         title="Live Website Preview (Mobile)"
                         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
                       />
                     </div>
                   </div>

@@ -777,7 +777,7 @@ function HtmlTemplateRenderer({ business }: { business: any }) {
         title={`${business.name} Website`}
         className="w-full"
         style={{ height: '85vh', minHeight: '640px', border: 'none', display: 'block' }}
-        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
+        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
       />
     </div>
   )
