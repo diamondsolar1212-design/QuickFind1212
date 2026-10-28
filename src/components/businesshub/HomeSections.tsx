@@ -19,7 +19,7 @@ const CATEGORY_TILES = [
   { name: 'Repair Services', emoji: '🔧', color: '#dc2626', bg: '#fee2e2' },
   { name: 'Real Estate', emoji: '🏠', color: '#16a34a', bg: '#dcfce7' },
   { name: 'Doctors', emoji: '⚕️', color: '#0891b2', bg: '#cffafe' },
-  { name: 'Beauty & Spa', emoji: '💇', color: '#be185d', bg: '#fce7f3' },
+  { name: 'Beauty & Personal Care', emoji: '💇', color: '#be185d', bg: '#fce7f3' },
   { name: 'Wedding Planning', emoji: '💍', color: '#c026d3', bg: '#fae8ff' },
   { name: 'Restaurants', emoji: '🍽️', color: '#ea580c', bg: '#ffedd5' },
   { name: 'Home Services', emoji: '🛠️', color: '#15803d', bg: '#f0fdf4' },
@@ -55,14 +55,14 @@ const THEMATIC_ZONES = [
     services: ['Caterers', 'Photographers', 'Decorators', 'Makeup Artists', 'Wedding Cards', 'Tents']
   },
   {
-    title: 'Beauty & Spa',
+    title: 'Beauty & Personal Care',
     emoji: '💇',
     color: '#be185d',
     gradient: 'from-pink-500 to-rose-600',
     services: ['Salons', 'Spa & Massage', 'Hair Stylists', 'Bridal Makeup', 'Tattoo Artists', 'Nail Care']
   },
   {
-    title: 'Daily Needs',
+    title: 'Grocery & Essentials',
     emoji: '🛒',
     color: '#16a34a',
     gradient: 'from-emerald-500 to-green-600',
@@ -112,9 +112,10 @@ interface Props {
   onSearchByTag?: (tag: string) => void
   onSearchByCity?: (city: string) => void
   onGoToTab?: (tab: 'discover' | 'map' | 'categories') => void
+  onBrowseAll?: () => void
 }
 
-export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSearchByTag, onSearchByCity, onGoToTab }: Props) {
+export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSearchByTag, onSearchByCity, onGoToTab, onBrowseAll }: Props) {
   const { t } = useI18n()
 
   // Pick featured businesses (premium first, then by rating)
@@ -266,8 +267,9 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSea
             variant="ghost"
             size="sm"
             onClick={() => {
-              // Trigger a search for "trending" or show all
-              if (onSearchByTag) onSearchByTag('')
+              // Leave the marketing home and show the full listings directory.
+              if (onBrowseAll) onBrowseAll()
+              else if (onSearchByTag) onSearchByTag('')
               else onCategoryPick('All')
             }}
             className="text-blue-700 hover:text-blue-800 font-semibold text-xs"
@@ -375,7 +377,8 @@ export function HomeSections({ businesses, onCategoryPick, onBusinessPick, onSea
             variant="ghost"
             size="sm"
             onClick={() => {
-              if (onSearchByTag) onSearchByTag('')
+              if (onBrowseAll) onBrowseAll()
+              else if (onSearchByTag) onSearchByTag('')
               else onCategoryPick('All')
             }}
             className="text-blue-700 hover:text-blue-800 font-semibold text-xs"

@@ -67,6 +67,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    if (action === 'delete' || action === 'update') {
+      if (!businessId) {
+        return NextResponse.json({ error: 'Business ID required' }, { status: 400 })
+      }
+    }
+
+    if (action === 'update' && (!updates || typeof updates !== 'object')) {
+      return NextResponse.json({ error: 'Updates are required' }, { status: 400 })
+    }
+
     if (action === 'delete') {
       await db.business.delete({ where: { id: businessId } })
       return NextResponse.json({ success: true, action: 'deleted' })
@@ -79,6 +89,10 @@ export async function POST(request: NextRequest) {
       for (const f of allowedFields) {
         if (updates[f] !== undefined) allowed[f] = updates[f]
       }
+      if (allowed.verified !== undefined) allowed.verified = Boolean(allowed.verified)
+      if (allowed.premium !== undefined) allowed.premium = Boolean(allowed.premium)
+      if (allowed.isB2B !== undefined) allowed.isB2B = Boolean(allowed.isB2B)
+      if (allowed.isB2C !== undefined) allowed.isB2C = Boolean(allowed.isB2C)
       const business = await db.business.update({
         where: { id: businessId },
         data: allowed

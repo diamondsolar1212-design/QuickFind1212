@@ -50,6 +50,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    if (action === 'delete' || action === 'update') {
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+      }
+    }
+
+    if (action === 'update' && (!updates || typeof updates !== 'object')) {
+      return NextResponse.json({ error: 'Updates are required' }, { status: 400 })
+    }
+
     if (action === 'delete') {
       // Prevent admin from deleting themselves
       if (userId === adminId) {
@@ -65,6 +75,10 @@ export async function POST(request: NextRequest) {
       for (const f of allowedFields) {
         if (updates[f] !== undefined) allowed[f] = updates[f]
       }
+      if (allowed.role !== undefined && !['CUSTOMER', 'BUSINESS_OWNER'].includes(allowed.role)) {
+        return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+      }
+      if (allowed.isAdmin !== undefined) allowed.isAdmin = Boolean(allowed.isAdmin)
       const user = await db.user.update({
         where: { id: userId },
         data: allowed,

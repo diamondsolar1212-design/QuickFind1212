@@ -107,6 +107,7 @@ export const translations = {
     cat_subtitle: 'Explore verified businesses across {count} categories',
     cat_viewAll: 'View all businesses',
     cat_businesses: '{count} businesses',
+    cat_businesses_one: '1 business',
 
     // List Business modal
     list_title: 'List Your Business',
@@ -170,6 +171,7 @@ export const translations = {
     error_title: 'Something went wrong',
     retry: 'Try Again',
     results_found: '{count} businesses found',
+    results_found_one: '1 business found',
     no_results: 'No businesses match your search',
     no_results_hint: 'Try adjusting filters or search in a different city',
     selectCategory: 'Select Category',
@@ -290,6 +292,7 @@ export const translations = {
     cat_subtitle: '{count} श्रेणियों में सत्यापित व्यवसाय देखें',
     cat_viewAll: 'सभी व्यवसाय देखें',
     cat_businesses: '{count} व्यवसाय',
+    cat_businesses_one: '1 व्यवसाय',
 
     // List Business modal
     list_title: 'अपना व्यवसाय जोड़ें',
@@ -353,6 +356,7 @@ export const translations = {
     error_title: 'कुछ गलत हुआ',
     retry: 'पुनः प्रयास',
     results_found: '{count} व्यवसाय मिले',
+    results_found_one: '1 व्यवसाय मिला',
     no_results: 'कोई व्यवसाय आपकी खोज से मेल नहीं खाता',
     no_results_hint: 'फ़िल्टर समायोजित करें या दूसरे शहर में खोजें',
     selectCategory: 'श्रेणी चुनें',

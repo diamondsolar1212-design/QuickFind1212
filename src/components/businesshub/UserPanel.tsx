@@ -68,6 +68,7 @@ export function UserPanel({ onClose }: Props) {
       })
       if (res.ok) {
         toast.success('Business deleted')
+        window.dispatchEvent(new CustomEvent('business-changed'))
         fetchMyBusinesses()
       } else {
         toast.error('Failed to delete')
@@ -90,13 +91,14 @@ export function UserPanel({ onClose }: Props) {
           updates: editingBusiness
         })
       })
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
-        const data = await res.json()
         toast.success('Business updated!')
+        window.dispatchEvent(new CustomEvent('business-changed'))
         setEditingBusiness(null)
         fetchMyBusinesses()
       } else {
-        toast.error('Failed to update')
+        toast.error(data?.error || 'Failed to update')
       }
     } catch {
       toast.error('Network error')
@@ -291,7 +293,7 @@ export function UserPanel({ onClose }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-navy">My Businesses</h2>
-                <p className="text-sm text-muted-foreground">{myBusinesses.length} businesses · Manage your listings</p>
+                <p className="text-sm text-muted-foreground">{myBusinesses.length} {myBusinesses.length === 1 ? 'business' : 'businesses'} · Manage your listings</p>
               </div>
               <Button onClick={() => setShowListModal(true)} className="bg-brand hover:bg-brand/90 text-brand-foreground font-semibold h-9">
                 <Plus className="w-4 h-4 mr-1" />

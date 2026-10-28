@@ -148,6 +148,7 @@ export function AdminPanel({ onClose }: Props) {
       })
       if (res.ok) {
         toast.success(`Business ${!business.verified ? 'verified' : 'unverified'}`)
+        window.dispatchEvent(new CustomEvent('business-changed'))
         fetchBusinesses()
         fetchStats()
       }
@@ -169,6 +170,7 @@ export function AdminPanel({ onClose }: Props) {
       })
       if (res.ok) {
         toast.success(`Premium ${!business.premium ? 'enabled' : 'disabled'}`)
+        window.dispatchEvent(new CustomEvent('business-changed'))
         fetchBusinesses()
         fetchStats()
       }
@@ -721,7 +723,7 @@ export function AdminPanel({ onClose }: Props) {
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Store className="w-3 h-3" />
-                                    {u._count?.businesses || 0} businesses
+                                    {u._count?.businesses || 0} {(u._count?.businesses || 0) === 1 ? 'business' : 'businesses'}
                                   </span>
                                 </div>
                               </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import dynamic from 'next/dynamic'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -14,11 +14,13 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Store, UtensilsCrossed, Wrench, Sparkles, ChevronRight, ChevronLeft,
-  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown, Eye, LocateFixed
+  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown, Eye, LocateFixed,
+  Images, Pencil
 } from 'lucide-react'
 import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
-import { generateBusinessWebsite } from '@/lib/template-engine'
+import { generateBusinessWebsite, withPreviewEditor, MIN_IMAGES, type BusinessData } from '@/lib/template-engine'
+import { COLLECTION_TEMPLATES } from '@/lib/templates/collection-meta'
 import { toast } from 'sonner'
 
 const MapView = dynamic(
@@ -31,30 +33,90 @@ interface Props {
   onClose: () => void
 }
 
+interface SiteCopyFields {
+  heroTitle: string
+  heroTagline: string
+  aboutTitle: string
+  aboutText: string
+  galleryTitle: string
+  offeringsTitle: string
+  reviewsTitle: string
+  visitTitle: string
+  footerNote: string
+  navAbout: string
+  navGallery: string
+  navOfferings: string
+  navReviews: string
+  navVisit: string
+}
+
+const EMPTY_SITE_COPY: SiteCopyFields = {
+  heroTitle: '',
+  heroTagline: '',
+  aboutTitle: '',
+  aboutText: '',
+  galleryTitle: '',
+  offeringsTitle: '',
+  reviewsTitle: '',
+  visitTitle: '',
+  footerNote: '',
+  navAbout: '',
+  navGallery: '',
+  navOfferings: '',
+  navReviews: '',
+  navVisit: ''
+}
+
+const SITE_COPY_KEYS = Object.keys(EMPTY_SITE_COPY) as Array<keyof SiteCopyFields>
+
+/** Only non-empty overrides are stored, so templates keep their own copy by default. */
+function siteContentJson(copy: SiteCopyFields): string {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(copy)) {
+    const trimmed = value.trim()
+    if (trimmed) out[key] = trimmed
+  }
+  return Object.keys(out).length > 0 ? JSON.stringify(out) : ''
+}
+
 const TEMPLATES = [
-  // Base templates (free)
-  { id: 'retail', icon: Store, name: 'list_template_retail', desc: 'list_template_retail_desc', color: '#16a34a', emoji: '🏪', premium: false },
-  { id: 'restaurant', icon: UtensilsCrossed, name: 'list_template_restaurant', desc: 'list_template_restaurant_desc', color: '#dc2626', emoji: '🍽️', premium: false },
-  { id: 'service', icon: Wrench, name: 'list_template_service', desc: 'list_template_service_desc', color: '#0891b2', emoji: '🔧', premium: false },
-  // Premium templates (paid/luxury)
-  { id: 'premium', icon: Sparkles, name: 'list_template_premium', desc: 'list_template_premium_desc', color: '#7c3aed', emoji: '✨', premium: true },
-  { id: 'calm-sage', icon: Sparkles, name: 'Calm Sage', desc: 'Serene yoga studio style — soft sand/sage tones', color: '#8a9a87', emoji: '🌿', premium: true },
-  { id: 'jungle-gold', icon: Crown, name: 'Jungle Gold', desc: 'Editorial monograph — deep green + gold luxury', color: '#C9A227', emoji: '📖', premium: true },
-  { id: 'athletic-bold', icon: Crown, name: 'Athletic Bold', desc: 'High-intensity gym — black + orange energy', color: '#FF5400', emoji: '💪', premium: true },
-  { id: 'tech-lime', icon: Sparkles, name: 'Tech Lime', desc: 'Dark technical — lime green modern accents', color: '#d4ff3a', emoji: '⚡', premium: true },
-  { id: 'journalism-red', icon: Crown, name: 'Journalism Red', desc: 'Tech review style — black + red editorial', color: '#ff2a2a', emoji: '📰', premium: true }
+  // Base layouts — simple, fast, always free
+  { id: 'retail', icon: Store, name: 'list_template_retail', desc: 'list_template_retail_desc', color: '#16a34a', emoji: '🏪', premium: false, designer: false },
+  { id: 'restaurant', icon: UtensilsCrossed, name: 'list_template_restaurant', desc: 'list_template_restaurant_desc', color: '#dc2626', emoji: '🍽️', premium: false, designer: false },
+  { id: 'service', icon: Wrench, name: 'list_template_service', desc: 'list_template_service_desc', color: '#0891b2', emoji: '🔧', premium: false, designer: false },
+  { id: 'premium', icon: Sparkles, name: 'list_template_premium', desc: 'list_template_premium_desc', color: '#7c3aed', emoji: '✨', premium: false, designer: false },
+  // Designer collection — 20 premium HTML sites, free for now
+  { id: 'calm-sage', icon: Sparkles, name: 'Calm Sage', desc: 'Serene studio style — soft sand/sage tones', color: '#8a9a87', emoji: '🌿', premium: false, designer: true },
+  { id: 'jungle-gold', icon: Sparkles, name: 'Jungle Gold', desc: 'Editorial monograph — deep green + gold luxury', color: '#C9A227', emoji: '📖', premium: false, designer: true },
+  { id: 'athletic-bold', icon: Sparkles, name: 'Athletic Bold', desc: 'High-intensity gym — black + orange energy', color: '#FF5400', emoji: '💪', premium: false, designer: true },
+  { id: 'tech-lime', icon: Sparkles, name: 'Tech Lime', desc: 'Dark technical — lime green modern accents', color: '#d4ff3a', emoji: '⚡', premium: false, designer: true },
+  { id: 'journalism-red', icon: Sparkles, name: 'Journalism Red', desc: 'Tech review style — black + red editorial', color: '#ff2a2a', emoji: '📰', premium: false, designer: true },
+  ...COLLECTION_TEMPLATES.map((tpl) => ({
+    id: tpl.id,
+    icon: Sparkles,
+    name: tpl.name,
+    desc: tpl.desc,
+    color: tpl.color,
+    emoji: tpl.emoji,
+    premium: false,
+    designer: true
+  }))
 ]
 
 const CATEGORIES = [
   'Grocery & Essentials', 'Restaurants', 'Home Services', 'Textiles & Apparel',
   'Food & Sweets', 'Food & Beverages', 'Automobile', 'Electronics',
-  'Health & Wellness', 'Handicrafts & Art', 'Beauty & Personal Care', 'Other'
+  'Health & Wellness', 'Handicrafts & Art', 'Beauty & Personal Care',
+  'Real Estate', 'Doctors', 'Wedding Planning', 'Education', 'Travel Booking',
+  'B2B Suppliers', 'Repair Services', 'Other'
 ]
 
 const EMOJI_MAP: Record<string, string> = {
   'Grocery & Essentials': '🛒', 'Restaurants': '🍽️', 'Home Services': '🔧', 'Textiles & Apparel': '🧵',
   'Food & Sweets': '🍯', 'Food & Beverages': '☕', 'Automobile': '🚗', 'Electronics': '📱',
-  'Health & Wellness': '🌿', 'Handicrafts & Art': '🎨', 'Beauty & Personal Care': '💇', 'Other': '🏪'
+  'Health & Wellness': '🌿', 'Handicrafts & Art': '🎨', 'Beauty & Personal Care': '💇',
+  'Real Estate': '🏠', 'Doctors': '⚕️', 'Wedding Planning': '💍', 'Education': '🎓',
+  'Travel Booking': '✈️', 'B2B Suppliers': '🏭', 'Repair Services': '🛠️', 'Other': '🏪'
 }
 
 export function ListBusinessModal({ open, onClose }: Props) {
@@ -78,6 +140,17 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [showReviews, setShowReviews] = useState(true)
   const [showMap, setShowMap] = useState(true)
   const [showProducts, setShowProducts] = useState(true)
+  // Editable website buttons + custom links
+  const [ctaLabel, setCtaLabel] = useState('')
+  const [ctaUrl, setCtaUrl] = useState('')
+  const [cta2Label, setCta2Label] = useState('')
+  const [cta2Url, setCta2Url] = useState('')
+  const [siteLinks, setSiteLinks] = useState<Array<{ id: string; label: string; url: string }>>([])
+  // Website experience: hero strip, editable copy and page mode
+  const [heroImages, setHeroImages] = useState<string[]>([])
+  const [heroAutoScroll, setHeroAutoScroll] = useState(true)
+  const [siteMode, setSiteMode] = useState<'scroll' | 'pages'>('scroll')
+  const [siteCopy, setSiteCopy] = useState<SiteCopyFields>({ ...EMPTY_SITE_COPY })
   // Products catalog (image + name + price + details)
   const [catalogProducts, setCatalogProducts] = useState<Array<{
     id: string
@@ -88,7 +161,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
   }>>([])
 
   const [form, setForm] = useState({
-    template: 'retail',
+    template: 'blush-atelier',
     name: '', description: '', category: 'Grocery & Essentials', subcategory: '', tags: '',
     phone: '', whatsapp: '', email: '', website: '',
     address: '', city: '', state: 'Maharashtra', pincode: '',
@@ -98,11 +171,151 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   const update = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }))
 
-  const handlePickLocation = (lat: number, lng: number) => {
+  const totalImages = (profileImage ? 1 : 0) + galleryImages.length
+  const allImages = profileImage ? [profileImage, ...galleryImages] : galleryImages
+
+  // Snapshot of everything the generated website needs, so every wizard step
+  // can show the same live preview without duplicating the mapping.
+  const previewBusiness = useMemo<BusinessData>(() => ({
+    name: form.name || 'Your Business Name',
+    description: form.description || 'Your business description will appear here. Fill in your details on the left and watch your website take shape.',
+    category: form.category || 'Category',
+    subcategory: form.subcategory,
+    city: form.city || 'City',
+    state: form.state || 'State',
+    address: form.address || 'Address',
+    phone: form.phone || '+91 98765 43210',
+    whatsapp: form.whatsapp,
+    email: form.email,
+    website: form.website,
+    rating: 4.5,
+    reviewCount: 100,
+    profileImage,
+    imageUrls: galleryImages.join(','),
+    products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
+    hours: '',
+    themeColor,
+    template: form.template,
+    ctaLabel,
+    ctaUrl,
+    cta2Label,
+    cta2Url,
+    links: JSON.stringify(siteLinks.filter((l) => l.label.trim() && l.url.trim())),
+    heroImages: heroImages.join(','),
+    heroAutoScroll,
+    siteMode,
+    siteContent: siteContentJson(siteCopy)
+  }), [
+    form.name, form.description, form.category, form.subcategory,
+    form.city, form.state, form.address, form.phone, form.whatsapp,
+    form.email, form.website, form.template,
+    profileImage, galleryImages, catalogProducts, themeColor,
+    ctaLabel, ctaUrl, cta2Label, cta2Url, siteLinks,
+    heroImages, heroAutoScroll, siteMode, siteCopy
+  ])
+
+  // Style samples for the template grid: fixed copy + the user's photos, so
+  // typing a description never re-renders twenty websites.
+  const thumbSeed = useMemo<BusinessData>(() => ({
+    name: form.name || 'Sample Business',
+    description: 'Premium business website with quality products and services.',
+    category: form.category || 'Category',
+    city: 'Mumbai',
+    state: 'Maharashtra',
+    address: 'Main Road',
+    phone: '+91 98765 43210',
+    rating: 4.5,
+    reviewCount: 100,
+    profileImage,
+    imageUrls: galleryImages.join(','),
+    products: '',
+    hours: '',
+    themeColor,
+    template: 'retail'
+  }), [form.name, form.category, profileImage, galleryImages, themeColor])
+
+  const fillAddressFromCoords = async (lat: number, lng: number, force: boolean) => {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { signal: controller.signal, headers: { Accept: 'application/json' } }
+      )
+      if (!res.ok) return
+      const data = await res.json()
+      const addr = data?.address || {}
+      const street = [addr.house_number, addr.road || addr.pedestrian || addr.neighbourhood].filter(Boolean).join(' ')
+      const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district || ''
+      const state = addr.state || ''
+      const pincode = addr.postcode || ''
+      if (!street && !city && !state && !pincode) return
+      setForm((f) => ({
+        ...f,
+        address: force || !f.address.trim() ? (street || f.address) : f.address,
+        city: force || !f.city.trim() ? (city || f.city) : f.city,
+        state: force || !f.state.trim() ? (state || f.state) : f.state,
+        pincode: force || !f.pincode.trim() ? (pincode || f.pincode) : f.pincode
+      }))
+      const filled = [street, city, state, pincode].filter(Boolean).join(', ')
+      if (filled) toast.success(`Address filled: ${filled}`)
+    } catch {
+      // The map pin still saves the coordinates when lookup is unavailable.
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  const handlePickLocation = (lat: number, lng: number, force = false) => {
     update('lat', lat)
     update('lng', lng)
     toast.success(`Location set: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+    void fillAddressFromCoords(lat, lng, force)
   }
+
+  const toggleHeroImage = (url: string) => {
+    const base = heroImages.length > 0 ? heroImages : allImages
+    if (base.includes(url)) {
+      if (base.length <= 2) {
+        toast.error('Keep at least 2 images in the scrolling hero')
+        return
+      }
+      setHeroImages(base.filter((u) => u !== url))
+    } else {
+      setHeroImages([...base, url])
+    }
+  }
+
+  const updateSiteCopy = (key: keyof SiteCopyFields, value: string) => {
+    setSiteCopy((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // Inline preview edits arrive as postMessage from the generated site.
+  const handleSiteCopyEdit = useCallback((key: string, value: string) => {
+    const text = value.replace(/\s+/g, ' ').trim()
+    if (key === 'ctaLabel') {
+      setCtaLabel(text.slice(0, 40))
+      return
+    }
+    if (key === 'cta2Label') {
+      setCta2Label(text.slice(0, 40))
+      return
+    }
+    if (!SITE_COPY_KEYS.includes(key as keyof SiteCopyFields)) return
+    setSiteCopy((prev) => ({
+      ...prev,
+      [key]: text.slice(0, key === 'aboutText' || key === 'heroTagline' || key === 'footerNote' ? 1400 : 120)
+    }))
+  }, [])
+
+  const handleSiteProductEdit = useCallback((index: number, field: string, value: string) => {
+    if (!Number.isInteger(index) || index < 0) return
+    if (field !== 'name' && field !== 'price') return
+    const text = value.replace(/\s+/g, ' ').trim().slice(0, 80)
+    setCatalogProducts((prev) =>
+      prev.map((product, i) => (i === index ? { ...product, [field]: text } : product))
+    )
+  }, [])
 
   // Image upload handler — uses /api/upload endpoint
   const handleImageUpload = async (file: File, kind: 'profile' | 'gallery') => {
@@ -131,13 +344,41 @@ export function ListBusinessModal({ open, onClose }: Props) {
   }
 
   const removeGalleryImage = (idx: number) => {
+    const removed = galleryImages[idx]
     setGalleryImages((prev) => prev.filter((_, i) => i !== idx))
+    setHeroImages((prev) => prev.filter((url) => url !== removed))
+  }
+
+  const validateStep = (s: number): boolean => {
+    if (s === 2) {
+      if (!form.name.trim()) { toast.error('Business name is required'); return false }
+      if (!form.description.trim()) { toast.error('A short description is required'); return false }
+    }
+    if (s === 3) {
+      if (!form.phone.trim()) { toast.error('Phone number is required'); return false }
+      if (!form.address.trim()) { toast.error('Street address is required'); return false }
+      if (!form.city.trim()) { toast.error('City is required'); return false }
+      if (!form.state.trim()) { toast.error('State is required'); return false }
+      if (totalImages < MIN_IMAGES) {
+        toast.error(`Add at least ${MIN_IMAGES} images to create your website (${totalImages}/${MIN_IMAGES} added)`)
+        return false
+      }
+    }
+    return true
   }
 
   const handleSubmit = async () => {
     if (!user) {
       toast.error('Please login first')
       setShowAuthModal(true)
+      return
+    }
+    if (!validateStep(2)) {
+      setStep(2)
+      return
+    }
+    if (!validateStep(3)) {
+      setStep(3)
       return
     }
 
@@ -163,12 +404,22 @@ export function ListBusinessModal({ open, onClose }: Props) {
           showMap,
           showProducts,
           products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
+          ctaLabel,
+          ctaUrl,
+          cta2Label,
+          cta2Url,
+          links: JSON.stringify(siteLinks.filter((l) => l.label.trim() && l.url.trim())),
+          heroImages: heroImages.join(','),
+          heroAutoScroll,
+          siteMode,
+          siteContent: siteContentJson(siteCopy),
           ownerId: user.id
         })
       })
       const data = await res.json()
       if (res.ok && data.business) {
         setSuccess(data.business.id)
+        window.dispatchEvent(new CustomEvent('business-created', { detail: data.business.id }))
         toast.success('Business listed successfully!')
       } else {
         toast.error(data.error || 'Failed to list business')
@@ -195,8 +446,17 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setShowMap(true)
     setShowProducts(true)
     setCatalogProducts([])
+    setCtaLabel('')
+    setCtaUrl('')
+    setCta2Label('')
+    setCta2Url('')
+    setSiteLinks([])
+    setHeroImages([])
+    setHeroAutoScroll(true)
+    setSiteMode('scroll')
+    setSiteCopy({ ...EMPTY_SITE_COPY })
     setForm({
-      template: 'retail', name: '', description: '', category: 'Grocery & Essentials',
+      template: 'blush-atelier', name: '', description: '', category: 'Grocery & Essentials',
       subcategory: '', tags: '', phone: '', whatsapp: '', email: '', website: '',
       address: '', city: '', state: 'Maharashtra', pincode: '',
       lat: 19.0760, lng: 72.8777, isB2B: false, isB2C: true
@@ -216,7 +476,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-7xl sm:max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto p-0 gap-0 bg-card">
+      <DialogContent className="max-w-[1600px] sm:max-w-[1600px] w-[95vw] max-h-[95vh] overflow-y-auto p-0 gap-0 bg-card">
         {/* Header */}
         <div className="bg-gradient-to-r from-brand to-brand/80 px-6 py-5 text-brand-foreground">
           <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
@@ -294,72 +554,12 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       {/* Base template selection — visual previews */}
                       <div>
                         <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Choose Template</Label>
+                        <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5 mb-2">
+                          20 designer websites · <b>FREE</b> for now — scrolling hero photos, editable text & buttons, single-page or multi-page layouts.
+                        </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {TEMPLATES.map((tpl) => {
                             const selected = form.template === tpl.id
-
-                            // Template-specific visual preview data
-                            const PREVIEW_STYLES: Record<string, {
-                              bg: string
-                              heroBg: string
-                              heroText: string
-                              textColor: string
-                              font: string
-                              uppercase: boolean
-                              imgFilter: string
-                              label: string
-                              ctaText: string
-                              ctaBg: string
-                              ctaColor: string
-                            }> = {
-                              'retail': {
-                                bg: '#ffffff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
-                                font: 'sans', uppercase: false, imgFilter: 'none', label: 'Store',
-                                ctaText: 'Get Best Price', ctaBg: tpl.color, ctaColor: '#fff'
-                              },
-                              'restaurant': {
-                                bg: '#ffffff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
-                                font: 'sans', uppercase: false, imgFilter: 'none', label: 'Dining',
-                                ctaText: 'Book Table', ctaBg: tpl.color, ctaColor: '#fff'
-                              },
-                              'service': {
-                                bg: '#ffffff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
-                                font: 'sans', uppercase: false, imgFilter: 'none', label: 'Service',
-                                ctaText: 'Book Now', ctaBg: tpl.color, ctaColor: '#fff'
-                              },
-                              'premium': {
-                                bg: '#faf5ff', heroBg: tpl.color, heroText: '#ffffff', textColor: '#1a1a1a',
-                                font: 'serif', uppercase: false, imgFilter: 'none', label: 'Boutique',
-                                ctaText: 'Enquire', ctaBg: tpl.color, ctaColor: '#fff'
-                              },
-                              'calm-sage': {
-                                bg: '#f4ede0', heroBg: '#8a9a87', heroText: '#f4ede0', textColor: '#2c2620',
-                                font: 'serif', uppercase: false, imgFilter: 'brightness(0.9) saturate(0.85)', label: 'Studio',
-                                ctaText: 'Reserve', ctaBg: '#b16a48', ctaColor: '#f4ede0'
-                              },
-                              'jungle-gold': {
-                                bg: '#05140A', heroBg: '#0D2818', heroText: '#F5F5DC', textColor: '#F5F5DC',
-                                font: 'serif', uppercase: false, imgFilter: 'brightness(0.6)', label: 'Atelier',
-                                ctaText: 'Enquire', ctaBg: '#C9A227', ctaColor: '#05140A'
-                              },
-                              'athletic-bold': {
-                                bg: '#0a0a0a', heroBg: '#141414', heroText: '#f5f5f5', textColor: '#f5f5f5',
-                                font: 'sans', uppercase: true, imgFilter: 'grayscale(100%) contrast(1.3) brightness(0.5)', label: 'FORGE',
-                                ctaText: 'BOOK NOW', ctaBg: '#FF5400', ctaColor: '#000'
-                              },
-                              'tech-lime': {
-                                bg: '#0d0e14', heroBg: '#1a1d28', heroText: '#f0ebe1', textColor: '#f0ebe1',
-                                font: 'monospace', uppercase: false, imgFilter: 'brightness(0.5) saturate(0.8)', label: '// Lab',
-                                ctaText: 'Explore', ctaBg: '#d4ff3a', ctaColor: '#0d0e14'
-                              },
-                              'journalism-red': {
-                                bg: '#080808', heroBg: '#111111', heroText: '#f5f5f5', textColor: '#f5f5f5',
-                                font: 'sans', uppercase: true, imgFilter: 'brightness(0.6) saturate(0.7)', label: 'REVIEW',
-                                ctaText: 'READ MORE', ctaBg: '#ff2a2a', ctaColor: '#000'
-                              }
-                            }
-
-                            const ps = PREVIEW_STYLES[tpl.id] || PREVIEW_STYLES['retail']
 
                             return (
                               <button
@@ -369,9 +569,9 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                   selected ? 'border-brand shadow-md scale-[1.02]' : 'border-border hover:border-brand/40 hover:scale-[1.01]'
                                 }`}
                               >
-                                {tpl.premium && (
-                                  <span className="absolute top-1.5 right-1.5 z-10 text-amber-500 bg-black/60 rounded-full p-0.5">
-                                    <Crown className="w-3 h-3" />
+                                {tpl.designer && (
+                                  <span className="absolute top-1.5 right-1.5 z-10 text-[8px] font-black tracking-wider text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-full px-1.5 py-0.5">
+                                    FREE
                                   </span>
                                 )}
                                 {selected && (
@@ -380,41 +580,9 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                   </span>
                                 )}
 
-                                {/* Real HTML template preview via iframe */}
-                                <div style={{ height: '240px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
-                                  <iframe
-                                    srcDoc={generateBusinessWebsite({
-                                      name: form.name || 'Sample Business',
-                                      description: form.description || 'Premium business website with quality products and services.',
-                                      category: form.category || 'Category',
-                                      city: form.city || 'Mumbai',
-                                      state: form.state || 'Maharashtra',
-                                      address: form.address || 'Main Road',
-                                      phone: form.phone || '+91 98765 43210',
-                                      rating: 4.5,
-                                      reviewCount: 100,
-                                      profileImage: profileImage,
-                                      imageUrls: galleryImages.join(','),
-                                      products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
-                                      hours: '',
-                                      themeColor: themeColor,
-                                      template: tpl.id
-                                    })}
-                                    title={tpl.id + ' preview'}
-                                    style={{
-                                      width: '600px',
-                                      height: '600px',
-                                      border: 'none',
-                                      transform: 'scale(0.42)',
-                                      transformOrigin: 'top left',
-                                      pointerEvents: 'none',
-                                      position: 'absolute',
-                                      top: '0',
-                                      left: '0'
-                                    }}
-                                    sandbox="allow-same-origin"
-                                    loading="lazy"
-                                  />
+                                {/* Desktop-layout template thumbnail */}
+                                <div style={{ height: '240px' }}>
+                                  <TemplateThumb seed={thumbSeed} id={tpl.id} color={tpl.color} />
                                 </div>
 
                                 {/* Template name */}
@@ -516,9 +684,230 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         </div>
                       </div>
 
+                      {/* Website mode */}
+                      <div>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Website Mode</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'scroll' as const, title: 'Single Page', desc: 'All sections scroll together' },
+                            { id: 'pages' as const, title: 'Separate Pages', desc: 'Nav opens one section per page' }
+                          ].map((mode) => (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              onClick={() => setSiteMode(mode.id)}
+                              className={`rounded-lg border-2 p-2.5 text-left transition-all ${
+                                siteMode === mode.id
+                                  ? 'border-brand bg-brand-soft/20'
+                                  : 'border-border hover:border-brand/40'
+                              }`}
+                            >
+                              <span className="block text-xs font-bold">{mode.title}</span>
+                              <span className="block text-[10px] text-muted-foreground">{mode.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <Separator />
 
-                      {/* Products Catalog Manager */}
+                      {/* Editable website buttons and links */}
+                      <div>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-1 block">Website Buttons & Links</Label>
+                        <p className="text-[10px] text-muted-foreground mb-2">
+                          Rename the main buttons or point them anywhere (https://, tel:, mailto:). Custom links appear in the site nav and footer.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            value={ctaLabel}
+                            onChange={(e) => setCtaLabel(e.target.value)}
+                            placeholder="Main button text (Call Now)"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                          <Input
+                            value={ctaUrl}
+                            onChange={(e) => setCtaUrl(e.target.value)}
+                            placeholder="Main button link (tel:+91…)"
+                            className="h-9 text-xs"
+                          />
+                          <Input
+                            value={cta2Label}
+                            onChange={(e) => setCta2Label(e.target.value)}
+                            placeholder="Second button text (View Gallery)"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                          <Input
+                            value={cta2Url}
+                            onChange={(e) => setCta2Url(e.target.value)}
+                            placeholder="Second button link (#gallery)"
+                            className="h-9 text-xs"
+                          />
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          {siteLinks.map((link, idx) => (
+                            <div key={link.id} className="flex items-center gap-2">
+                              <Input
+                                value={link.label}
+                                onChange={(e) => {
+                                  const next = [...siteLinks]
+                                  next[idx] = { ...link, label: e.target.value }
+                                  setSiteLinks(next)
+                                }}
+                                placeholder="Link text"
+                                className="h-8 text-xs"
+                                maxLength={40}
+                              />
+                              <Input
+                                value={link.url}
+                                onChange={(e) => {
+                                  const next = [...siteLinks]
+                                  next[idx] = { ...link, url: e.target.value }
+                                  setSiteLinks(next)
+                                }}
+                                placeholder="https://…"
+                                className="h-8 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSiteLinks(siteLinks.filter((l) => l.id !== link.id))}
+                                className="w-8 h-8 flex-shrink-0 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-red-600 hover:border-red-300"
+                                aria-label="Remove link"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                          {siteLinks.length < 4 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSiteLinks([...siteLinks, { id: `link-${Date.now()}`, label: '', url: '' }])
+                              }
+                              className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+                            >
+                              <Plus className="w-3 h-3" /> Add custom link
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Editable website copy */}
+                      <div>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-1 block">Website Text</Label>
+                        <p className="text-[10px] text-muted-foreground mb-2">
+                          Change any heading, paragraph or footer line. Empty fields keep the template&apos;s own copy.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            value={siteCopy.heroTitle}
+                            onChange={(e) => updateSiteCopy('heroTitle', e.target.value)}
+                            placeholder="Hero title (business name)"
+                            className="h-9 text-xs"
+                            maxLength={90}
+                          />
+                          <Input
+                            value={siteCopy.heroTagline}
+                            onChange={(e) => updateSiteCopy('heroTagline', e.target.value)}
+                            placeholder="Hero tagline"
+                            className="h-9 text-xs"
+                            maxLength={240}
+                          />
+                          <Input
+                            value={siteCopy.aboutTitle}
+                            onChange={(e) => updateSiteCopy('aboutTitle', e.target.value)}
+                            placeholder="About heading"
+                            className="h-9 text-xs"
+                            maxLength={90}
+                          />
+                          <Input
+                            value={siteCopy.galleryTitle}
+                            onChange={(e) => updateSiteCopy('galleryTitle', e.target.value)}
+                            placeholder="Gallery heading"
+                            className="h-9 text-xs"
+                            maxLength={90}
+                          />
+                          <Input
+                            value={siteCopy.offeringsTitle}
+                            onChange={(e) => updateSiteCopy('offeringsTitle', e.target.value)}
+                            placeholder="Products / menu heading"
+                            className="h-9 text-xs"
+                            maxLength={90}
+                          />
+                          <Input
+                            value={siteCopy.reviewsTitle}
+                            onChange={(e) => updateSiteCopy('reviewsTitle', e.target.value)}
+                            placeholder="Reviews heading"
+                            className="h-9 text-xs"
+                            maxLength={90}
+                          />
+                          <Input
+                            value={siteCopy.visitTitle}
+                            onChange={(e) => updateSiteCopy('visitTitle', e.target.value)}
+                            placeholder="Visit / contact heading"
+                            className="h-9 text-xs"
+                            maxLength={90}
+                          />
+                          <Input
+                            value={siteCopy.footerNote}
+                            onChange={(e) => updateSiteCopy('footerNote', e.target.value)}
+                            placeholder="Footer note"
+                            className="h-9 text-xs"
+                            maxLength={240}
+                          />
+                          <Input
+                            value={siteCopy.navAbout}
+                            onChange={(e) => updateSiteCopy('navAbout', e.target.value)}
+                            placeholder="Menu: About"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                          <Input
+                            value={siteCopy.navGallery}
+                            onChange={(e) => updateSiteCopy('navGallery', e.target.value)}
+                            placeholder="Menu: Gallery"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                          <Input
+                            value={siteCopy.navOfferings}
+                            onChange={(e) => updateSiteCopy('navOfferings', e.target.value)}
+                            placeholder="Menu: Products and Services"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                          <Input
+                            value={siteCopy.navReviews}
+                            onChange={(e) => updateSiteCopy('navReviews', e.target.value)}
+                            placeholder="Menu: Reviews"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                          <Input
+                            value={siteCopy.navVisit}
+                            onChange={(e) => updateSiteCopy('navVisit', e.target.value)}
+                            placeholder="Menu: Visit"
+                            className="h-9 text-xs"
+                            maxLength={40}
+                          />
+                        </div>
+                        <p className="mt-2 text-[10px] text-brand">
+                          Tip: use Edit text on the live preview, then click any heading, menu item or button to change it directly.
+                        </p>
+                        <Textarea
+                          value={siteCopy.aboutText}
+                          onChange={(e) => updateSiteCopy('aboutText', e.target.value)}
+                          placeholder="About paragraph"
+                          className="mt-2 min-h-[64px] text-xs"
+                          maxLength={1400}
+                        />
+                      </div>
+
+                      <Separator />
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <Label className="text-xs font-semibold uppercase tracking-wide">Products Catalog</Label>
@@ -630,101 +1019,16 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       </div>
                     </div>
 
-                    {/* ===== RIGHT: LIVE PREVIEW (sticky, wider) — template-aware ===== */}
-                    <div className="hidden lg:block">
-                      <div className="sticky top-4">
-                        <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden shadow-md">
-                          <div className="bg-brand/10 px-3 py-2 flex items-center justify-between border-b border-brand/20">
-                            <span className="text-xs font-bold text-brand flex items-center gap-1.5">
-                              <Eye className="w-3.5 h-3.5" />
-                              LIVE PREVIEW
-                            </span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{form.template}</span>
-                          </div>
-                          {/* Real HTML website preview via iframe — full height, internal scroll, no outer scrollbar */}
-                          <div style={{ 
-                            height: 'calc(95vh - 140px)', 
-                            minHeight: '560px',
-                            overflow: 'hidden', 
-                            position: 'relative', 
-                            background: '#fff'
-                          }}>
-                            <iframe
-                              srcDoc={generateBusinessWebsite({
-                                name: form.name || 'Your Business Name',
-                                description: form.description || 'Your business description will appear here. Add details in Step 2.',
-                                category: form.category || 'Category',
-                                city: form.city || 'City',
-                                state: form.state || 'State',
-                                address: form.address || 'Address',
-                                phone: form.phone || '+91 98765 43210',
-                                rating: 4.5,
-                                reviewCount: 100,
-                                profileImage: profileImage,
-                                imageUrls: galleryImages.join(','),
-                                products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
-                                hours: '',
-                                themeColor: themeColor,
-                                template: form.template
-                              })}
-                              title="Live Website Preview"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                border: 'none',
-                                pointerEvents: 'auto',
-                                display: 'block'
-                              }}
-                              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
-                            />
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground text-center mt-2">
-                          Preview updates live as you customize · Click nav links inside to test
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mobile preview (shown below on small screens) */}
-                  <div className="lg:hidden bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden">
-                    <div className="bg-brand/10 px-3 py-2 border-b border-brand/20">
-                      <span className="text-xs font-bold text-brand flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" />
-                        LIVE PREVIEW
-                      </span>
-                    </div>
-                    <div style={{ height: '500px', overflow: 'hidden', position: 'relative', background: '#fff' }}>
-                      <iframe
-                        srcDoc={generateBusinessWebsite({
-                          name: form.name || 'Your Business Name',
-                          description: form.description || 'Your business description will appear here.',
-                          category: form.category || 'Category',
-                          city: form.city || 'City',
-                          state: form.state || 'State',
-                          address: form.address || 'Address',
-                          phone: form.phone || '+91 98765 43210',
-                          rating: 4.5,
-                          reviewCount: 100,
-                          profileImage: profileImage,
-                          imageUrls: galleryImages.join(','),
-                          products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
-                          hours: '',
-                          themeColor: themeColor,
-                          template: form.template
-                        })}
-                        title="Live Website Preview (Mobile)"
-                        style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
-                      />
-                    </div>
+                    {/* ===== RIGHT: LIVE PREVIEW (sticky, desktop-scaled) ===== */}
+                    <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
                   </div>
                 </div>
               )}
 
               {/* Step 2: Business Details */}
               {step === 2 && (
-                <div className="space-y-4">
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
+                  <div className="space-y-4 min-w-0">
                   <h3 className="font-serif font-semibold text-lg">{t('list_step2')}</h3>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
@@ -773,12 +1077,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       />
                     </div>
                   </div>
+                  </div>
+                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
                 </div>
               )}
 
               {/* Step 3: Contact + Location */}
               {step === 3 && (
-                <div className="space-y-4">
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
+                  <div className="space-y-4 min-w-0">
                   <h3 className="font-serif font-semibold text-lg">{t('list_step3')}</h3>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
@@ -885,7 +1192,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           toast.info('Detecting your location...')
                           navigator.geolocation.getCurrentPosition(
                             (pos) => {
-                              handlePickLocation(pos.coords.latitude, pos.coords.longitude)
+                              handlePickLocation(pos.coords.latitude, pos.coords.longitude, true)
                             },
                             () => {
                               toast.error('Could not detect location. Please pick on map.')
@@ -968,12 +1275,21 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         </span>
                       </label>
                     </div>
-                    <p className="text-[11px] text-muted-foreground">JPG/PNG/WEBP, max 5MB. This image will appear in your profile hero banner.</p>
+                    <p className="text-[11px] text-muted-foreground">JPG/PNG/WEBP, max 5MB. This image appears in your hero banner and counts as image 1 of {MIN_IMAGES}.</p>
                   </div>
 
                   {/* Gallery images */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Gallery Images (optional)</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm font-semibold">Gallery Images *</Label>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        totalImages >= MIN_IMAGES
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {totalImages}/{MIN_IMAGES} images
+                      </span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {galleryImages.map((url, idx) => (
                         <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border group">
@@ -1010,7 +1326,66 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         </label>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">Up to 6 images. Show your products, store interior, team, etc.</p>
+                    <p className={`text-[11px] ${totalImages >= MIN_IMAGES ? 'text-emerald-600' : 'text-amber-600 font-medium'}`}>
+                      {totalImages >= MIN_IMAGES
+                        ? `✓ ${totalImages} images ready — your website gallery is complete.`
+                        : `Add ${MIN_IMAGES - totalImages} more image${MIN_IMAGES - totalImages === 1 ? '' : 's'} to unlock your website. Minimum ${MIN_IMAGES} images (profile + gallery) required.`}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Up to 6 gallery images. Show your products, store interior, team, etc.</p>
+                  </div>
+
+                  {/* Hero scrolling images */}
+                  <Separator className="my-3" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        <Images className="w-4 h-4 text-brand" />
+                        Hero Scrolling Images
+                      </Label>
+                      {heroImages.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setHeroImages([])}
+                          className="text-[10px] font-semibold text-brand hover:underline"
+                        >
+                          Use all images
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pick the photos that scroll in the hero strip. All uploaded images are used by default.
+                    </p>
+                    {allImages.length === 0 ? (
+                      <p className="text-[11px] font-medium text-amber-600">Upload images above to choose hero photos.</p>
+                    ) : (
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                        {allImages.map((url) => {
+                          const active = heroImages.length === 0 || heroImages.includes(url)
+                          return (
+                            <button
+                              key={url}
+                              type="button"
+                              onClick={() => toggleHeroImage(url)}
+                              title={active ? 'Shown in hero strip' : 'Hidden from hero strip'}
+                              className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                                active ? 'border-brand' : 'border-border opacity-50 hover:opacity-80'
+                              }`}
+                            >
+                              <img src={url} alt="Hero option" className="w-full h-14 object-cover" />
+                              <span className={`absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center ${
+                                active ? 'bg-brand text-brand-foreground' : 'bg-white/90 text-muted-foreground border border-border'
+                              }`}>
+                                {active ? <Check className="w-2.5 h-2.5" /> : <Plus className="w-2.5 h-2.5" />}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 cursor-pointer pt-1">
+                      <Checkbox checked={heroAutoScroll} onCheckedChange={(v) => setHeroAutoScroll(!!v)} />
+                      <span className="text-xs">Auto-scroll hero images</span>
+                    </label>
                   </div>
 
                   {/* Premium website template picker */}
@@ -1048,12 +1423,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       </div>
                     </>
                   )}
+                  </div>
+                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
                 </div>
               )}
 
               {/* Step 4: Review */}
               {step === 4 && (
-                <div className="space-y-4">
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
+                  <div className="space-y-4 min-w-0">
                   <h3 className="font-serif font-semibold text-lg">{t('list_step4')}</h3>
                   <div className="rounded-xl border border-border/60 overflow-hidden">
                     <div
@@ -1092,8 +1470,21 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       </div>
                     </div>
                   </div>
+                  </div>
+                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
                 </div>
               )}
+
+              <div className="mt-4 lg:hidden">
+                <WebsitePreview
+                  business={previewBusiness}
+                  height="520px"
+                  title="Live Website Preview (Mobile)"
+                  desktop={false}
+                  onCopyEdit={handleSiteCopyEdit}
+                  onProductEdit={handleSiteProductEdit}
+                />
+              </div>
 
               {/* Footer nav */}
               <div className="flex justify-between items-center pt-5 mt-5 border-t border-border/60">
@@ -1105,25 +1496,35 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   <ChevronLeft className="w-4 h-4 mr-1" />
                   {step > 1 ? t('list_back') : 'Cancel'}
                 </Button>
-                {step < 4 ? (
-                  <Button
-                    onClick={() => setStep(step + 1)}
-                    className="bg-brand hover:bg-brand/90 text-brand-foreground"
-                    disabled={step === 2 && (!form.name || !form.description)}
-                  >
-                    {t('list_next')}
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className="bg-brand hover:bg-brand/90 text-brand-foreground"
-                  >
-                    {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-                    {t('list_submit')}
-                  </Button>
-                )}
+                <div className="flex items-center gap-3">
+                  {step === 3 && totalImages < MIN_IMAGES && (
+                    <span className="text-[11px] font-medium text-amber-600 text-right">
+                      Add {MIN_IMAGES - totalImages} more image{MIN_IMAGES - totalImages === 1 ? '' : 's'} to continue
+                    </span>
+                  )}
+                  {step < 4 ? (
+                    <Button
+                      onClick={() => { if (validateStep(step)) setStep(step + 1) }}
+                      className="bg-brand hover:bg-brand/90 text-brand-foreground"
+                      disabled={
+                        (step === 2 && (!form.name || !form.description)) ||
+                        (step === 3 && totalImages < MIN_IMAGES)
+                      }
+                    >
+                      {t('list_next')}
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                      className="bg-brand hover:bg-brand/90 text-brand-foreground"
+                    >
+                      {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+                      {t('list_submit')}
+                    </Button>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -1133,208 +1534,237 @@ export function ListBusinessModal({ open, onClose }: Props) {
   )
 }
 
-// ===== Template Preview Component — renders unique style per template =====
-function TemplatePreview({
-  template, themeColor, fontChoice, layoutStyle,
-  businessName, businessCategory, businessCity, businessDescription,
-  profileImage, galleryImages, catalogProducts,
-  showGallery, showProducts, showHours, showReviews, showMap
+// ===== Desktop-width iframe scaled down to fit its container =====
+// Rendering at a real desktop viewport and scaling the frame keeps the
+// generated site in its desktop layout instead of collapsing to mobile.
+const DESKTOP_VIEWPORT = 1440
+
+function ScaledSiteFrame({
+  html,
+  title,
+  viewportWidth = DESKTOP_VIEWPORT,
+  sandbox = 'allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox',
+  interactive = true,
+  iframeRef,
+  onLoad
 }: {
-  template: string
-  themeColor: string
-  fontChoice: string
-  layoutStyle: string
-  businessName: string
-  businessCategory: string
-  businessCity: string
-  businessDescription: string
-  profileImage: string
-  galleryImages: string[]
-  catalogProducts: Array<{ id: string; name: string; price: string; details: string; image: string }>
-  showGallery: boolean
-  showProducts: boolean
-  showHours: boolean
-  showReviews: boolean
-  showMap: boolean
+  html: string
+  title: string
+  viewportWidth?: number
+  sandbox?: string
+  interactive?: boolean
+  iframeRef?: RefObject<HTMLIFrameElement | null>
+  onLoad?: () => void
 }) {
-  const spacing = layoutStyle === 'compact' ? 'space-y-2' : layoutStyle === 'spacious' ? 'space-y-4' : 'space-y-3'
-  const fontFamily = fontChoice === 'serif' || fontChoice === 'classic' ? 'Georgia, serif' : fontChoice === 'modern' ? 'monospace' : 'inherit'
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
+  const [inView, setInView] = useState(false)
 
-  // Get template-specific colors
-  const TPL_COLORS: Record<string, { bg: string; fg: string; accent: string; cardBg: string; label: string }> = {
-    'retail': { bg: themeColor + '10', fg: '#1a1a1a', accent: themeColor, cardBg: '#ffffff', label: 'Store' },
-    'restaurant': { bg: '#fef2f2', fg: '#1a1a1a', accent: '#dc2626', cardBg: '#ffffff', label: 'Restaurant' },
-    'service': { bg: '#ecfeff', fg: '#1a1a1a', accent: '#0891b2', cardBg: '#ffffff', label: 'Service' },
-    'premium': { bg: '#faf5ff', fg: '#1a1a1a', accent: '#7c3aed', cardBg: '#ffffff', label: 'Premium' },
-    'calm-sage': { bg: '#f4ede0', fg: '#2c2620', accent: themeColor || '#8a9a87', cardBg: '#efe6d4', label: 'Studio' },
-    'jungle-gold': { bg: '#05140A', fg: '#F5F5DC', accent: themeColor || '#C9A227', cardBg: '#0D2818', label: 'Atelier' },
-    'athletic-bold': { bg: '#0a0a0a', fg: '#f5f5f5', accent: themeColor || '#FF5400', cardBg: '#141414', label: 'Forge' },
-    'tech-lime': { bg: '#0d0e14', fg: '#f0ebe1', accent: themeColor || '#d4ff3a', cardBg: '#1a1d28', label: 'Lab' },
-    'journalism-red': { bg: '#080808', fg: '#f5f5f5', accent: themeColor || '#ff2a2a', cardBg: '#111111', label: 'Review' }
-  }
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
-  const colors = TPL_COLORS[template] || TPL_COLORS['retail']
-  const isDark = ['jungle-gold', 'athletic-bold', 'tech-lime', 'journalism-red'].includes(template)
+  // Only mint real iframes for previews near the viewport; 20 full websites
+  // at once would stall the wizard.
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => setInView(entries.some((entry) => entry.isIntersecting)),
+      { rootMargin: '200px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  const scale = box.w > 0 ? box.w / viewportWidth : 0
 
   return (
     <div
-      className={'p-3 ' + spacing}
-      style={{
-        background: colors.bg,
-        color: colors.fg,
-        fontFamily: fontFamily,
-        minHeight: '300px'
-      }}
+      ref={boxRef}
+      style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative', background: '#fff' }}
     >
-      {/* === HERO BANNER === */}
-      {profileImage ? (
-        <div className="relative h-24 rounded-lg overflow-hidden">
-          <img src={profileImage} alt="" className="w-full h-full object-cover" style={{
-            filter: template === 'athletic-bold' ? 'grayscale(100%) contrast(1.3) brightness(0.5)' :
-                    template === 'jungle-gold' ? 'brightness(0.6) contrast(1.1)' :
-                    template === 'journalism-red' ? 'brightness(0.6) saturate(0.7)' :
-                    template === 'tech-lime' ? 'brightness(0.5) saturate(0.8)' :
-                    'brightness(0.85)'
-          }} />
-          <div className="absolute inset-0" style={{
-            background: isDark
-              ? 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.9) 100%)'
-              : 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 100%)'
-          }} />
-          <div className="absolute bottom-2 left-3 text-white">
-            <div
-              className="text-sm font-bold"
-              style={{
-                fontFamily: fontFamily,
-                letterSpacing: template === 'athletic-bold' || template === 'journalism-red' ? '-0.02em' : '0',
-                textTransform: template === 'athletic-bold' || template === 'journalism-red' ? 'uppercase' : 'none'
-              }}
-            >
-              {businessName}
-            </div>
-            <div className="text-[9px] opacity-90" style={{ color: colors.accent }}>
-              {businessCategory} · {businessCity}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="rounded-lg p-3"
+      {scale > 0 && inView && (
+        <iframe
+          ref={iframeRef}
+          onLoad={onLoad}
+          srcDoc={html}
+          title={title}
           style={{
-            background: 'linear-gradient(135deg, ' + colors.accent + ' 0%, ' + colors.accent + 'cc 100%)',
-            color: isDark ? colors.fg : '#ffffff'
+            width: `${viewportWidth}px`,
+            height: `${Math.max(box.h / scale, 320)}px`,
+            border: 'none',
+            display: 'block',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            pointerEvents: interactive ? 'auto' : 'none'
           }}
-        >
-          <div
-            className="text-sm font-bold"
-            style={{
-              letterSpacing: template === 'athletic-bold' || template === 'journalism-red' ? '-0.02em' : '0',
-              textTransform: template === 'athletic-bold' || template === 'journalism-red' ? 'uppercase' : 'none'
-            }}
+          sandbox={sandbox}
+          loading="lazy"
+        />
+      )}
+    </div>
+  )
+}
+
+// Template-grid sample: memoized so wizard typing never rebuilds 20 sites.
+const TemplateThumb = memo(function TemplateThumb({ seed, id, color }: { seed: BusinessData; id: string; color: string }) {
+  const html = useMemo(
+    () => generateBusinessWebsite({ ...seed, template: id, themeColor: color }),
+    [seed, id, color]
+  )
+  return (
+    <ScaledSiteFrame
+      html={html}
+      title={id + ' preview'}
+      viewportWidth={1100}
+      sandbox="allow-same-origin allow-scripts allow-popups"
+      interactive={false}
+    />
+  )
+})
+
+// ===== Live website preview shared by every wizard step =====
+type PreviewEditHandler = (key: string, value: string) => void
+type ProductEditHandler = (index: number, field: string, value: string) => void
+
+function WebsitePreview({
+  business,
+  height = 'calc(95vh - 200px)',
+  title = 'Live Website Preview',
+  desktop = true,
+  onCopyEdit,
+  onProductEdit
+}: {
+  business: BusinessData
+  height?: string
+  title?: string
+  desktop?: boolean
+  onCopyEdit?: PreviewEditHandler
+  onProductEdit?: ProductEditHandler
+}) {
+  const html = useMemo(() => withPreviewEditor(generateBusinessWebsite(business)), [business])
+  const [shownHtml, setShownHtml] = useState(html)
+  const [editing, setEditing] = useState(false)
+  const frameRef = useRef<HTMLIFrameElement | null>(null)
+
+  // Keep typing responsive: reload the preview a beat after the last keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setShownHtml(html), 300)
+    return () => clearTimeout(timer)
+  }, [html])
+
+  const sendEditMode = useCallback(() => {
+    frameRef.current?.contentWindow?.postMessage({ type: 'site-edit-mode', enabled: editing }, '*')
+  }, [editing])
+
+  // srcDoc reloads reset the iframe, so re-send the mode after each update.
+  useEffect(() => {
+    const timer = setTimeout(sendEditMode, 80)
+    return () => clearTimeout(timer)
+  }, [shownHtml, sendEditMode])
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== frameRef.current?.contentWindow) return
+      const data = event.data
+      if (!data || typeof data !== 'object') return
+      if (data.type === 'site-copy-edit' && typeof data.key === 'string') {
+        onCopyEdit?.(data.key, String(data.value ?? ''))
+      } else if (data.type === 'site-product-edit') {
+        onProductEdit?.(Number(data.index), String(data.field ?? ''), String(data.value ?? ''))
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [onCopyEdit, onProductEdit])
+
+  return (
+    <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden shadow-md">
+      <div className="bg-brand/10 px-3 py-2 flex items-center justify-between gap-2 border-b border-brand/20">
+        <span className="text-xs font-bold text-brand flex items-center gap-1.5">
+          <Eye className="w-3.5 h-3.5" />
+          LIVE PREVIEW
+        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => setEditing((value) => !value)}
+            title="Click any text in the preview to edit it"
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+              editing
+                ? 'bg-brand text-brand-foreground shadow-sm'
+                : 'bg-white/80 text-brand hover:bg-white'
+            }`}
           >
-            {businessName}
-          </div>
-          <div className="text-[9px] opacity-90 mt-0.5">{businessCategory} · {businessCity}</div>
+            <Pencil className="w-3 h-3" />
+            {editing ? 'Done editing' : 'Edit text'}
+          </button>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wide truncate">
+            {business.template} · {desktop ? 'Desktop' : 'Mobile'}
+          </span>
+        </div>
+      </div>
+      {editing && (
+        <div className="bg-amber-50 px-3 py-1.5 text-[10px] font-medium text-amber-700 border-b border-amber-200">
+          Click any outlined text to edit · Enter saves · Esc cancels
         </div>
       )}
-
-      {/* === GALLERY === */}
-      {showGallery && (profileImage || galleryImages.length > 0) && (
-        <div className="flex gap-1.5">
-          {galleryImages.slice(0, 4).map((url, i) => (
-            <div key={i} className="w-10 h-10 rounded overflow-hidden flex-shrink-0" style={{
-              border: '1px solid ' + (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)')
-            }}>
-              <img src={url} alt="" className="w-full h-full object-cover" style={{
-                filter: template === 'athletic-bold' ? 'grayscale(100%) contrast(1.3) brightness(0.7)' : 'none'
-              }} />
-            </div>
-          ))}
-          {!profileImage && galleryImages.length === 0 && (
-            <div className="w-10 h-10 rounded flex items-center justify-center text-base flex-shrink-0" style={{ background: colors.cardBg }}>
-              🖼️
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* === DESCRIPTION === */}
-      <p className="text-[11px] line-clamp-2 leading-relaxed" style={{
-        color: isDark ? (template === 'jungle-gold' ? '#8FBC8F' : template === 'tech-lime' ? '#a8a496' : '#888888') : '#6b6d7a',
-        fontStyle: template === 'calm-sage' || template === 'jungle-gold' ? 'italic' : 'normal'
-      }}>
-        {businessDescription}
-      </p>
-
-      {/* === PRODUCTS === */}
-      {showProducts && catalogProducts.length > 0 && (
-        <div className="space-y-1">
-          <div className="text-[9px] uppercase tracking-wider font-bold" style={{ color: colors.accent }}>
-            {template === 'calm-sage' ? 'Offerings' : template === 'jungle-gold' ? 'Catalogue' : template === 'athletic-bold' ? 'PRODUCTS' : 'Products'}
-          </div>
-          {catalogProducts.slice(0, 2).map((p, i) => (
-            <div key={i} className="flex items-center gap-2 p-1.5 rounded" style={{ background: colors.cardBg }}>
-              <div className="w-7 h-7 rounded flex items-center justify-center text-xs flex-shrink-0 overflow-hidden" style={{ background: isDark ? '#333' : '#f0f0f0' }}>
-                {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : '📦'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-semibold truncate">{p.name || 'Product'}</div>
-                <div className="text-[9px]" style={{ color: colors.accent }}>{p.price || '₹0'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* === SECTION BADGES === */}
-      <div className="flex items-center gap-1 flex-wrap">
-        {showHours && (
-          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
-            background: isDark ? 'rgba(16,185,129,0.15)' : '#d1fae5',
-            color: isDark ? '#4dd4ac' : '#065f46'
-          }}>
-            ⏰ Open
-          </span>
-        )}
-        {showProducts && (
-          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
-            background: isDark ? colors.accent + '20' : '#dbeafe',
-            color: isDark ? colors.accent : '#1e40af'
-          }}>
-            🛍️ Products
-          </span>
-        )}
-        {showReviews && (
-          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
-            background: isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7',
-            color: isDark ? '#fbbf24' : '#92400e'
-          }}>
-            ⭐ Reviews
-          </span>
-        )}
-        {showMap && (
-          <span className="text-[8px] px-1.5 py-0.5 rounded font-semibold" style={{
-            background: isDark ? 'rgba(168,85,247,0.15)' : '#f3e8ff',
-            color: isDark ? '#c4a5ff' : '#6b21a8'
-          }}>
-            📍 Map
-          </span>
+      <div style={{ height, overflow: 'hidden', position: 'relative', background: '#fff' }}>
+        {desktop ? (
+          <ScaledSiteFrame html={shownHtml} title={title} iframeRef={frameRef} onLoad={sendEditMode} />
+        ) : (
+          <iframe
+            ref={frameRef}
+            onLoad={sendEditMode}
+            srcDoc={shownHtml}
+            title={title}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
+          />
         )}
       </div>
+    </div>
+  )
+}
 
-      {/* === CTA BUTTON === */}
-      <button
-        type="button"
-        className="w-full py-2 rounded text-[10px] font-bold"
-        style={{
-          background: colors.accent,
-          color: isDark ? '#000' : '#fff',
-          textTransform: template === 'athletic-bold' || template === 'journalism-red' ? 'uppercase' : 'none',
-          letterSpacing: template === 'athletic-bold' || template === 'journalism-red' ? '0.05em' : '0'
-        }}
-      >
-        {template === 'athletic-bold' ? 'BOOK NOW' : template === 'journalism-red' ? 'READ MORE' : 'Get Best Price'}
-      </button>
+// Sticky preview column used by every wizard step; the mobile version is
+// rendered once below the step content.
+function PreviewPane({
+  business,
+  onCopyEdit,
+  onProductEdit
+}: {
+  business: BusinessData
+  onCopyEdit: PreviewEditHandler
+  onProductEdit: ProductEditHandler
+}) {
+  return (
+    <div className="hidden lg:block min-w-0">
+      <div className="sticky top-2">
+        <WebsitePreview
+          business={business}
+          height="calc(95vh - 200px)"
+          onCopyEdit={onCopyEdit}
+          onProductEdit={onProductEdit}
+        />
+        <p className="text-[10px] text-muted-foreground text-center mt-2">
+          Preview updates live · Use Edit text to change any heading, menu item or button
+        </p>
+      </div>
     </div>
   )
 }

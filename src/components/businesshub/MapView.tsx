@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from 'react-leaflet'
 import L from 'leaflet'
 import { useApp, type Business } from '@/store/app'
 import { useI18n } from '@/store/i18n'
@@ -90,6 +90,16 @@ function FlyToUser() {
   ) : null
 }
 
+function LocationPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng
+      if (Number.isFinite(lat) && Number.isFinite(lng)) onPick(lat, lng)
+    },
+  })
+  return null
+}
+
 interface Props {
   businesses: Business[]
   onPickLocation?: (lat: number, lng: number) => void
@@ -140,30 +150,19 @@ export function MapView({ businesses, onPickLocation, pickMode = false, height =
   const center: [number, number] = hasValidUserLoc ? [userLat as number, userLng as number] : [19.0760, 72.8777]
 
   return (
-    <Card className="overflow-hidden border-border/60 shadow-sm relative">
-      <div style={{ height }} className="relative">
+    <Card className="overflow-hidden border-border/60 shadow-sm relative h-full" style={{ height: height === '100%' ? '100%' : height }}>
+      <div className="relative h-full">
         <MapContainer
           center={center}
           zoom={hasValidUserLoc ? 12 : 5}
           className="w-full h-full"
           ref={(m) => { if (m) mapRef.current = m }}
-          click={(e: any) => {
-            if (pickMode && onPickLocation) {
-              onPickLocation(e.latlng.lat, e.latlng.lng)
-            }
-          }}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; OpenStreetMap contributors'
           />
-          {pickMode && (
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution=""
-              opacity={0.5}
-            />
-          )}
+          {pickMode && onPickLocation && <LocationPicker onPick={onPickLocation} />}
           <FlyToUser />
           {businesses
             .filter((biz) => Number.isFinite(biz.lat) && Number.isFinite(biz.lng))
@@ -243,7 +242,7 @@ export function MapView({ businesses, onPickLocation, pickMode = false, height =
         {!pickMode && businesses.length > 0 && (
           <div className="absolute bottom-4 left-4 z-[1000] bg-white/95 backdrop-blur px-3 py-2 rounded-lg shadow-md border border-border/40">
             <div className="text-xs text-muted-foreground">Showing</div>
-            <div className="text-lg font-serif font-semibold text-brand leading-tight">{businesses.length} businesses</div>
+            <div className="text-lg font-serif font-semibold text-brand leading-tight">{businesses.length} {businesses.length === 1 ? 'business' : 'businesses'}</div>
           </div>
         )}
       </div>

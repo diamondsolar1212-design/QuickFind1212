@@ -52,6 +52,7 @@ export interface Business {
   imageUrls: string
   profileImage: string
   liveTracking: boolean
+  ownerId?: string
   reviews?: any[]
   distance?: number
 }
@@ -66,6 +67,7 @@ export interface NearbyPlace {
   type: string
   address: string
   phone: string
+  whatsapp?: string
   website: string
   lat: number
   lng: number

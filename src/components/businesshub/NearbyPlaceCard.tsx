@@ -1,9 +1,8 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  MapPin, Phone, Globe, Navigation, ExternalLink, Database
+  MapPin, Phone, Navigation, Database, MessageCircle
 } from 'lucide-react'
 import type { NearbyPlace } from '@/store/app'
 
@@ -13,19 +12,15 @@ interface Props {
 }
 
 export function NearbyPlaceCard({ place, index = 0 }: Props) {
+  const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`
+  const whatsappHref = place.whatsapp ? `https://wa.me/${place.whatsapp}` : ''
+
   return (
     <div
-      className="group bg-card rounded-xl border border-border/60 border-l-4 overflow-hidden hover:shadow-md hover:border-brand/30 transition-all cursor-pointer animate-fadeInUp flex"
+      className="group bg-card rounded-xl border border-border/60 border-l-4 overflow-hidden hover:shadow-md hover:border-brand/30 transition-all animate-fadeInUp flex"
       style={{
         animationDelay: `${index * 30}ms`,
         borderLeftColor: place.imageColor
-      }}
-      onClick={() => {
-        if (place.website) {
-          window.open(place.website, '_blank')
-        } else {
-          window.open(`https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lng}#map=18/${place.lat}/${place.lng}`, '_blank')
-        }
       }}
     >
       {/* Image / Logo area */}
@@ -77,58 +72,41 @@ export function NearbyPlaceCard({ place, index = 0 }: Props) {
           <span>via OpenStreetMap</span>
         </div>
 
-        {/* Action row */}
-        <div className="flex items-center gap-1.5 pt-2 border-t border-border/50 mt-auto">
+        {/* Action row — external data: call, navigation, WhatsApp only */}
+        <div className="flex items-center gap-1.5 pt-2 border-t border-border/50 mt-auto flex-wrap">
           <Button
             size="sm"
             variant="outline"
             className="h-7 text-[11px] border-blue-500/30 text-blue-700 hover:bg-blue-50 font-semibold"
-            onClick={(e) => {
-              e.stopPropagation()
-              window.open(`https://www.openstreetmap.org/directions?from=&to=${place.lat}%2C${place.lng}`, '_blank')
-            }}
+            onClick={() => window.open(mapsHref, '_blank', 'noopener,noreferrer')}
           >
             <Navigation className="w-3 h-3 mr-1" />
-            Directions
+            Navigate
           </Button>
           {place.phone && (
             <Button
               size="sm"
               variant="outline"
-              className="h-7 w-7 p-0 border-border text-foreground hover:bg-muted hover:text-emerald-600 hover:border-emerald-500/40"
-              onClick={(e) => {
-                e.stopPropagation()
-                window.location.href = `tel:${place.phone}`
-              }}
+              className="h-7 text-[11px] border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 font-semibold"
+              onClick={() => { window.location.href = `tel:${place.phone}` }}
+              title="Call"
             >
-              <Phone className="w-3.5 h-3.5" />
+              <Phone className="w-3.5 h-3.5 mr-1" />
+              Call
             </Button>
           )}
-          {place.website && (
+          {whatsappHref && (
             <Button
               size="sm"
               variant="outline"
-              className="h-7 w-7 p-0 border-border text-foreground hover:bg-muted hover:text-blue-600 hover:border-blue-500/40"
-              onClick={(e) => {
-                e.stopPropagation()
-                window.open(place.website, '_blank')
-              }}
+              className="h-7 text-[11px] border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 font-semibold"
+              onClick={() => window.open(whatsappHref, '_blank', 'noopener,noreferrer')}
+              title="WhatsApp"
             >
-              <Globe className="w-3.5 h-3.5" />
+              <MessageCircle className="w-3.5 h-3.5 mr-1" />
+              WhatsApp
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-brand ml-auto"
-            onClick={(e) => {
-              e.stopPropagation()
-              window.open(`https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lng}#map=18/${place.lat}/${place.lng}`, '_blank')
-            }}
-            title="View on OpenStreetMap"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
         </div>
       </div>
     </div>

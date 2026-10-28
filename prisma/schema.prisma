@@ -21,6 +21,7 @@ model User {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   businesses Business[]
+  conversations Conversation[] @relation("CustomerConversations")
 }
 
 model Business {
@@ -64,10 +65,22 @@ model Business {
   products      String   @default("") // JSON string of product/service list
   imageUrls     String   @default("") // comma separated (gallery)
   profileImage  String   @default("") // main profile image URL
+  // Editable website buttons + custom links
+  ctaLabel      String   @default("") // primary hero button text
+  ctaUrl        String   @default("") // primary hero button link
+  cta2Label     String   @default("") // secondary hero button text
+  cta2Url       String   @default("") // secondary hero button link
+  links         String   @default("") // JSON array of { label, url }
+  // Website experience
+  heroImages     String   @default("") // comma separated subset of images for the scrolling hero strip
+  heroAutoScroll Boolean  @default(true) // auto-scroll the hero image strip
+  siteMode       String   @default("scroll") // scroll | pages
+  siteContent    String   @default("") // JSON of editable website copy
   liveTracking  Boolean  @default(false) // allow live location sharing on profile
   ownerId       String
   owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   reviews       Review[]
+  conversations Conversation[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -81,4 +94,30 @@ model Review {
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId      String?
   createdAt   DateTime @default(now())
+}
+
+model Conversation {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   User     @relation("CustomerConversations", fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  messages   ChatMessage[]
+
+  @@unique([businessId, customerId])
+}
+
+model ChatMessage {
+  id               String       @id @default(cuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String
+  senderRole       String       @default("customer") // customer | business
+  body             String       @default("")
+  imageUrl         String       @default("")
+  seenByCustomer   Boolean      @default(false)
+  seenByBusiness   Boolean      @default(false)
+  createdAt        DateTime     @default(now())
 }

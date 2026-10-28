@@ -66,11 +66,15 @@ export async function GET(request: NextRequest) {
     if (lat && lng) {
       const userLat = parseFloat(lat)
       const userLng = parseFloat(lng)
+      if (!Number.isFinite(userLat) || !Number.isFinite(userLng)) {
+        return NextResponse.json({ error: 'Invalid lat/lng' }, { status: 400 })
+      }
+      const maxDistance = Number.isFinite(radius) && radius > 0 ? radius : 50
       const withDistance = businesses.map((b) => ({
         ...b,
         distance: haversine(userLat, userLng, b.lat, b.lng)
       }))
-      const filtered = withDistance.filter((b) => b.distance <= radius)
+      const filtered = withDistance.filter((b) => Number.isFinite(b.distance) && b.distance <= maxDistance)
       // Sort: Premium first → Verified next → then by distance
       filtered.sort((a, b) => {
         if (a.premium !== b.premium) return a.premium ? -1 : 1
@@ -89,31 +93,51 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => null)
+    if (!body) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
     const required = ['name', 'description', 'category', 'phone', 'address', 'city', 'state', 'lat', 'lng', 'ownerId']
     for (const f of required) {
-      if (body[f] === undefined || body[f] === null || body[f] === '') {
+      if (body[f] === undefined || body[f] === null || String(body[f]).trim() === '') {
         return NextResponse.json({ error: `Missing field: ${f}` }, { status: 400 })
       }
     }
 
+    const lat = Number(body.lat)
+    const lng = Number(body.lng)
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      return NextResponse.json({ error: 'Please choose a valid location on the map' }, { status: 400 })
+    }
+    if (!body.isB2B && body.isB2C === false) {
+      return NextResponse.json({ error: 'Choose at least one audience (B2B or B2C)' }, { status: 400 })
+    }
+
+    const owner = await db.user.findUnique({ where: { id: String(body.ownerId) }, select: { id: true } })
+    if (!owner) {
+      return NextResponse.json({ error: 'Owner account not found. Please sign in again.' }, { status: 401 })
+    }
+
+    const text = (value: unknown, max: number) => String(value ?? '').trim().slice(0, max)
+
     const business = await db.business.create({
       data: {
-        name: body.name,
-        description: body.description,
-        category: body.category,
-        subcategory: body.subcategory || null,
-        tags: body.tags || '',
-        phone: body.phone,
-        whatsapp: body.whatsapp || null,
-        email: body.email || null,
-        website: body.website || null,
-        address: body.address,
-        city: body.city,
-        state: body.state,
-        pincode: body.pincode || null,
-        lat: parseFloat(body.lat),
-        lng: parseFloat(body.lng),
+        name: text(body.name, 120),
+        description: text(body.description, 2000),
+        category: text(body.category, 80),
+        subcategory: body.subcategory ? text(body.subcategory, 80) : null,
+        tags: text(body.tags, 300),
+        phone: text(body.phone, 30),
+        whatsapp: body.whatsapp ? text(body.whatsapp, 30) : null,
+        email: body.email ? text(body.email, 160) : null,
+        website: body.website ? text(body.website, 300) : null,
+        address: text(body.address, 300),
+        city: text(body.city, 80),
+        state: text(body.state, 80),
+        pincode: body.pincode ? text(body.pincode, 12) : null,
+        lat,
+        lng,
         isB2B: !!body.isB2B,
         isB2C: body.isB2C !== false,
         template: body.template || 'retail',
@@ -132,6 +156,15 @@ export async function POST(request: NextRequest) {
         products: body.products || '',
         imageUrls: body.imageUrls || '',
         profileImage: body.profileImage || '',
+        ctaLabel: text(body.ctaLabel, 40),
+        ctaUrl: text(body.ctaUrl, 300),
+        cta2Label: text(body.cta2Label, 40),
+        cta2Url: text(body.cta2Url, 300),
+        links: typeof body.links === 'string' ? body.links.slice(0, 2000) : '',
+        heroImages: typeof body.heroImages === 'string' ? body.heroImages.slice(0, 2000) : '',
+        heroAutoScroll: body.heroAutoScroll !== false,
+        siteMode: body.siteMode === 'pages' ? 'pages' : 'scroll',
+        siteContent: typeof body.siteContent === 'string' ? body.siteContent.slice(0, 4000) : '',
         liveTracking: !!body.liveTracking,
         ownerId: body.ownerId
       }

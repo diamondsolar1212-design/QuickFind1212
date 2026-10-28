@@ -32,7 +32,7 @@ export function CategoriesGrid({ categories, onPick }: Props) {
             </div>
             <div className="font-serif font-semibold text-sm leading-tight mb-1">{cat.name}</div>
             <Badge variant="outline" className="text-[10px] border-brand/30 text-brand bg-brand-soft/30 font-medium">
-              {t('cat_businesses', { count: cat.count })}
+              {cat.count === 1 ? t('cat_businesses_one') : t('cat_businesses', { count: cat.count })}
             </Badge>
           </div>
         </Card>

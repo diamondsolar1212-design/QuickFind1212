@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const lat = searchParams.get('lat')
     const lng = searchParams.get('lng')
-    const radius = parseInt(searchParams.get('radius') || '2000') // meters, default 2km
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const radius = parseInt(searchParams.get('radius') || '2000', 10) // meters, default 2km
+    const limit = parseInt(searchParams.get('limit') || '20', 10)
 
     if (!lat || !lng) {
       return NextResponse.json(
@@ -76,8 +76,17 @@ export async function GET(request: NextRequest) {
     const userLat = parseFloat(lat)
     const userLng = parseFloat(lng)
 
-    // Cap radius to 5km to avoid huge queries
-    const safeRadius = Math.min(Math.max(radius, 500), 5000)
+    if (!Number.isFinite(userLat) || !Number.isFinite(userLng) ||
+        userLat < -90 || userLat > 90 || userLng < -180 || userLng > 180) {
+      return NextResponse.json(
+        { error: 'Invalid lat or lng parameter' },
+        { status: 400 }
+      )
+    }
+
+    // Cap radius to 5km to avoid huge queries; clamp result count
+    const safeRadius = Math.min(Math.max(Number.isFinite(radius) ? radius : 2000, 500), 5000)
+    const safeLimit = Math.min(Math.max(Number.isFinite(limit) ? limit : 20, 1), 50)
 
     // Build Overpass QL query — fetch amenities + shops in radius
     const query = `[out:json][timeout:10];(
@@ -100,20 +109,22 @@ export async function GET(request: NextRequest) {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s per mirror
 
-        const overpassRes = await fetch(overpassUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'data=' + encodeURIComponent(query),
-          signal: controller.signal
-        })
+        try {
+          const overpassRes = await fetch(overpassUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'data=' + encodeURIComponent(query),
+            signal: controller.signal
+          })
 
-        clearTimeout(timeoutId)
-
-        if (overpassRes.ok) {
-          overpassData = await overpassRes.json()
-          break
-        } else {
-          lastError = new Error(`Overpass responded ${overpassRes.status}`)
+          if (overpassRes.ok) {
+            overpassData = await overpassRes.json()
+            break
+          } else {
+            lastError = new Error(`Overpass responded ${overpassRes.status}`)
+          }
+        } finally {
+          clearTimeout(timeoutId)
         }
       } catch (err: any) {
         lastError = err
@@ -153,6 +164,11 @@ export async function GET(request: NextRequest) {
             .filter(Boolean)
             .join(' ') || 'Address not available',
           phone: tags['phone'] || tags['contact:phone'] || '',
+          whatsapp: (() => {
+            const raw = tags['contact:whatsapp'] || tags['whatsapp'] || ''
+            const digits = raw.replace(/[^0-9]/g, '')
+            return digits.length >= 10 && digits.length <= 15 ? digits : ''
+          })(),
           website: tags['website'] || tags['contact:website'] || '',
           lat: el.lat,
           lng: el.lon,
@@ -162,7 +178,7 @@ export async function GET(request: NextRequest) {
       })
       .filter((p: any) => p.distance <= safeRadius / 1000)
       .sort((a: any, b: any) => a.distance - b.distance)
-      .slice(0, limit)
+      .slice(0, safeLimit)
 
     return NextResponse.json({
       nearby,

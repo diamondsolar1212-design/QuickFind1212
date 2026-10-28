@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,9 @@ export function AuthModal({ open, onClose, defaultRole }: Props) {
   const [phone, setPhone] = useState('')
 
   // Default role passed in by parent (e.g. owner signup CTA)
-  if (defaultRole && role !== defaultRole) setRole(defaultRole)
+  useEffect(() => {
+    if (defaultRole) setRole(defaultRole)
+  }, [defaultRole])
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -46,7 +48,7 @@ export function AuthModal({ open, onClose, defaultRole }: Props) {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name: name || undefined, phone: phone || undefined, role })
+        body: JSON.stringify({ mode, email, password, name: name || undefined, phone: phone || undefined, role })
       })
       const data = await res.json()
       if (res.ok && data.user) {
@@ -81,7 +83,8 @@ export function AuthModal({ open, onClose, defaultRole }: Props) {
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Role selector */}
+          {/* Role selector (signup only — login always uses the stored role) */}
+          {mode === 'signup' && (
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setRole('CUSTOMER')}
@@ -104,6 +107,7 @@ export function AuthModal({ open, onClose, defaultRole }: Props) {
               <div className="text-[11px] text-muted-foreground leading-tight">{t('login_roleOwnerDesc')}</div>
             </button>
           </div>
+          )}
 
           <Separator />
 

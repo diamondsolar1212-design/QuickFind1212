@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useApp, type Business } from '@/store/app'
 import { useI18n } from '@/store/i18n'
+import { parseProducts, productEmoji } from '@/lib/products'
 
 function isOpen(hoursJson: string): boolean {
   try {
@@ -34,9 +35,7 @@ export function BusinessCard({ business, index = 0 }: Props) {
 
   const open = isOpen(business.hours)
   const distance = business.distance !== undefined ? business.distance.toFixed(1) : null
-  const products = (() => {
-    try { return business.products ? JSON.parse(business.products) : [] } catch { return [] }
-  })()
+  const products = parseProducts(business.products)
 
   return (
     <div
@@ -166,7 +165,7 @@ export function BusinessCard({ business, index = 0 }: Props) {
           <div className="flex flex-wrap gap-1 mb-3">
             {products.slice(0, 3).map((p: any, i: number) => (
               <span key={i} className="text-[10px] px-1.5 py-0.5 bg-muted/60 text-foreground/75 rounded border border-border/40">
-                {p.img} {p.name}
+                {productEmoji(p, '🛍️')} {p.name}
               </span>
             ))}
           </div>

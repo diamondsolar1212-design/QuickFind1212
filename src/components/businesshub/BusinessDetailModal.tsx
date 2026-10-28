@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,8 @@ import { useApp, type Business } from '@/store/app'
 import { useI18n } from '@/store/i18n'
 import { toast } from 'sonner'
 import { generateBusinessWebsite } from '@/lib/template-engine'
+import { isCollectionSkin } from '@/lib/templates/collection'
+import { productEmoji, productImage, parseProducts } from '@/lib/products'
 
 function getTagStyle(themeColor: string | undefined) {
   const c = themeColor || '#0d9488'
@@ -34,7 +36,12 @@ const TEMPLATE_META: Record<string, { icon: any; accent: string; label: string }
   retail: { icon: Store, accent: '#16a34a', label: 'Retail Store' },
   restaurant: { icon: UtensilsCrossed, accent: '#dc2626', label: 'Restaurant' },
   service: { icon: Wrench, accent: '#0891b2', label: 'Service Provider' },
-  premium: { icon: Sparkles, accent: '#7c3aed', label: 'Premium Showcase' }
+  premium: { icon: Sparkles, accent: '#7c3aed', label: 'Premium Showcase' },
+  'calm-sage': { icon: Sparkles, accent: '#8a9a87', label: 'Calm Sage' },
+  'jungle-gold': { icon: Crown, accent: '#C9A227', label: 'Jungle Gold' },
+  'athletic-bold': { icon: Sparkles, accent: '#FF5400', label: 'Athletic Bold' },
+  'tech-lime': { icon: Sparkles, accent: '#d4ff3a', label: 'Tech Lime' },
+  'journalism-red': { icon: Crown, accent: '#ff2a2a', label: 'Journalism Red' }
 }
 
 export function BusinessDetailModal({ business, open, onClose }: Props) {
@@ -45,7 +52,14 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
   const [reviewComment, setReviewComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Keep the review name in sync when the visitor signs in or out.
+  useEffect(() => {
+    if (user?.name) setReviewName(user.name)
+  }, [user?.id, user?.name])
+
   if (!business) return null
+
+  const canEdit = !!user && (user.isAdmin || (!!business.ownerId && business.ownerId === user.id))
 
   const template = TEMPLATE_META[business.template] || TEMPLATE_META.retail
   const TemplateIcon = template.icon
@@ -79,13 +93,13 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
         body: JSON.stringify({
           businessId: business.id,
           rating: reviewRating,
-          comment: reviewComment,
-          userName: reviewName,
+          comment: reviewComment.trim(),
+          userName: reviewName.trim(),
           userId: user?.id || null
         })
       })
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
-        const data = await res.json()
         toast.success('Review submitted successfully!')
         setReviewComment('')
         setReviewRating(5)
@@ -101,7 +115,7 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
           } catch {}
         }
       } else {
-        toast.error('Failed to submit review')
+        toast.error(data.error || 'Failed to submit review')
       }
     } catch {
       toast.error('Network error')
@@ -118,19 +132,30 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
           text: business.description,
           url: shareUrl
         })
-      } else {
-        await navigator.clipboard?.writeText(shareUrl)
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
         toast.success('Website link copied! Share it anywhere.')
+      } else {
+        window.prompt('Copy this link to share:', shareUrl)
       }
     } catch (err) {
-      // User cancelled share — silently ignore
-      console.warn('Share cancelled:', err)
+      // User cancelled the native share sheet — silently ignore.
+      // Clipboard failures should still give the user a usable link.
+      if ((err as Error)?.name !== 'AbortError') {
+        try {
+          window.prompt('Copy this link to share:', shareUrl)
+        } catch {}
+      }
     }
   }
 
-  // Update website template (premium only)
+  // Update the live website template (owner/admin only, premium listings)
   const handleTemplateChange = async (tpl: string) => {
     if (!business.premium) return
+    if (!user) {
+      toast.error('Please sign in to edit this listing')
+      return
+    }
     try {
       const res = await fetch('/api/business', {
         method: 'POST',
@@ -138,16 +163,17 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
         body: JSON.stringify({
           action: 'update',
           businessId: business.id,
-          updates: { websiteTemplate: tpl }
+          userId: user.id,
+          updates: { template: tpl }
         })
       })
-      if (res.ok) {
-        const data = await res.json()
-        toast.success(`Template switched to ${tpl}!`)
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.business) {
+        toast.success('Website template updated!')
         // Trigger refresh
         window.dispatchEvent(new CustomEvent('business-updated', { detail: data.business }))
       } else {
-        toast.error('Failed to update template')
+        toast.error(data.error || 'Failed to update template')
       }
     } catch {
       toast.error('Network error')
@@ -281,8 +307,9 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
 
               {/* About Tab */}
               <TabsContent value="about" className="space-y-5 mt-0">
-                {/* If one of the 5 new premium HTML templates, render full HTML website via iframe */}
-                {['calm-sage', 'jungle-gold', 'athletic-bold', 'tech-lime', 'journalism-red'].includes(business.template) ? (
+                {/* Designer templates render their full generated website */}
+                {isCollectionSkin(business.template) ||
+                ['calm-sage', 'jungle-gold', 'athletic-bold', 'tech-lime', 'journalism-red'].includes(business.template) ? (
                   <HtmlTemplateRenderer business={business} />
                 ) : (
                   <>
@@ -339,29 +366,34 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                   </>
                 )}
 
-                {/* Premium website template picker (only for premium businesses) */}
-                {business.premium && (
+                {/* Premium website template picker (owner/admin only) */}
+                {business.premium && canEdit && (
                   <>
                     <Separator />
                     <div>
                       <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
                         <Crown className="w-4 h-4 text-amber-500" />
-                        Website Template
+                        Your Website Template
                         <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 bg-amber-50 ml-1">
                           PREMIUM
                         </Badge>
                       </h3>
                       <p className="text-xs text-muted-foreground mb-3">
-                        Choose how your business website looks. Visitors will see this template when they open your shared link.
+                        Choose how your business website looks. Visitors see this template when they open your shared link — only you can change it.
                       </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {[
-                          { id: 'elegant', name: 'Elegant', desc: 'Serif + soft', preview: 'from-slate-100 to-stone-200' },
-                          { id: 'classic', name: 'Classic', desc: 'Warm + traditional', preview: 'from-amber-50 to-orange-100' },
-                          { id: 'bold', name: 'Bold', desc: 'High contrast', preview: 'from-zinc-900 to-zinc-700' },
-                          { id: 'boutique', name: 'Boutique', desc: 'Luxury + minimal', preview: 'from-rose-50 to-pink-100' }
+                          { id: 'retail', name: 'Retail', desc: 'Clean storefront', preview: 'from-emerald-50 to-green-100' },
+                          { id: 'restaurant', name: 'Restaurant', desc: 'Warm dining', preview: 'from-red-50 to-orange-100' },
+                          { id: 'service', name: 'Service', desc: 'Trust + clarity', preview: 'from-cyan-50 to-sky-100' },
+                          { id: 'premium', name: 'Premium', desc: 'Luxury showcase', preview: 'from-violet-50 to-purple-100' },
+                          { id: 'calm-sage', name: 'Calm Sage', desc: 'Soft sand & sage', preview: 'from-stone-100 to-lime-100' },
+                          { id: 'jungle-gold', name: 'Jungle Gold', desc: 'Deep green + gold', preview: 'from-emerald-900 to-yellow-600' },
+                          { id: 'athletic-bold', name: 'Athletic', desc: 'Black + orange', preview: 'from-zinc-900 to-orange-600' },
+                          { id: 'tech-lime', name: 'Tech Lime', desc: 'Dark + lime', preview: 'from-slate-900 to-lime-400' },
+                          { id: 'journalism-red', name: 'Journalism', desc: 'Editorial black + red', preview: 'from-neutral-900 to-red-600' }
                         ].map((tpl) => {
-                          const isActive = (business.websiteTemplate || 'elegant') === tpl.id
+                          const isActive = (business.template || 'retail') === tpl.id
                           return (
                             <button
                               key={tpl.id}
@@ -400,10 +432,12 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                         className="flex items-center gap-3 p-3 rounded-xl border border-border/60 hover:border-brand/40 hover:shadow-sm transition-all bg-card"
                       >
                         <div
-                          className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
+                          className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
                           style={{ background: `${business.imageColor}15` }}
                         >
-                          {p.img}
+                          {productImage(p)
+                            ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" />
+                            : productEmoji(p)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm leading-tight">{p.name}</div>
@@ -766,7 +800,16 @@ function HtmlTemplateRenderer({ business }: { business: any }) {
       products: business.products,
       hours: business.hours,
       themeColor: business.themeColor,
-      template: business.template
+      template: business.template,
+      ctaLabel: business.ctaLabel,
+      ctaUrl: business.ctaUrl,
+      cta2Label: business.cta2Label,
+      cta2Url: business.cta2Url,
+      links: business.links,
+      heroImages: business.heroImages,
+      heroAutoScroll: business.heroAutoScroll !== false,
+      siteMode: business.siteMode,
+      siteContent: business.siteContent
     })
   }, [business])
 
@@ -777,7 +820,7 @@ function HtmlTemplateRenderer({ business }: { business: any }) {
         title={`${business.name} Website`}
         className="w-full"
         style={{ height: '85vh', minHeight: '640px', border: 'none', display: 'block' }}
-        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
+        sandbox="allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
       />
     </div>
   )
@@ -833,7 +876,7 @@ function WebsiteTemplateRenderer({ business }: { business: any }) {
                 {products.map((p: any, i: number) => (
                   <div key={i} className="rounded-xl overflow-hidden" style={{ background: accent + '10' }}>
                     <div className="aspect-square bg-muted overflow-hidden">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+                      {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">{productEmoji(p)}</div>}
                     </div>
                     <div className="p-3">
                       <div className="text-sm">{p.name || 'Product'}</div>
@@ -892,7 +935,7 @@ function WebsiteTemplateRenderer({ business }: { business: any }) {
                 {products.map((p: any, i: number) => (
                   <div key={i} className="border p-3" style={{ borderColor: 'rgba(201,162,39,0.15)' }}>
                     <div className="aspect-[4/3] bg-muted overflow-hidden mb-2">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+                      {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">{productEmoji(p)}</div>}
                     </div>
                     <div className="text-base">{p.name || 'Product'}</div>
                     <div className="text-sm italic mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
@@ -946,7 +989,7 @@ function WebsiteTemplateRenderer({ business }: { business: any }) {
                 {products.map((p: any, i: number) => (
                   <div key={i} className="border-2 rounded-lg overflow-hidden" style={{ borderColor: accent + '40', background: '#141414' }}>
                     <div className="aspect-square bg-muted overflow-hidden">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+                      {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">{productEmoji(p)}</div>}
                     </div>
                     <div className="p-3">
                       <div className="font-bold text-sm uppercase">{p.name || 'Product'}</div>
@@ -1002,7 +1045,7 @@ function WebsiteTemplateRenderer({ business }: { business: any }) {
                 {products.map((p: any, i: number) => (
                   <div key={i} className="rounded-lg overflow-hidden" style={{ background: '#1a1d28', border: '1px solid ' + accent + '30' }}>
                     <div className="aspect-square bg-muted overflow-hidden relative">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+                      {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">{productEmoji(p)}</div>}
                       <div className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>{p.price || '₹0'}</div>
                     </div>
                     <div className="p-3">
@@ -1058,7 +1101,7 @@ function WebsiteTemplateRenderer({ business }: { business: any }) {
                 {products.map((p: any, i: number) => (
                   <div key={i} className="overflow-hidden" style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div className="aspect-square bg-muted overflow-hidden relative">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>}
+                      {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">{productEmoji(p)}</div>}
                       <div className="absolute bottom-0 left-0 right-0 px-2 py-1 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>
                         {p.price || '₹0'}
                       </div>
@@ -1104,7 +1147,7 @@ function ProductsRenderer({ business }: { business: any }) {
           {products.map((p: any, i: number) => (
             <div key={i} className="bg-card border-2 border-border rounded-lg overflow-hidden hover:border-current transition-all" style={{ borderColor: accent + '40' }}>
               <div className="aspect-square bg-muted overflow-hidden">
-                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">{productEmoji(p)}</div>}
               </div>
               <div className="p-3">
                 <div className="font-bold text-sm">{p.name || 'Product'}</div>
@@ -1130,7 +1173,7 @@ function ProductsRenderer({ business }: { business: any }) {
           {products.map((p: any, i: number) => (
             <div key={i} className="border border-border/40 p-4">
               <div className="aspect-[4/3] bg-muted overflow-hidden mb-3">
-                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">{productEmoji(p)}</div>}
               </div>
               <div className="font-serif text-base">{p.name || 'Product'}</div>
               <div className="font-serif italic text-sm mt-1" style={{ color: accent }}>{p.price || '₹0'}</div>
@@ -1154,7 +1197,7 @@ function ProductsRenderer({ business }: { business: any }) {
           {products.map((p: any, i: number) => (
             <div key={i} className="rounded-xl overflow-hidden border border-border/40" style={{ background: accent + '08' }}>
               <div className="aspect-square bg-muted overflow-hidden">
-                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">{productEmoji(p)}</div>}
               </div>
               <div className="p-3">
                 <div className="font-serif text-sm">{p.name || 'Product'}</div>
@@ -1180,7 +1223,7 @@ function ProductsRenderer({ business }: { business: any }) {
           {products.map((p: any, i: number) => (
             <div key={i} className="bg-card border rounded-lg overflow-hidden hover:shadow-md transition-all" style={{ borderColor: accent + '30' }}>
               <div className="aspect-square bg-muted overflow-hidden relative">
-                {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+                {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">{productEmoji(p)}</div>}
                 <div className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-mono font-bold text-black" style={{ background: accent }}>
                   {p.price || '₹0'}
                 </div>
@@ -1207,7 +1250,7 @@ function ProductsRenderer({ business }: { business: any }) {
         {products.map((p: any, i: number) => (
           <div key={i} className="bg-card border border-border/60 rounded-lg overflow-hidden hover:shadow-md transition-all">
             <div className="aspect-square bg-muted overflow-hidden">
-              {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>}
+              {productImage(p) ? <img src={productImage(p) as string} alt={String(p.name ?? '')} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">{productEmoji(p)}</div>}
             </div>
             <div className="p-3">
               <div className="font-bold text-sm">{p.name || 'Product'}</div>

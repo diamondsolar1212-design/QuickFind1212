@@ -15,6 +15,9 @@ import {
   Crown, Sparkles, X, Tag, MessageCircle
 } from 'lucide-react'
 import { BusinessCard } from '@/components/businesshub/BusinessCard'
+import { PremiumBusinessCard } from '@/components/businesshub/PremiumBusinessCard'
+import { ChatModal } from '@/components/businesshub/ChatModal'
+import { ChatInbox } from '@/components/businesshub/ChatInbox'
 import { FilterPanel } from '@/components/businesshub/FilterPanel'
 import { BusinessDetailModal } from '@/components/businesshub/BusinessDetailModal'
 import { ListBusinessModal } from '@/components/businesshub/ListBusinessModal'
@@ -74,6 +77,11 @@ export default function Home() {
   const [showUserPanel, setShowUserPanel] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [showWelcomePopup, setShowWelcomePopup] = useState(false)
+  const [chatBusiness, setChatBusiness] = useState<Business | null>(null)
+  const [showChatInbox, setShowChatInbox] = useState(false)
+  const [unreadChats, setUnreadChats] = useState(0)
+  // When true, the marketing home is bypassed and the full listings directory is shown.
+  const [showAllListings, setShowAllListings] = useState(false)
 
   // Show welcome popup once per browser (not for logged-in users)
   useEffect(() => {
@@ -101,6 +109,29 @@ export default function Home() {
     }
   }
 
+  // Unread live-chat badge for the signed-in customer.
+  useEffect(() => {
+    if (!user) {
+      setUnreadChats(0)
+      return
+    }
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/chat/conversations?userId=${encodeURIComponent(user.id)}&role=customer`)
+        const data = await res.json().catch(() => ({}))
+        if (!cancelled) setUnreadChats(Number(data.unread) || 0)
+      } catch {}
+      if (!cancelled) timer = setTimeout(load, 20000)
+    }
+    load()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [user, showChatInbox, chatBusiness])
+
   // Nearby POIs from OpenStreetMap (Overpass API)
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([])
   const [nearbyLoading, setNearbyLoading] = useState(false)
@@ -122,11 +153,12 @@ export default function Home() {
       const radiusMeters = Math.min(Math.max(Math.round(radiusKm * 1000), 500), 5000)
       const res = await fetch(`/api/nearby?lat=${lat}&lng=${lng}&radius=${radiusMeters}&limit=15`)
       const data = await res.json()
-      if (res.ok && data.nearby) {
-        setNearbyPlaces(data.nearby)
-      } else {
-        setNearbyPlaces([])
+      const places = Array.isArray(data.nearby) ? data.nearby : []
+      setNearbyPlaces(places)
+      if (!res.ok || data.error) {
         setNearbyError(data.error || 'No nearby places found')
+      } else if (places.length === 0) {
+        setNearbyError('No nearby places found in this area')
       }
     } catch {
       setNearbyPlaces([])
@@ -199,7 +231,12 @@ export default function Home() {
   }, [fetchBusinesses])
 
   useEffect(() => {
-    if (!selectedBusinessId) return
+    if (!selectedBusinessId) {
+      setSelectedBusiness(null)
+      return
+    }
+    // Clear the previous listing immediately so the modal never flashes stale data.
+    setSelectedBusiness(null)
     let cancelled = false
     fetch(`/api/business?id=${selectedBusinessId}`)
       .then((r) => r.json())
@@ -221,6 +258,17 @@ export default function Home() {
     window.addEventListener('business-updated', handler)
     return () => window.removeEventListener('business-updated', handler)
   }, [])
+
+  // Refetch the directory whenever a listing is created, edited or removed.
+  useEffect(() => {
+    const handler = () => fetchBusinesses()
+    window.addEventListener('business-created', handler)
+    window.addEventListener('business-changed', handler)
+    return () => {
+      window.removeEventListener('business-created', handler)
+      window.removeEventListener('business-changed', handler)
+    }
+  }, [fetchBusinesses])
 
   // Handle ?biz=<id> URL parameter — auto-open business detail (for shared links)
   useEffect(() => {
@@ -356,6 +404,20 @@ export default function Home() {
                       <span className="hidden sm:inline">Admin</span>
                     </Button>
                   )}
+                  {/* Messages / live chat inbox */}
+                  <button
+                    onClick={() => setShowChatInbox(true)}
+                    className="relative p-2 rounded-full hover:bg-navy-foreground/15 transition-colors text-navy-foreground"
+                    title="Live chat messages"
+                    aria-label="Open messages"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    {unreadChats > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center">
+                        {unreadChats > 9 ? '9+' : unreadChats}
+                      </span>
+                    )}
+                  </button>
                   {/* My Account button */}
                   <button
                     onClick={() => setShowUserPanel(true)}
@@ -504,7 +566,7 @@ export default function Home() {
                   {t('tab_map')}
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  {userLat ? t('results_found', { count: businesses.length }) : 'Use your location to see nearest businesses'}
+                  {userLat ? (businesses.length === 1 ? t('results_found_one') : t('results_found', { count: businesses.length })) : 'Use your location to see nearest businesses'}
                 </p>
               </div>
               <Button
@@ -528,7 +590,7 @@ export default function Home() {
         ) : (
           <div className="space-y-4">
             {/* Home sections shown when no active search/filter */}
-            {!searchQuery && !cityQuery && selectedCategory === 'All' && !userLat && !verifiedOnly && !premiumOnly && !businessType ? (
+            {!searchQuery && !cityQuery && selectedCategory === 'All' && !verifiedOnly && !premiumOnly && !businessType && !showAllListings ? (
               <HomeSections
                 businesses={businesses}
                 onCategoryPick={(cat) => {
@@ -538,14 +600,31 @@ export default function Home() {
                 onSearchByTag={(tag) => setSearchQuery(tag)}
                 onSearchByCity={(city) => setCityQuery(city)}
                 onGoToTab={(tab) => setActiveTab(tab)}
+                onBrowseAll={() => setShowAllListings(true)}
               />
             ) : (
               <>
             {/* Top bar: results count + actions */}
             <div className="flex items-center justify-between flex-wrap gap-3 bg-card border border-border/60 rounded-xl px-4 py-3 shadow-sm">
               <div className="flex items-center gap-2 flex-wrap">
+                {showAllListings && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowAllListings(false)
+                      clearFilters()
+                      setSearchQuery('')
+                      setCityQuery('')
+                    }}
+                    className="h-7 px-1.5 -ml-1 text-xs text-blue-700 hover:text-blue-800"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 mr-0.5" />
+                    Home
+                  </Button>
+                )}
                 <h2 className="text-base font-bold text-navy">
-                  {loading ? 'Searching...' : t('results_found', { count: businesses.length })}
+                  {loading ? 'Searching...' : businesses.length === 1 ? t('results_found_one') : t('results_found', { count: businesses.length })}
                 </h2>
                 {selectedCategory !== 'All' && (
                   <Badge variant="outline" className="border-brand text-brand bg-brand-soft/40 font-medium">
@@ -638,10 +717,30 @@ export default function Home() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {businesses.map((b, i) => (
-                      <BusinessCard key={b.id} business={b} index={i} />
-                    ))}
+                  <div className="space-y-3">
+                    {businesses.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-brand px-1">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Top match {searchQuery ? `for “${searchQuery}”` : 'near you'}
+                        </div>
+                        <PremiumBusinessCard
+                          business={businesses[0]}
+                          onChat={(picked) => {
+                            if (!user) {
+                              setShowAuthModal(true)
+                              return
+                            }
+                            setChatBusiness(picked)
+                          }}
+                        />
+                      </>
+                    )}
+                    <div className="grid grid-cols-1 gap-3">
+                      {businesses.slice(1).map((b, i) => (
+                        <BusinessCard key={b.id} business={b} index={i + 1} />
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -827,12 +926,27 @@ export default function Home() {
 
       {/* ===== MODALS ===== */}
       <BusinessDetailModal
-        business={selectedBusiness}
-        open={!!selectedBusinessId && !!selectedBusiness}
+        business={selectedBusiness && selectedBusiness.id === selectedBusinessId ? selectedBusiness : null}
+        open={!!selectedBusinessId && !!selectedBusiness && selectedBusiness.id === selectedBusinessId}
         onClose={() => setSelectedBusinessId(null)}
       />
       <ListBusinessModal open={showListModal} onClose={() => setShowListModal(false)} />
       <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
+      {/* ===== Live chat (customer ↔ business, photos supported) ===== */}
+      <ChatModal
+        open={!!chatBusiness}
+        onClose={() => setChatBusiness(null)}
+        businessId={chatBusiness?.id || null}
+        businessName={chatBusiness?.name || ''}
+        onRequireAuth={() => setShowAuthModal(true)}
+      />
+
+      <ChatInbox
+        open={showChatInbox}
+        onClose={() => setShowChatInbox(false)}
+        onRequireAuth={() => setShowAuthModal(true)}
+      />
 
       {/* ===== User Panel (logged-in users) ===== */}
       {showUserPanel && user && (

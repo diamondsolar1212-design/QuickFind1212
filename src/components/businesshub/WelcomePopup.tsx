@@ -24,7 +24,7 @@ export function WelcomePopup({ onClose, onStart }: Props) {
       gradient: 'from-brand to-amber-500',
       description: 'Create a stunning online presence for your business in minutes. Pick from beautiful templates, customize colors & fonts, upload images — your website is ready to share!',
       features: [
-        { icon: Palette, text: '4 professional templates (Elegant, Classic, Bold, Boutique)' },
+        { icon: Palette, text: '9 professional website templates for every business type' },
         { icon: Crown, text: 'Custom theme colors, fonts, and layout styles' },
         { icon: Camera, text: 'Upload profile image + up to 6 gallery photos' },
         { icon: Eye, text: 'Live preview as you customize' }
@@ -32,17 +32,17 @@ export function WelcomePopup({ onClose, onStart }: Props) {
       cta: 'See How It Works'
     },
     {
-      title: 'Different Templates Show Images Differently',
-      subtitle: 'Each template renders your gallery in a unique style',
+      title: '9 Templates, 9 Distinct Looks',
+      subtitle: 'Each template styles your gallery, products and sections differently',
       emoji: '🖼️',
       icon: Camera,
       gradient: 'from-purple-500 to-pink-500',
-      description: 'Pick the template that fits your business — your uploaded images will automatically display in that template\'s unique style.',
+      description: 'Pick the template that fits your business — your uploaded images and catalogue automatically adapt to that template\'s layout and colour palette.',
       features: [
-        { icon: Sparkles, text: 'Elegant: Clean 3-column grid layout' },
-        { icon: Star, text: 'Bold: Hero image + thumbnail grid below' },
-        { icon: Crown, text: 'Boutique: 2-column masonry with featured image' },
-        { icon: Globe, text: 'Classic: Horizontal scrolling gallery' }
+        { icon: Sparkles, text: 'Calm Sage: soft editorial sand & sage tones' },
+        { icon: Star, text: 'Jungle Gold: dark luxury monograph' },
+        { icon: Crown, text: 'Athletic Bold: high-energy black & orange' },
+        { icon: Globe, text: 'Tech Lime & Journalism Red: modern editorial styles' }
       ],
       cta: 'See Customization Options'
     },
