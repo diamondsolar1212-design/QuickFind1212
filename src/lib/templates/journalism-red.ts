@@ -10,6 +10,7 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
+  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -82,14 +83,14 @@ export function generateJournalismRed(
     ? Math.max(100, Math.ceil(Math.max(...numericPrices) / 500) * 500)
     : 0
 
-  const productsHtml = hasProducts ? `
+  const productsHtml = `
   <section class="section" id="products" data-accent="red">
     <div class="section-head reveal">
-      <span class="section-label">03 — Picks</span>
+      <span class="section-label">03 — Products &amp; services</span>
       <h2>Worth <em>your money.</em></h2>
       <p class="section-kicker">The shortlist — tested, compared and kept on the shelf.</p>
     </div>
-    ${sliderMax > 0 ? `
+    ${hasProducts ? `${sliderMax > 0 ? `
     <div class="price-panel reveal">
       <div class="price-head">
         <span class="section-label" style="margin:0">Budget</span>
@@ -115,8 +116,8 @@ export function generateJournalismRed(
           </div>
         </article>`
       }).join('')}
-    </div>
-  </section>` : ''
+    </div>` : catalogueEmptyBlock(b, 'dark')}
+  </section>`
 
   const bodyParagraphs = paragraphs(description)
   const lede = bodyParagraphs[0] || `An independent ${category.toLowerCase()} in ${city}.`
@@ -333,10 +334,10 @@ export function generateJournalismRed(
     <div class="topbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">${escapeHtml(initials(b.name))}</span><span class="brand-text"><strong>${name}</strong><span>${category} · ${city || 'India'}</span></span></a>
       <nav class="navlinks">
-        <a href="#about"><i>01</i>Story</a>
-        <a href="#gallery"><i>02</i>Visuals</a>
-        ${hasProducts ? '<a href="#products"><i>03</i>Picks</a>' : ''}
-        <a href="#reviews"><i>04</i>Verdict</a>
+        <a href="#top" data-page="home"><i>01</i>Home</a>
+        <a href="#products" data-page="products"><i>02</i>Products &amp; services</a>
+        <a href="#about" data-page="about"><i>03</i>About</a>
+        <a href="#contact" data-page="contact"><i>04</i>Contact</a>
         ${links.slice(0, 2).map((link) => siteLinkHtml(link)).join('')}
         <a class="nav-cta" href="${escapeHtml(primary.url)}"${anchorAttrs(primary.url)}>${escapeHtml(primary.label)}</a>
       </nav>

@@ -10,6 +10,7 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
+  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -66,14 +67,14 @@ export function generateJungleGold(
     return tiles.join('')
   })()
 
-  const productsHtml = hasProducts ? `
+  const productsHtml = `
   <section class="section" id="products">
     <div class="section-head reveal">
-      <span class="kicker">03 — Catalogue</span>
+      <span class="kicker">03 — Products &amp; services</span>
       <h2>The <em>collection</em>.</h2>
       <p class="section-note">A considered selection, available in store and by enquiry.</p>
     </div>
-    <div class="catalogue">
+    ${hasProducts ? `<div class="catalogue">
       ${products.slice(0, 8).map((p, i) => `
       <article class="entry reveal" style="transition-delay:${i * 60}ms">
         <div class="entry-media">${productMediaHtml(p, '#0D2818')}</div>
@@ -86,8 +87,8 @@ export function generateJungleGold(
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
         </div>
       </article>`).join('')}
-    </div>
-  </section>` : ''
+    </div>` : catalogueEmptyBlock(b, 'dark')}
+  </section>`
 
   const bodyParagraphs = paragraphs(description)
   const lede = bodyParagraphs[0] || `An independent ${category.toLowerCase()} in ${city}.`
@@ -285,11 +286,10 @@ export function generateJungleGold(
     <div class="topbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">${escapeHtml(initials(b.name))}</span><span class="brand-name">${name}</span></a>
       <nav class="navlinks">
-        <a href="#about">Ethos</a>
-        <a href="#gallery">Plates</a>
-        ${hasProducts ? '<a href="#products">Catalogue</a>' : ''}
-        <a href="#reviews">Voices</a>
-        <a href="#contact">Colophon</a>
+        <a href="#top" data-page="home">Home</a>
+        <a href="#products" data-page="products">Products &amp; services</a>
+        <a href="#about" data-page="about">About</a>
+        <a href="#contact" data-page="contact">Contact</a>
         ${customLinks(b).slice(0, 2).map((link) => siteLinkHtml(link)).join('')}
         <a class="nav-cta" href="${escapeHtml(primaryCta(b, 'Enquire').url)}"${anchorAttrs(primaryCta(b, 'Enquire').url)}>${escapeHtml(primaryCta(b, 'Enquire').label)}</a>
       </nav>

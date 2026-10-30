@@ -11,6 +11,7 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
+  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -155,7 +156,7 @@ export function generateDefault(
   const links = customLinks(b)
   const showRows = variant === 'restaurant' || variant === 'premium'
 
-  const menuLabel = variant === 'service' ? 'Services' : variant === 'premium' ? 'Collection' : 'Products'
+  const menuLabel = 'Products & services'
   const navPhone = variant === 'service' && b.phone
     ? `<a class="nav-phone" href="${escapeHtml(telHref(b.phone))}">${escapeHtml(b.phone)}</a>`
     : ''
@@ -218,14 +219,14 @@ export function generateDefault(
       </article>`).join('')}
     </div>`
 
-  const productsHtml = hasProducts ? `
+  const productsHtml = `
   <section class="section products-${variant}" id="products">
     <div class="section-head reveal">
       <span class="kicker">${productsKicker}</span>
       <h2>${productsTitle}</h2>
     </div>
-    ${showRows ? productList : productCards}
-  </section>` : ''
+    ${hasProducts ? (showRows ? productList : productCards) : catalogueEmptyBlock(b)}
+  </section>`
 
   const bodyParagraphs = paragraphs(description)
   const lede = bodyParagraphs[0] || `A ${category.toLowerCase()} in ${city}.`
@@ -497,11 +498,10 @@ export function generateDefault(
     <div class="topbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">${escapeHtml(initials(b.name))}</span><span class="brand-name">${name}</span></a>
       <nav class="navlinks">
-        <a href="#about">About</a>
-        <a href="#gallery">Gallery</a>
-        ${hasProducts ? `<a href="#products">${menuLabel}</a>` : ''}
-        <a href="#reviews">Reviews</a>
-        <a href="#contact">Visit</a>
+        <a href="#top" data-page="home">Home</a>
+        <a href="#products" data-page="products">${menuLabel}</a>
+        <a href="#about" data-page="about">About</a>
+        <a href="#contact" data-page="contact">Contact</a>
         ${links.slice(0, 2).map((link) => siteLinkHtml(link)).join('')}
         ${navPhone}
         <a class="nav-cta" href="${escapeHtml(primary.url)}"${anchorAttrs(primary.url)}>${escapeHtml(primary.label)}</a>

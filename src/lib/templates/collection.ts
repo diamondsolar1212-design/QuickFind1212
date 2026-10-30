@@ -4,6 +4,7 @@
 
 import {
   anchorAttrs,
+  catalogueEmptyBlock,
   collectImages,
   customLinks,
   documentHead,
@@ -273,12 +274,11 @@ function statCards(b: BusinessData): string {
 function navHtml(skin: SkinStyle, b: BusinessData, primary: SiteLink, products: TemplateProduct[]): string {
   const custom = customLinks(b).slice(0, 2).map((link) => siteLinkHtml(link, 'nav-custom'))
   const anchors = [
-    `<a href="#about">About</a>`,
-    `<a href="#gallery">Gallery</a>`,
-    products.length ? `<a href="#offerings">Products &amp; services</a>` : '',
-    `<a href="#reviews">Reviews</a>`,
-    `<a href="#visit">Visit</a>`
-  ].filter(Boolean)
+    `<a href="#top" data-page="home">Home</a>`,
+    `<a href="#offerings" data-page="products">Products &amp; services</a>`,
+    `<a href="#about" data-page="about">About</a>`,
+    `<a href="#visit" data-page="contact">Contact</a>`
+  ]
   const cta = `<a class="nav-cta" href="${escapeHtml(primary.url)}"${anchorAttrs(primary.url)}>${escapeHtml(primary.label)}</a>`
   const brand = `<a class="brand" href="#top"><span class="brand-mark">${escapeHtml(initials(b.name))}</span><span>${escapeHtml(b.name)}</span></a>`
   const burger = `<button class="burger" data-burger aria-label="Open menu"><span></span><span></span><span></span></button>`
@@ -286,7 +286,7 @@ function navHtml(skin: SkinStyle, b: BusinessData, primary: SiteLink, products: 
   if (skin.nav === 'modern') {
     return `<header class="topbar topbar--modern"><div class="wrap nav">
       ${brand}
-      <nav class="navlinks">${custom.join('')}${cta}</nav>
+      <nav class="navlinks">${anchors.join('')}${custom.join('')}${cta}</nav>
       ${burger}
     </div></header>`
   }
@@ -470,7 +470,16 @@ function galleryHtml(skin: SkinStyle, b: BusinessData, images: string[]): string
 }
 
 function productsHtml(skin: SkinStyle, b: BusinessData, products: TemplateProduct[]): string {
-  if (products.length === 0) return ''
+  if (products.length === 0) {
+    const hex = skin.bg.replace('#', '')
+    const darkSkin = hex.length >= 6
+      ? parseInt(hex.slice(0, 2), 16) * 0.299 + parseInt(hex.slice(2, 4), 16) * 0.587 + parseInt(hex.slice(4, 6), 16) * 0.114 < 140
+      : false
+    return `<section class="section" id="offerings"><div class="wrap">
+    ${sectionHead('Products & services', 'Our products & services.', 'Explore the most requested products and services.')}
+    ${catalogueEmptyBlock(b, darkSkin ? 'dark' : 'light')}
+  </div></section>`
+  }
   const title =
     skin.offerings === 'menu' ? 'The catalogue.' :
     skin.offerings === 'rows' ? 'Signature products.' :
@@ -658,7 +667,7 @@ function footerHtml(b: BusinessData, links: SiteLink[]): string {
     </div>
     <div>
       <div class="foot-links">
-        <a href="#about">About</a><a href="#gallery">Gallery</a><a href="#reviews">Reviews</a><a href="#visit">Visit</a>
+        <a href="#top" data-page="home">Home</a><a href="#offerings" data-page="products">Products &amp; services</a><a href="#about" data-page="about">About</a><a href="#visit" data-page="contact">Contact</a>
         ${links.map((l) => siteLinkHtml(l)).join('')}
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
+  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -75,13 +76,13 @@ export function generateAthleticBold(
     return tiles.join('')
   })()
 
-  const productsHtml = hasProducts ? `
+  const productsHtml = `
   <section class="section" id="products">
     <div class="section-head reveal">
-      <div class="eyebrow">03 / Gear</div>
+      <div class="eyebrow">03 / Products &amp; services</div>
       <h2>Built for <span>the work.</span></h2>
     </div>
-    <div class="gear-grid">
+    ${hasProducts ? `<div class="gear-grid">
       ${products.slice(0, 8).map((p, i) => `
       <article class="gear reveal" style="transition-delay:${i * 50}ms">
         <div class="gear-media">${productMediaHtml(p, '#1c1c1c', 'width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.15) brightness(.85);transition:filter .5s,transform .6s;')}</div>
@@ -92,8 +93,8 @@ export function generateAthleticBold(
           ${p.price ? `<div class="gear-price">${escapeHtml(String(p.price))}</div>` : ''}
         </div>
       </article>`).join('')}
-    </div>
-  </section>` : ''
+    </div>` : catalogueEmptyBlock(b, 'dark')}
+  </section>`
 
   const bodyParagraphs = paragraphs(description)
   const lede = bodyParagraphs[0] || `A ${category.toLowerCase()} in ${city}. Show up. Do the work.`
@@ -276,11 +277,10 @@ export function generateAthleticBold(
     <div class="topbar-inner">
       <a class="brand" href="#top"><span class="brand-mark"><span>${escapeHtml(initials(b.name))}</span></span>${name}</a>
       <nav class="navlinks">
-        <a href="#about">About</a>
-        <a href="#gallery">Gallery</a>
-        ${hasProducts ? '<a href="#products">Gear</a>' : ''}
-        <a href="#reviews">Reviews</a>
-        <a href="#contact">Visit</a>
+        <a href="#top" data-page="home">Home</a>
+        <a href="#products" data-page="products">Products &amp; services</a>
+        <a href="#about" data-page="about">About</a>
+        <a href="#contact" data-page="contact">Contact</a>
         ${customLinks(b).slice(0, 2).map((link) => siteLinkHtml(link)).join('')}
         <a class="nav-cta" href="${escapeHtml(primaryCta(b, 'Book now').url)}"${anchorAttrs(primaryCta(b, 'Book now').url)}>${escapeHtml(primaryCta(b, 'Book now').label)}</a>
       </nav>

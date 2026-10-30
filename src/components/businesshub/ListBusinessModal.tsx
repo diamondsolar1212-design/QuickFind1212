@@ -48,6 +48,7 @@ interface SiteCopyFields {
   navOfferings: string
   navReviews: string
   navVisit: string
+  navHome: string
 }
 
 const EMPTY_SITE_COPY: SiteCopyFields = {
@@ -64,18 +65,25 @@ const EMPTY_SITE_COPY: SiteCopyFields = {
   navGallery: '',
   navOfferings: '',
   navReviews: '',
-  navVisit: ''
+  navVisit: '',
+  navHome: ''
 }
 
 const SITE_COPY_KEYS = Object.keys(EMPTY_SITE_COPY) as Array<keyof SiteCopyFields>
 
 /** Only non-empty overrides are stored, so templates keep their own copy by default. */
-function siteContentJson(copy: SiteCopyFields): string {
-  const out: Record<string, string> = {}
+function siteContentJson(copy: SiteCopyFields, texts: Record<string, string> = {}): string {
+  const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(copy)) {
     const trimmed = value.trim()
     if (trimmed) out[key] = trimmed
   }
+  const cleanedTexts: Record<string, string> = {}
+  for (const [key, value] of Object.entries(texts)) {
+    const trimmed = String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, 400)
+    if (trimmed) cleanedTexts[key] = trimmed
+  }
+  if (Object.keys(cleanedTexts).length > 0) out.texts = cleanedTexts
   return Object.keys(out).length > 0 ? JSON.stringify(out) : ''
 }
 
@@ -149,8 +157,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
   // Website experience: hero strip, editable copy and page mode
   const [heroImages, setHeroImages] = useState<string[]>([])
   const [heroAutoScroll, setHeroAutoScroll] = useState(true)
-  const [siteMode, setSiteMode] = useState<'scroll' | 'pages'>('scroll')
+  const [siteMode] = useState<'scroll' | 'pages'>('pages')
   const [siteCopy, setSiteCopy] = useState<SiteCopyFields>({ ...EMPTY_SITE_COPY })
+  // Free-form click-to-edit copy keyed by its DOM path in the generated site.
+  const [siteTexts, setSiteTexts] = useState<Record<string, string>>({})
   // Products catalog (image + name + price + details)
   const [catalogProducts, setCatalogProducts] = useState<Array<{
     id: string
@@ -204,14 +214,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
     heroImages: heroImages.join(','),
     heroAutoScroll,
     siteMode,
-    siteContent: siteContentJson(siteCopy)
+    siteContent: siteContentJson(siteCopy, siteTexts)
   }), [
     form.name, form.description, form.category, form.subcategory,
     form.city, form.state, form.address, form.phone, form.whatsapp,
     form.email, form.website, form.template,
     profileImage, galleryImages, catalogProducts, themeColor,
     ctaLabel, ctaUrl, cta2Label, cta2Url, siteLinks,
-    heroImages, heroAutoScroll, siteMode, siteCopy
+    heroImages, heroAutoScroll, siteMode, siteCopy, siteTexts
   ])
 
   // Style samples for the template grid: fixed copy + the user's photos, so
@@ -308,8 +318,19 @@ export function ListBusinessModal({ open, onClose }: Props) {
     }))
   }, [])
 
-  const handleSiteProductEdit = useCallback((index: number, field: string, value: string) => {
-    if (!Number.isInteger(index) || index < 0) return
+  // Free-form text edits from the preview arrive as a DOM path + new value.
+  const handleSiteTextEdit = useCallback((path: string, value: string) => {
+    if (typeof path !== 'string' || !path) return
+    const text = value.replace(/\s+/g, ' ').trim().slice(0, 400)
+    setSiteTexts((prev) => {
+      const next = { ...prev }
+      if (text) next[path] = text
+      else delete next[path]
+      return next
+    })
+  }, [])
+
+  const handleSiteProductEdit = useCallback((index: number, field: string, value: string) => {    if (!Number.isInteger(index) || index < 0) return
     if (field !== 'name' && field !== 'price') return
     const text = value.replace(/\s+/g, ' ').trim().slice(0, 80)
     setCatalogProducts((prev) =>
@@ -412,7 +433,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
           heroImages: heroImages.join(','),
           heroAutoScroll,
           siteMode,
-          siteContent: siteContentJson(siteCopy),
+          siteContent: siteContentJson(siteCopy, siteTexts),
           ownerId: user.id
         })
       })
@@ -453,8 +474,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setSiteLinks([])
     setHeroImages([])
     setHeroAutoScroll(true)
-    setSiteMode('scroll')
     setSiteCopy({ ...EMPTY_SITE_COPY })
+    setSiteTexts({})
     setForm({
       template: 'blush-atelier', name: '', description: '', category: 'Grocery & Essentials',
       subcategory: '', tags: '', phone: '', whatsapp: '', email: '', website: '',
@@ -684,27 +705,18 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         </div>
                       </div>
 
-                      {/* Website mode */}
+                      {/* Website pages */}
                       <div>
-                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Website Mode</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { id: 'scroll' as const, title: 'Single Page', desc: 'All sections scroll together' },
-                            { id: 'pages' as const, title: 'Separate Pages', desc: 'Nav opens one section per page' }
-                          ].map((mode) => (
-                            <button
-                              key={mode.id}
-                              type="button"
-                              onClick={() => setSiteMode(mode.id)}
-                              className={`rounded-lg border-2 p-2.5 text-left transition-all ${
-                                siteMode === mode.id
-                                  ? 'border-brand bg-brand-soft/20'
-                                  : 'border-border hover:border-brand/40'
-                              }`}
-                            >
-                              <span className="block text-xs font-bold">{mode.title}</span>
-                              <span className="block text-[10px] text-muted-foreground">{mode.desc}</span>
-                            </button>
+                        <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Website Pages</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Every template includes <strong>4 pages</strong> — Home, Products &amp; services, About and
+                          Contact — linked from the top menu. Visitors can move between them instantly.
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {['Home', 'Products & services', 'About', 'Contact'].map((page) => (
+                            <span key={page} className="text-[10px] font-semibold px-2 py-1 rounded-full bg-brand/10 text-brand">
+                              {page}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -1020,7 +1032,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                     </div>
 
                     {/* ===== RIGHT: LIVE PREVIEW (sticky, desktop-scaled) ===== */}
-                    <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
+                    <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} onTextEdit={handleSiteTextEdit} />
                   </div>
                 </div>
               )}
@@ -1078,7 +1090,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                     </div>
                   </div>
                   </div>
-                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
+                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} onTextEdit={handleSiteTextEdit} />
                 </div>
               )}
 
@@ -1424,7 +1436,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                     </>
                   )}
                   </div>
-                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
+                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} onTextEdit={handleSiteTextEdit} />
                 </div>
               )}
 
@@ -1471,7 +1483,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                     </div>
                   </div>
                   </div>
-                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} />
+                  <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} onTextEdit={handleSiteTextEdit} />
                 </div>
               )}
 
@@ -1483,6 +1495,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   desktop={false}
                   onCopyEdit={handleSiteCopyEdit}
                   onProductEdit={handleSiteProductEdit}
+                  onTextEdit={handleSiteTextEdit}
                 />
               </div>
 
@@ -1640,6 +1653,7 @@ const TemplateThumb = memo(function TemplateThumb({ seed, id, color }: { seed: B
 // ===== Live website preview shared by every wizard step =====
 type PreviewEditHandler = (key: string, value: string) => void
 type ProductEditHandler = (index: number, field: string, value: string) => void
+type TextEditHandler = (path: string, value: string) => void
 
 function WebsitePreview({
   business,
@@ -1647,7 +1661,8 @@ function WebsitePreview({
   title = 'Live Website Preview',
   desktop = true,
   onCopyEdit,
-  onProductEdit
+  onProductEdit,
+  onTextEdit
 }: {
   business: BusinessData
   height?: string
@@ -1655,10 +1670,12 @@ function WebsitePreview({
   desktop?: boolean
   onCopyEdit?: PreviewEditHandler
   onProductEdit?: ProductEditHandler
+  onTextEdit?: TextEditHandler
 }) {
   const html = useMemo(() => withPreviewEditor(generateBusinessWebsite(business)), [business])
   const [shownHtml, setShownHtml] = useState(html)
   const [editing, setEditing] = useState(false)
+  const [currentPage, setCurrentPage] = useState('home')
   const frameRef = useRef<HTMLIFrameElement | null>(null)
 
   // Keep typing responsive: reload the preview a beat after the last keystroke.
@@ -1669,7 +1686,8 @@ function WebsitePreview({
 
   const sendEditMode = useCallback(() => {
     frameRef.current?.contentWindow?.postMessage({ type: 'site-edit-mode', enabled: editing }, '*')
-  }, [editing])
+    frameRef.current?.contentWindow?.postMessage({ type: 'site-page', page: currentPage }, '*')
+  }, [editing, currentPage])
 
   // srcDoc reloads reset the iframe, so re-send the mode after each update.
   useEffect(() => {
@@ -1686,11 +1704,15 @@ function WebsitePreview({
         onCopyEdit?.(data.key, String(data.value ?? ''))
       } else if (data.type === 'site-product-edit') {
         onProductEdit?.(Number(data.index), String(data.field ?? ''), String(data.value ?? ''))
+      } else if (data.type === 'site-text-edit' && typeof data.path === 'string') {
+        onTextEdit?.(data.path, String(data.value ?? ''))
+      } else if (data.type === 'site-page-change' && typeof data.page === 'string') {
+        setCurrentPage(data.page)
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [onCopyEdit, onProductEdit])
+  }, [onCopyEdit, onProductEdit, onTextEdit])
 
   return (
     <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden shadow-md">
@@ -1746,11 +1768,13 @@ function WebsitePreview({
 function PreviewPane({
   business,
   onCopyEdit,
-  onProductEdit
+  onProductEdit,
+  onTextEdit
 }: {
   business: BusinessData
   onCopyEdit: PreviewEditHandler
   onProductEdit: ProductEditHandler
+  onTextEdit: TextEditHandler
 }) {
   return (
     <div className="hidden lg:block min-w-0">
@@ -1760,6 +1784,7 @@ function PreviewPane({
           height="calc(95vh - 200px)"
           onCopyEdit={onCopyEdit}
           onProductEdit={onProductEdit}
+          onTextEdit={onTextEdit}
         />
         <p className="text-[10px] text-muted-foreground text-center mt-2">
           Preview updates live · Use Edit text to change any heading, menu item or button

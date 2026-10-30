@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { sanitizeSiteContent } from '@/lib/templates/shared'
 
 // Haversine distance in km
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
         heroImages: typeof body.heroImages === 'string' ? body.heroImages.slice(0, 2000) : '',
         heroAutoScroll: body.heroAutoScroll !== false,
         siteMode: body.siteMode === 'pages' ? 'pages' : 'scroll',
-        siteContent: typeof body.siteContent === 'string' ? body.siteContent.slice(0, 4000) : '',
+        siteContent: sanitizeSiteContent(body.siteContent),
         liveTracking: !!body.liveTracking,
         ownerId: body.ownerId
       }

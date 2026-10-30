@@ -10,6 +10,7 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
+  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -71,13 +72,13 @@ export function generateTechLime(
     return tiles.join('')
   })()
 
-  const productsHtml = hasProducts ? `
+  const productsHtml = `
   <section class="section" id="products">
     <div class="section-head reveal">
-      <span class="kicker">03 / Catalog</span>
+      <span class="kicker">03 / Products &amp; services</span>
       <h2>Selected <em>output.</em></h2>
     </div>
-    <div class="product-grid">
+    ${hasProducts ? `<div class="product-grid">
       ${products.slice(0, 8).map((p, i) => `
       <article class="product reveal" style="transition-delay:${i * 45}ms">
         <div class="product-media">${productMediaHtml(p, '#1a1d28', 'width:100%;height:100%;object-fit:cover;display:block;transition:transform .8s cubic-bezier(.2,.7,.2,1);')}
@@ -91,8 +92,8 @@ export function generateTechLime(
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
         </div>
       </article>`).join('')}
-    </div>
-  </section>` : ''
+    </div>` : catalogueEmptyBlock(b, 'dark')}
+  </section>`
 
   const bodyParagraphs = paragraphs(description)
   const lede = bodyParagraphs[0] || `A ${category.toLowerCase()} built on precision and care.`
@@ -284,11 +285,10 @@ export function generateTechLime(
     <div class="topbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">${escapeHtml(initials(b.name))}</span>${name}</a>
       <nav class="navlinks">
-        <a href="#about"><i>01</i>Ethos</a>
-        <a href="#gallery"><i>02</i>Gallery</a>
-        ${hasProducts ? '<a href="#products"><i>03</i>Catalog</a>' : ''}
-        <a href="#reviews"><i>04</i>Signal</a>
-        <a href="#contact"><i>05</i>Link</a>
+        <a href="#top" data-page="home"><i>01</i>Home</a>
+        <a href="#products" data-page="products"><i>02</i>Products &amp; services</a>
+        <a href="#about" data-page="about"><i>03</i>About</a>
+        <a href="#contact" data-page="contact"><i>04</i>Contact</a>
         ${links.slice(0, 2).map((link) => siteLinkHtml(link)).join('')}
         <a class="nav-cta" href="${escapeHtml(primary.url)}"${anchorAttrs(primary.url)}>${escapeHtml(primary.label)}</a>
       </nav>

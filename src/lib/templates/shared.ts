@@ -436,6 +436,7 @@ export type SiteCopyKey =
   | 'navOfferings'
   | 'navReviews'
   | 'navVisit'
+  | 'navHome'
 
 export type SiteCopy = Partial<Record<SiteCopyKey, string>>
 
@@ -453,7 +454,8 @@ const SITE_COPY_LIMITS: Record<SiteCopyKey, number> = {
   navGallery: 40,
   navOfferings: 40,
   navReviews: 40,
-  navVisit: 40
+  navVisit: 40,
+  navHome: 40
 }
 
 const SITE_COPY_KEYS = Object.keys(SITE_COPY_LIMITS) as SiteCopyKey[]
@@ -480,6 +482,121 @@ export function siteCopy(business: BusinessData): SiteCopy {
   return out
 }
 
+function parseContentRecord(raw: unknown): Record<string, unknown> {
+  let parsed: unknown = raw
+  if (typeof raw === 'string') {
+    if (!raw.trim()) return {}
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return {}
+    }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+  return parsed as Record<string, unknown>
+}
+
+// Click-to-edit text is stored as { texts: { "<dom path>": "new copy" } }.
+// A path is built from tag names plus sibling indexes, e.g. "main.0>h2.1",
+// so it survives a reload as long as the template markup itself is unchanged.
+const TEXT_EDIT_LIMIT = 200
+const TEXT_EDIT_KEY_RE = /^[a-z][a-z0-9]*\.\d+(>[a-z][a-z0-9]*\.\d+)*$/i
+const TEXT_SELECTOR = 'h1,h2,h3,h4,h5,h6,p,span,a,button,li,strong,em,small,label,figcaption,blockquote,div'
+
+export function siteTextOverrides(business: BusinessData): Record<string, string> {
+  const record = parseContentRecord(business.siteContent)
+  const texts = record.texts
+  if (!texts || typeof texts !== 'object' || Array.isArray(texts)) return {}
+  const out: Record<string, string> = {}
+  let count = 0
+  for (const [key, value] of Object.entries(texts as Record<string, unknown>)) {
+    if (count >= TEXT_EDIT_LIMIT) break
+    if (key.length > 300 || !TEXT_EDIT_KEY_RE.test(key)) continue
+    const text = String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, 400)
+    if (!text) continue
+    out[key] = text
+    count += 1
+  }
+  return out
+}
+
+/** Validates and re-serialises siteContent before it is stored. */
+export function sanitizeSiteContent(raw: unknown): string {
+  const record = parseContentRecord(raw)
+  const out: Record<string, unknown> = {}
+  for (const key of SITE_COPY_KEYS) {
+    const value = String(record[key] ?? '').trim().slice(0, SITE_COPY_LIMITS[key])
+    if (value) out[key] = value
+  }
+  const texts: Record<string, string> = {}
+  const textRecord = record.texts
+  if (textRecord && typeof textRecord === 'object' && !Array.isArray(textRecord)) {
+    let count = 0
+    for (const [key, value] of Object.entries(textRecord as Record<string, unknown>)) {
+      if (count >= TEXT_EDIT_LIMIT) break
+      if (key.length > 300 || !TEXT_EDIT_KEY_RE.test(key)) continue
+      const text = String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, 400)
+      if (!text) continue
+      texts[key] = text
+      count += 1
+    }
+  }
+  if (Object.keys(texts).length > 0) out.texts = texts
+  return Object.keys(out).length > 0 ? JSON.stringify(out) : ''
+}
+
+/** Applies click-to-edit overrides to the published site (no editor UI). */
+function siteTextScript(texts: Record<string, string>): string {
+  const json = JSON.stringify(texts).replace(/</g, '\u003c').replace(/>/g, '\u003e')
+  return `<script>(function(){
+  var t=${json};
+  if(!t)return;
+  function directText(el){
+    for(var i=0;i<el.childNodes.length;i++){var n=el.childNodes[i];if(n.nodeType===3&&n.nodeValue.trim())return n;}
+    return null;
+  }
+  function pathOf(el){
+    var parts=[];
+    while(el&&el.nodeType===1&&el!==document.body){
+      var parent=el.parentElement;if(!parent)break;
+      var index=0;
+      for(var i=0;i<parent.children.length;i++){if(parent.children[i]===el){index=i;break;}}
+      parts.unshift(el.tagName.toLowerCase()+'.'+index);
+      el=parent;
+    }
+    return parts.join('>');
+  }
+  var els=document.body.querySelectorAll('${TEXT_SELECTOR}');
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    if(el.hasAttribute('data-site-copy'))continue;
+    var value=t[pathOf(el)];
+    if(typeof value!=='string'||!value)continue;
+    var node=directText(el);
+    if(node)node.nodeValue=value;
+    else el.textContent=value;
+  }
+})();</script>`
+}
+
+/** Friendly, theme-aware placeholder used when a business has no catalogue yet. */
+export function catalogueEmptyBlock(
+  business: BusinessData,
+  tone: 'light' | 'dark' = 'light'
+): string {
+  const accent = safeColor(business.themeColor, '#0d9488')
+  const cta = primaryCta(business, 'Call to enquire')
+  const dark = tone === 'dark'
+  const muted = dark ? 'rgba(245,245,244,.72)' : 'rgba(28,25,23,.66)'
+  const border = dark ? 'rgba(255,255,255,.2)' : 'rgba(28,25,23,.14)'
+  const background = dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.025)'
+  return `<div class="catalogue-empty" style="border:1px dashed ${border};border-radius:16px;padding:30px 24px;background:${background};text-align:center;max-width:720px;margin:0 auto;">
+    <p style="margin:0 0 6px;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:${accent};font-weight:700;">Products &amp; services</p>
+    <p style="margin:0 0 18px;color:${muted};font-size:1rem;line-height:1.65;">Our catalogue is being updated. Call or WhatsApp us to ask about available products, prices and delivery.</p>
+    <a href="${escapeHtml(cta.url)}"${anchorAttrs(cta.url)} style="display:inline-block;padding:11px 22px;border-radius:999px;background:${accent};color:${readableOn(accent)};font-weight:700;text-decoration:none;">${escapeHtml(cta.label)}</a>
+  </div>`
+}
+
 function siteCopyScript(copy: SiteCopy): string {
   const json = JSON.stringify(copy).replace(/</g, '\u003c').replace(/>/g, '\u003e')
   return `<script>(function(){
@@ -489,6 +606,7 @@ function siteCopyScript(copy: SiteCopy): string {
     var el=document.querySelector(selector);
     if(!el)return;
     el.textContent=value;
+    el.setAttribute('data-site-copy','1');
   }
   // Nav labels keep any decorative prefix (e.g. <i>01</i>) intact.
   function setLabel(selector,value){
@@ -501,6 +619,7 @@ function siteCopyScript(copy: SiteCopy): string {
       }
       if(node)node.nodeValue=value;
       else el.textContent=value;
+      el.setAttribute('data-site-copy','1');
     });
   }
   setText('.hero-tag',c.heroTagline);
@@ -517,38 +636,41 @@ function siteCopyScript(copy: SiteCopy): string {
   setLabel('.navlinks a[href="#offerings"], .navlinks a[href="#products"], .navlinks a[href="#menu"]',c.navOfferings);
   setLabel('.navlinks a[href="#reviews"]',c.navReviews);
   setLabel('.navlinks a[href="#visit"], .navlinks a[href="#contact"]',c.navVisit);
+  setLabel('.navlinks a[data-page="home"]',c.navHome);
 })();</script>`
 }
 
+// Every generated template is grouped into four real pages:
+//   Home · Products & services · About · Contact
+// Sections keep their scroll anchors, but the site only shows one page at a
+// time and the top navigation switches between them.
 const PAGES_MODE_STYLES = `<style id="site-pages-css">
 html.site-pages body{scroll-behavior:auto}
 html.site-pages .site-page-hidden{display:none!important}
 html.site-pages .site-page-active{animation:sitePageIn .45s ease both}
+html.site-pages .navlinks a.site-nav-current{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px}
 @keyframes sitePageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 </style>`
 
 const PAGES_MODE_SCRIPT = `<script>(function(){
   var body=document.body;
-  function collect(parent){
+  function usable(parent){
     return Array.prototype.filter.call(parent.children,function(el){
-      var tag=el.tagName;
-      if(tag==='SCRIPT'||tag==='STYLE'||tag==='LINK'||tag==='HEADER'||tag==='FOOTER'||tag==='NOSCRIPT'||tag==='TEMPLATE')return false;
+      if(/^(SCRIPT|STYLE|LINK|HEADER|FOOTER|NOSCRIPT|TEMPLATE)$/.test(el.tagName))return false;
+      if(el.classList.contains('announce'))return false;
       var cs=getComputedStyle(el);
       if(cs.position==='fixed'||cs.position==='sticky')return false;
       return true;
     });
   }
-  var blocks=collect(body);
+  var blocks=usable(body);
+  // Some skins wrap the whole page in <main id="top">; descend so each
+  // section inside the wrapper becomes its own page block.
   if(blocks.length<=1&&blocks[0]){
-    var inner=collect(blocks[0]);
+    var inner=usable(blocks[0]);
     if(inner.length>1)blocks=inner;
   }
   if(blocks.length<2)return;
-  var anchored={};
-  document.querySelectorAll('a[href^="#"]').forEach(function(a){
-    var id=(a.getAttribute('href')||'').slice(1);
-    if(id&&id!=='top')anchored[id]=1;
-  });
   function blockOf(id){
     var el=document.getElementById(id);
     if(!el)return null;
@@ -557,33 +679,56 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     }
     return null;
   }
-  var home=blockOf('top')||blocks[0];
-  var homeSet=[home];
-  var firstPage=-1;
+  var pages={home:[],products:[],about:[],contact:[]};
+  var assigned={};
+  function add(page,block){
+    if(!block)return;
+    var index=blocks.indexOf(block);
+    if(index<0||assigned[index])return;
+    assigned[index]=page;
+    pages[page].push(block);
+  }
+  add('products',blockOf('products')||blockOf('offerings')||blockOf('menu'));
+  add('about',blockOf('about'));
+  add('about',blockOf('gallery'));
+  add('contact',blockOf('contact')||blockOf('visit'));
+  add('home',blockOf('reviews'));
   for(var i=0;i<blocks.length;i++){
-    if(blocks[i]===home)continue;
-    var mapped=null;
-    for(var id in anchored){if(blockOf(id)===blocks[i]){mapped=blocks[i];break;}}
-    if(mapped){firstPage=i;break;}
+    if(!assigned[i]){assigned[i]='home';pages.home.push(blocks[i]);}
   }
-  if(firstPage>-1){
-    homeSet=blocks.slice(0,firstPage);
-    if(homeSet.indexOf(home)<0)homeSet.unshift(home);
+  if(pages.home.length===0){assigned[0]='home';pages.home.push(blocks[0]);}
+  function pageOfBlock(block){
+    var index=blocks.indexOf(block);
+    return index>=0&&assigned[index]?assigned[index]:'home';
   }
-  var rail=document.querySelector('.hero-rail-band, .rail-band');
-  if(rail){
-    var railBlock=rail;
-    for(var r=0;r<blocks.length;r++){if(blocks[r].contains(rail)){railBlock=blocks[r];break;}}
-    if(homeSet.indexOf(railBlock)<0)homeSet.push(railBlock);
+  function setCurrent(page){
+    document.querySelectorAll('.navlinks a[data-page]').forEach(function(a){
+      if(a.getAttribute('data-page')===page)a.classList.add('site-nav-current');
+      else a.classList.remove('site-nav-current');
+    });
   }
-  function show(block){
+  function draw(page,anchorId){
+    var list=pages[page]&&pages[page].length?pages[page]:pages.home;
     blocks.forEach(function(el){
-      var visible=el===block||(block===home&&homeSet.indexOf(el)>=0);
+      var visible=list.indexOf(el)>=0;
       if(visible){el.classList.remove('site-page-hidden');el.classList.add('site-page-active');}
       else{el.classList.add('site-page-hidden');el.classList.remove('site-page-active');}
     });
-    window.scrollTo({top:0,behavior:'auto'});
+    setCurrent(page);
+    try{
+      if(window.parent&&window.parent!==window)window.parent.postMessage({type:'site-page-change',page:page},'*');
+    }catch(err){}
+    var target=anchorId?document.getElementById(anchorId):null;
+    if(target&&target.offsetParent!==null){
+      try{target.scrollIntoView({block:'start'});}catch(err){window.scrollTo(0,0);}
+    }else{
+      window.scrollTo(0,0);
+    }
   }
+  window.addEventListener('message',function(e){
+    var data=e.data||{};
+    if(data.type==='site-page'&&pages[data.page])draw(data.page,'');
+  });
   document.addEventListener('click',function(e){
     if(document.documentElement.classList.contains('site-editing'))return;
     var node=e.target;
@@ -592,15 +737,25 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     var href=a.getAttribute('href')||'';
     if(href.length<2)return;
     var id=href.slice(1);
-    var target=id==='top'?home:blockOf(id);
-    if(!target)return;
-    show(target);
+    if(id==='top'){
+      var page=a.getAttribute('data-page')||'home';
+      if(pages[page]){e.preventDefault();draw(page,'');}
+      return;
+    }
+    var block=blockOf(id);
+    if(!block)return;
+    e.preventDefault();
+    draw(pageOfBlock(block),id);
   },true);
   document.documentElement.classList.add('site-pages');
-  var initial=location.hash?location.hash.slice(1):'top';
-  var start=initial==='top'?home:blockOf(initial);
-  if(!start)start=home;
-  show(start);
+  var initial=location.hash?location.hash.slice(1):'';
+  if(initial&&initial!=='top'){
+    var start=blockOf(initial);
+    if(start)draw(pageOfBlock(start),initial);
+    else draw('home','');
+  }else{
+    draw('home','');
+  }
 })();</script>`
 
 // ---------------------------------------------------------------------------
@@ -610,16 +765,45 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
 // ---------------------------------------------------------------------------
 
 const PREVIEW_EDITOR_STYLES = `<style id="site-editor-css">
-html.site-editing [data-edit-key],html.site-editing [data-edit-index]{cursor:text;outline:1.5px dashed rgba(13,148,136,.6);outline-offset:4px;border-radius:3px;transition:background .15s ease,outline-color .15s ease}
-html.site-editing [data-edit-key]:hover,html.site-editing [data-edit-index]:hover{background:rgba(13,148,136,.10);outline-color:#0d9488}
-html.site-editing [data-edit-key]:focus,html.site-editing [data-edit-index]:focus{outline:2px solid #0d9488;background:rgba(13,148,136,.14)}
+html.site-editing [data-edit-key],html.site-editing [data-edit-index],html.site-editing [data-edit-path]{cursor:text;outline:1.5px dashed rgba(13,148,136,.6);outline-offset:4px;border-radius:3px;transition:background .15s ease,outline-color .15s ease}
+html.site-editing [data-edit-key]:hover,html.site-editing [data-edit-index]:hover,html.site-editing [data-edit-path]:hover{background:rgba(13,148,136,.10);outline-color:#0d9488}
+html.site-editing [data-edit-key]:focus,html.site-editing [data-edit-index]:focus,html.site-editing [data-edit-path]:focus{outline:2px solid #0d9488;background:rgba(13,148,136,.14)}
 </style>`
 
 const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
   var root=document.documentElement;
   var active=null;
   var original='';
+  var activeText=null;
   function isEditing(){return root.classList.contains('site-editing');}
+  function directText(el){
+    for(var i=0;i<el.childNodes.length;i++){var n=el.childNodes[i];if(n.nodeType===3&&n.nodeValue.trim())return n;}
+    return null;
+  }
+  function pathOf(el){
+    var parts=[];
+    while(el&&el.nodeType===1&&el!==document.body){
+      var parent=el.parentElement;if(!parent)break;
+      var index=0;
+      for(var i=0;i<parent.children.length;i++){if(parent.children[i]===el){index=i;break;}}
+      parts.unshift(el.tagName.toLowerCase()+'.'+index);
+      el=parent;
+    }
+    return parts.join('>');
+  }
+  function eligible(el){
+    if(!el||el.nodeType!==1)return false;
+    if(/^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA|INPUT|SELECT|OPTION|SVG|PATH|IFRAME)$/.test(el.tagName))return false;
+    if(el.closest('[data-no-edit]'))return false;
+    if(el.closest('.navlinks'))return false;
+    if(!directText(el))return false;
+    for(var i=0;i<el.children.length;i++){
+      var child=el.children[i];
+      if(child.textContent.trim())return false;
+      if(!/^(svg|br|img|path|span|i)$/i.test(child.tagName))return false;
+    }
+    return true;
+  }
   function copy(el,key){
     if(!el||el.getAttribute('data-edit-key'))return;
     el.setAttribute('data-edit-key',key);
@@ -652,11 +836,24 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
     var cards=document.querySelectorAll('#products .product, #offerings .product, #products .price-row, #products .pick, #offerings .menu-row, #offerings .offer-row, #offerings .offer-chip');
     Array.prototype.forEach.call(cards,function(card,index){
       if(index>=12)return;
+      card.setAttribute('data-no-edit','1');
       var nameEl=card.querySelector('h3 > span')||card.querySelector('h3')||(card.classList.contains('offer-chip')?card.querySelector('span'):null);
       var priceEl=card.querySelector('.menu-price')||card.querySelector('.price')||card.querySelector('.product-price')||card.querySelector('.pick-price')||(card.classList.contains('offer-chip')?card.querySelector('b'):null);
       markProduct(nameEl,index,'name');
       markProduct(priceEl,index,'price');
     });
+  }
+  function tagText(){
+    var els=document.querySelectorAll('${TEXT_SELECTOR}');
+    var count=0;
+    for(var i=0;i<els.length&&count<400;i++){
+      var el=els[i];
+      if(el.getAttribute('data-edit-key')||el.getAttribute('data-edit-path'))continue;
+      if(!eligible(el))continue;
+      el.setAttribute('data-edit-kind','text');
+      el.setAttribute('data-edit-path',pathOf(el));
+      count++;
+    }
   }
   function tag(){
     copy(document.querySelector('.hero h1'),'heroTitle');
@@ -676,11 +873,14 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
     nav('.navlinks a[href="#offerings"], .navlinks a[href="#products"], .navlinks a[href="#menu"]','navOfferings');
     nav('.navlinks a[href="#reviews"]','navReviews');
     nav('.navlinks a[href="#visit"], .navlinks a[href="#contact"]','navVisit');
+    nav('.navlinks a[data-page="home"]','navHome');
     tagProducts();
+    tagText();
   }
   function start(el){
     active=el;
     original=el.innerHTML;
+    activeText=el.getAttribute('data-edit-kind')==='text'?directText(el):null;
     el.setAttribute('contenteditable','true');
     el.focus();
     var range=document.createRange();
@@ -696,10 +896,17 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
     active=null;
     el.removeAttribute('contenteditable');
     var value=(el.textContent||'').replace(/\\s+/g,' ').trim();
-    el.textContent=value;
-    if(el.getAttribute('data-edit-kind')==='product'){
+    var kind=el.getAttribute('data-edit-kind');
+    if(kind==='product'){
+      el.textContent=value;
       window.parent.postMessage({type:'site-product-edit',index:Number(el.getAttribute('data-edit-index')),field:el.getAttribute('data-edit-field'),value:value},'*');
+    }else if(kind==='text'){
+      if(activeText&&activeText.isConnected&&activeText.parentNode===el)activeText.nodeValue=value;
+      else el.textContent=value;
+      var path=el.getAttribute('data-edit-path');
+      if(path)window.parent.postMessage({type:'site-text-edit',path:path,value:value},'*');
     }else{
+      el.textContent=value;
       var key=el.getAttribute('data-edit-key');
       if(key)window.parent.postMessage({type:'site-copy-edit',key:key,value:value},'*');
     }
@@ -714,7 +921,7 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
   document.addEventListener('click',function(e){
     if(!isEditing())return;
     var node=e.target;
-    var el=node&&node.closest?node.closest('[data-edit-key],[data-edit-index]'):null;
+    var el=node&&node.closest?node.closest('[data-edit-key],[data-edit-index],[data-edit-path]'):null;
     if(!el)return;
     e.preventDefault();
     e.stopPropagation();
@@ -748,15 +955,18 @@ export function withPreviewEditor(html: string): string {
   return html.replace('</body>', `${PREVIEW_EDITOR_STYLES}${PREVIEW_EDITOR_SCRIPT}</body>`)
 }
 
-/** Applies provider copy overrides and the chosen page mode to generated HTML. */
+/** Applies provider copy overrides and the four-page navigation to generated HTML. */
 export function applySiteExperience(html: string, business: BusinessData): string {
   let out = html
   const copy = siteCopy(business)
   if (Object.keys(copy).length > 0) {
     out = out.replace('</body>', `${siteCopyScript(copy)}</body>`)
   }
-  if (String(business.siteMode || '').toLowerCase() === 'pages') {
-    out = out.replace('</body>', `${PAGES_MODE_STYLES}${PAGES_MODE_SCRIPT}</body>`)
+  const texts = siteTextOverrides(business)
+  if (Object.keys(texts).length > 0) {
+    out = out.replace('</body>', `${siteTextScript(texts)}</body>`)
   }
+  // Every template ships the same four pages, so the page shell is always on.
+  out = out.replace('</body>', `${PAGES_MODE_STYLES}${PAGES_MODE_SCRIPT}</body>`)
   return out
 }

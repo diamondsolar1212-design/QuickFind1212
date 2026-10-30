@@ -10,6 +10,7 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
+  catalogueEmptyBlock,
   customLinks,
   documentHead,
   heroRailHtml,
@@ -71,13 +72,13 @@ export function generateCalmSage(
     return tiles.join('')
   })()
 
-  const productsHtml = hasProducts ? `
+  const productsHtml = `
   <section class="section" id="products">
     <div class="section-head reveal">
-      <span class="kicker">03 — Offerings</span>
+      <span class="kicker">03 — Products &amp; services</span>
       <h2>Made to be <em>taken home</em>.</h2>
     </div>
-    <div class="product-grid">
+    ${hasProducts ? `<div class="product-grid">
       ${products.slice(0, 8).map((p, i) => `
       <article class="product reveal" style="transition-delay:${i * 60}ms">
         <div class="product-media">${productMediaHtml(p, '#e3d5c1')}</div>
@@ -89,8 +90,8 @@ export function generateCalmSage(
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
         </div>
       </article>`).join('')}
-    </div>
-  </section>` : ''
+    </div>` : catalogueEmptyBlock(b)}
+  </section>`
 
   const bodyParagraphs = paragraphs(description)
   const lede = bodyParagraphs[0] || `A ${category.toLowerCase()} in the heart of ${city}.`
@@ -274,11 +275,10 @@ export function generateCalmSage(
     <div class="topbar-inner">
       <a class="brand" href="#top"><span class="brand-mark">${escapeHtml(initials(b.name))}</span><span class="brand-name">${name}</span></a>
       <nav class="navlinks">
-        <a href="#about">About</a>
-        <a href="#gallery">Gallery</a>
-        ${hasProducts ? '<a href="#products">Offerings</a>' : ''}
-        <a href="#reviews">Reviews</a>
-        <a href="#contact">Visit</a>
+        <a href="#top" data-page="home">Home</a>
+        <a href="#products" data-page="products">Products &amp; services</a>
+        <a href="#about" data-page="about">About</a>
+        <a href="#contact" data-page="contact">Contact</a>
         ${links.slice(0, 2).map((link) => siteLinkHtml(link)).join('')}
         <a class="nav-cta" href="${escapeHtml(primary.url)}"${anchorAttrs(primary.url)}>${escapeHtml(primary.label)}</a>
       </nav>

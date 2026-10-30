@@ -19,6 +19,7 @@ import { useI18n } from '@/store/i18n'
 import { toast } from 'sonner'
 import { generateBusinessWebsite } from '@/lib/template-engine'
 import { isCollectionSkin } from '@/lib/templates/collection'
+import { SiteEditor } from './SiteEditor'
 import { productEmoji, productImage, parseProducts } from '@/lib/products'
 
 function getTagStyle(themeColor: string | undefined) {
@@ -149,9 +150,9 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
     }
   }
 
-  // Update the live website template (owner/admin only, premium listings)
+  // Update the live website template (owner/admin only)
   const handleTemplateChange = async (tpl: string) => {
-    if (!business.premium) return
+    if (!canEdit) return
     if (!user) {
       toast.error('Please sign in to edit this listing')
       return
@@ -292,7 +293,7 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
               <TabsList
                 className="mb-5 bg-muted/50 grid"
                 style={{
-                  gridTemplateColumns: 'repeat(' + (2 + (business.showProducts !== false ? 1 : 0) + (business.showReviews !== false ? 1 : 0)) + ', minmax(0, 1fr))'
+                  gridTemplateColumns: 'repeat(' + (2 + (business.showProducts !== false ? 1 : 0) + (business.showReviews !== false ? 1 : 0) + (canEdit ? 1 : 0)) + ', minmax(0, 1fr))'
                 }}
               >
                 <TabsTrigger value="about" className="text-xs sm:text-sm">{t('detail_about')}</TabsTrigger>
@@ -302,6 +303,11 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                 <TabsTrigger value="contact" className="text-xs sm:text-sm">{t('detail_contact')}</TabsTrigger>
                 {business.showReviews !== false && (
                   <TabsTrigger value="reviews" className="text-xs sm:text-sm">{t('detail_reviews')}</TabsTrigger>
+                )}
+                {canEdit && (
+                  <TabsTrigger value="website" className="text-xs sm:text-sm">
+                    <Globe className="w-3.5 h-3.5 mr-1" /> My Website
+                  </TabsTrigger>
                 )}
               </TabsList>
 
@@ -366,17 +372,14 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                   </>
                 )}
 
-                {/* Premium website template picker (owner/admin only) */}
-                {business.premium && canEdit && (
+                {/* Website template picker (owner/admin only) */}
+                {canEdit && (
                   <>
                     <Separator />
                     <div>
                       <h3 className="font-serif font-semibold text-lg mb-3 flex items-center gap-2">
-                        <Crown className="w-4 h-4 text-amber-500" />
+                        <Globe className="w-4 h-4 text-brand" />
                         Your Website Template
-                        <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 bg-amber-50 ml-1">
-                          PREMIUM
-                        </Badge>
                       </h3>
                       <p className="text-xs text-muted-foreground mb-3">
                         Choose how your business website looks. Visitors see this template when they open your shared link — only you can change it.
@@ -678,6 +681,27 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                   </Button>
                 </div>
               </TabsContent>
+
+              {/* Website builder — owner/admin only */}
+              {canEdit && user && (
+                <TabsContent value="website" className="space-y-4 mt-0">
+                  <div>
+                    <h3 className="font-serif font-semibold text-lg flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-brand" />
+                      Build your website
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click <strong>Edit text</strong> and then click any heading, menu button or paragraph in the
+                      preview to rewrite it. Changes go live on your shared website as soon as you save.
+                    </p>
+                  </div>
+                  <SiteEditor business={business} userId={user.id} />
+                  <p className="text-[11px] text-muted-foreground">
+                    Want a different look? Switch the template from the <strong>About</strong> tab — your text
+                    edits stay attached to the sections they were made in.
+                  </p>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { sanitizeSiteContent } from '@/lib/templates/shared'
 
 export async function GET(request: NextRequest) {
   try {
@@ -65,6 +66,17 @@ export async function POST(request: NextRequest) {
       const allowed: Record<string, unknown> = {}
       for (const f of OWNER_EDITABLE_FIELDS) {
         if (updates[f] !== undefined) allowed[f] = updates[f]
+      }
+      // Website text edits (structured copy + click-to-edit overrides).
+      if (updates.siteContent !== undefined) {
+        allowed.siteContent = sanitizeSiteContent(updates.siteContent)
+      }
+      // Catalogue edits made directly on the live website preview.
+      if (updates.products !== undefined) {
+        if (typeof updates.products !== 'string') {
+          return NextResponse.json({ error: 'Invalid products payload' }, { status: 400 })
+        }
+        allowed.products = updates.products.slice(0, 12000)
       }
       if (Object.keys(allowed).length === 0) {
         return NextResponse.json({ error: 'No editable fields supplied' }, { status: 400 })
