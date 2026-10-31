@@ -214,14 +214,22 @@ export function ListBusinessModal({ open, onClose }: Props) {
     heroImages: heroImages.join(','),
     heroAutoScroll,
     siteMode,
-    siteContent: siteContentJson(siteCopy, siteTexts)
+    siteContent: siteContentJson(siteCopy, siteTexts),
+    fontChoice,
+    layoutStyle,
+    showGallery,
+    showHours,
+    showReviews,
+    showMap,
+    showProducts
   }), [
     form.name, form.description, form.category, form.subcategory,
     form.city, form.state, form.address, form.phone, form.whatsapp,
     form.email, form.website, form.template,
     profileImage, galleryImages, catalogProducts, themeColor,
     ctaLabel, ctaUrl, cta2Label, cta2Url, siteLinks,
-    heroImages, heroAutoScroll, siteMode, siteCopy, siteTexts
+    heroImages, heroAutoScroll, siteMode, siteCopy, siteTexts,
+    fontChoice, layoutStyle, showGallery, showHours, showReviews, showMap, showProducts
   ])
 
   // Style samples for the template grid: fixed copy + the user's photos, so
@@ -666,7 +674,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                             onChange={(e) => setFontChoice(e.target.value)}
                             className="w-full h-9 px-2 text-sm border border-border rounded-md bg-background"
                           >
-                            <option value="sans">Sans</option>
+                            <option value="sans">Sans (default)</option>
                             <option value="serif">Serif</option>
                             <option value="modern">Modern</option>
                             <option value="classic">Classic</option>
@@ -872,16 +880,16 @@ export function ListBusinessModal({ open, onClose }: Props) {
                             maxLength={240}
                           />
                           <Input
-                            value={siteCopy.navAbout}
-                            onChange={(e) => updateSiteCopy('navAbout', e.target.value)}
-                            placeholder="Menu: About"
+                            value={siteCopy.navHome}
+                            onChange={(e) => updateSiteCopy('navHome', e.target.value)}
+                            placeholder="Menu: Home"
                             className="h-9 text-xs"
                             maxLength={40}
                           />
                           <Input
-                            value={siteCopy.navGallery}
-                            onChange={(e) => updateSiteCopy('navGallery', e.target.value)}
-                            placeholder="Menu: Gallery"
+                            value={siteCopy.navAbout}
+                            onChange={(e) => updateSiteCopy('navAbout', e.target.value)}
+                            placeholder="Menu: About"
                             className="h-9 text-xs"
                             maxLength={40}
                           />
@@ -893,22 +901,16 @@ export function ListBusinessModal({ open, onClose }: Props) {
                             maxLength={40}
                           />
                           <Input
-                            value={siteCopy.navReviews}
-                            onChange={(e) => updateSiteCopy('navReviews', e.target.value)}
-                            placeholder="Menu: Reviews"
-                            className="h-9 text-xs"
-                            maxLength={40}
-                          />
-                          <Input
                             value={siteCopy.navVisit}
                             onChange={(e) => updateSiteCopy('navVisit', e.target.value)}
-                            placeholder="Menu: Visit"
+                            placeholder="Menu: Contact"
                             className="h-9 text-xs"
                             maxLength={40}
                           />
                         </div>
                         <p className="mt-2 text-[10px] text-brand">
-                          Tip: use Edit text on the live preview, then click any heading, menu item or button to change it directly.
+                          Tip: click any heading, menu item or button in the live preview and type — the box here
+                          fills in automatically.
                         </p>
                         <Textarea
                           value={siteCopy.aboutText}
@@ -1655,6 +1657,13 @@ type PreviewEditHandler = (key: string, value: string) => void
 type ProductEditHandler = (index: number, field: string, value: string) => void
 type TextEditHandler = (path: string, value: string) => void
 
+const PREVIEW_PAGES = [
+  { id: 'home', label: 'Home' },
+  { id: 'products', label: 'Products' },
+  { id: 'about', label: 'About' },
+  { id: 'contact', label: 'Contact' }
+]
+
 function WebsitePreview({
   business,
   height = 'calc(95vh - 200px)',
@@ -1674,12 +1683,21 @@ function WebsitePreview({
 }) {
   const html = useMemo(() => withPreviewEditor(generateBusinessWebsite(business)), [business])
   const [shownHtml, setShownHtml] = useState(html)
-  const [editing, setEditing] = useState(false)
+  // Editing is on by default: providers click text in the preview and type.
+  const [editing, setEditing] = useState(true)
   const [currentPage, setCurrentPage] = useState('home')
   const frameRef = useRef<HTMLIFrameElement | null>(null)
+  // Edits made inside the iframe are already visible there. Reloading the frame
+  // for them would steal focus and jump back to the first page, so skip it.
+  const inlineEditsRef = useRef(0)
+  const appliedInlineRef = useRef(0)
 
   // Keep typing responsive: reload the preview a beat after the last keystroke.
   useEffect(() => {
+    if (inlineEditsRef.current !== appliedInlineRef.current) {
+      appliedInlineRef.current = inlineEditsRef.current
+      return
+    }
     const timer = setTimeout(() => setShownHtml(html), 300)
     return () => clearTimeout(timer)
   }, [html])
@@ -1695,16 +1713,30 @@ function WebsitePreview({
     return () => clearTimeout(timer)
   }, [shownHtml, sendEditMode])
 
+  const goPage = (page: string) => {
+    setCurrentPage(page)
+    frameRef.current?.contentWindow?.postMessage({ type: 'site-page', page }, '*')
+  }
+
+  const toggleEditing = () => {
+    // Leaving edit mode re-syncs the preview with everything captured so far.
+    if (editing) setShownHtml(html)
+    setEditing(!editing)
+  }
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return
       const data = event.data
       if (!data || typeof data !== 'object') return
       if (data.type === 'site-copy-edit' && typeof data.key === 'string') {
+        inlineEditsRef.current += 1
         onCopyEdit?.(data.key, String(data.value ?? ''))
       } else if (data.type === 'site-product-edit') {
+        inlineEditsRef.current += 1
         onProductEdit?.(Number(data.index), String(data.field ?? ''), String(data.value ?? ''))
       } else if (data.type === 'site-text-edit' && typeof data.path === 'string') {
+        inlineEditsRef.current += 1
         onTextEdit?.(data.path, String(data.value ?? ''))
       } else if (data.type === 'site-page-change' && typeof data.page === 'string') {
         setCurrentPage(data.page)
@@ -1724,7 +1756,7 @@ function WebsitePreview({
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
-            onClick={() => setEditing((value) => !value)}
+            onClick={toggleEditing}
             title="Click any text in the preview to edit it"
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
               editing
@@ -1740,9 +1772,26 @@ function WebsitePreview({
           </span>
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 border-b border-brand/20 bg-white/70">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mr-1">Pages</span>
+        {PREVIEW_PAGES.map((page) => (
+          <button
+            key={page.id}
+            type="button"
+            onClick={() => goPage(page.id)}
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+              currentPage === page.id
+                ? 'bg-brand text-brand-foreground border-brand'
+                : 'bg-card text-muted-foreground border-border hover:border-brand/50 hover:text-brand'
+            }`}
+          >
+            {page.label}
+          </button>
+        ))}
+      </div>
       {editing && (
         <div className="bg-amber-50 px-3 py-1.5 text-[10px] font-medium text-amber-700 border-b border-amber-200">
-          Click any outlined text to edit · Enter saves · Esc cancels
+          Click any outlined text to edit · menu links open their page (double-click to rename) · Enter saves · Esc cancels
         </div>
       )}
       <div style={{ height, overflow: 'hidden', position: 'relative', background: '#fff' }}>

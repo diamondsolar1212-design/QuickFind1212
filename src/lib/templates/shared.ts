@@ -33,6 +33,13 @@ export interface BusinessData {
   heroAutoScroll?: boolean
   siteMode?: string | null
   siteContent?: string | null
+  fontChoice?: string | null
+  layoutStyle?: string | null
+  showGallery?: boolean
+  showHours?: boolean
+  showReviews?: boolean
+  showMap?: boolean
+  showProducts?: boolean
 }
 
 export interface TemplateProduct {
@@ -640,6 +647,63 @@ function siteCopyScript(copy: SiteCopy): string {
 })();</script>`
 }
 
+const FONT_STACKS: Record<string, string> = {
+  sans: 'system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif',
+  serif: 'Georgia,"Times New Roman",Times,serif',
+  modern: '"Inter","Segoe UI",system-ui,-apple-system,sans-serif',
+  classic: '"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif'
+}
+
+const DESIGN_SECTION_SELECTOR =
+  '#about,#gallery,#products,#offerings,#menu,#reviews,#visit,#contact'
+
+// The provider's font/layout choices and the section switches from the wizard.
+// Applied as a last CSS + script layer so all 20 templates honour them.
+function siteDesignStyles(business: BusinessData): string {
+  const fontKey = String(business.fontChoice || '').toLowerCase()
+  // "sans" (the wizard default) keeps each template's own typography, so the
+  // designer fonts are only replaced when the provider picks another style.
+  const font = fontKey && fontKey !== 'sans' ? FONT_STACKS[fontKey] : ''
+  const layout = String(business.layoutStyle || 'standard').toLowerCase()
+  const pad = layout === 'compact' ? '48px' : layout === 'spacious' ? '104px' : ''
+  const rules: string[] = []
+  if (font) rules.push(`body{font-family:${font}!important}`)
+  if (pad) {
+    rules.push(`${DESIGN_SECTION_SELECTOR}{padding-top:${pad}!important;padding-bottom:${pad}!important}`)
+  }
+  rules.push('.site-section-off{display:none!important}')
+  return `<style id="site-design-css">${rules.join('')}</style>`
+}
+
+function siteVisibilityScript(business: BusinessData): string {
+  const flags = {
+    gallery: business.showGallery !== false,
+    hours: business.showHours !== false,
+    reviews: business.showReviews !== false,
+    map: business.showMap !== false,
+    products: business.showProducts !== false
+  }
+  return `<script>(function(){
+  var on=${JSON.stringify(flags)};
+  function off(el){if(el)el.classList.add('site-section-off');}
+  function card(el){
+    try{return el.closest('.contact-card, .colophon-item')||el;}catch(err){return el;}
+  }
+  if(!on.gallery)off(document.getElementById('gallery'));
+  if(!on.reviews)off(document.getElementById('reviews'));
+  if(!on.products){
+    ['products','offerings','menu'].forEach(function(id){off(document.getElementById(id));});
+    document.querySelectorAll('.navlinks a[data-page="products"]').forEach(function(a){a.remove();});
+  }
+  if(!on.hours){
+    document.querySelectorAll('.hours').forEach(function(el){off(card(el));});
+  }
+  if(!on.map){
+    document.querySelectorAll('a[href*="google.com/maps"]').forEach(function(a){off(card(a));});
+  }
+})();</script>`
+}
+
 // Every generated template is grouped into four real pages:
 //   Home · Products & services · About · Contact
 // Sections keep their scroll anchors, but the site only shows one page at a
@@ -658,6 +722,7 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     return Array.prototype.filter.call(parent.children,function(el){
       if(/^(SCRIPT|STYLE|LINK|HEADER|FOOTER|NOSCRIPT|TEMPLATE)$/.test(el.tagName))return false;
       if(el.classList.contains('announce'))return false;
+      if(el.classList.contains('site-section-off'))return false;
       var cs=getComputedStyle(el);
       if(cs.position==='fixed'||cs.position==='sticky')return false;
       return true;
@@ -730,7 +795,6 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     if(data.type==='site-page'&&pages[data.page])draw(data.page,'');
   });
   document.addEventListener('click',function(e){
-    if(document.documentElement.classList.contains('site-editing'))return;
     var node=e.target;
     var a=node&&node.closest?node.closest('a[href^="#"]'):null;
     if(!a)return;
@@ -765,9 +829,10 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
 // ---------------------------------------------------------------------------
 
 const PREVIEW_EDITOR_STYLES = `<style id="site-editor-css">
-html.site-editing [data-edit-key],html.site-editing [data-edit-index],html.site-editing [data-edit-path]{cursor:text;outline:1.5px dashed rgba(13,148,136,.6);outline-offset:4px;border-radius:3px;transition:background .15s ease,outline-color .15s ease}
+html.site-editing [data-edit-key],html.site-editing [data-edit-index],html.site-editing [data-edit-path]{cursor:text;outline:1.5px dashed rgba(13,148,136,.42);outline-offset:4px;border-radius:3px;transition:background .15s ease,outline-color .15s ease}
 html.site-editing [data-edit-key]:hover,html.site-editing [data-edit-index]:hover,html.site-editing [data-edit-path]:hover{background:rgba(13,148,136,.10);outline-color:#0d9488}
 html.site-editing [data-edit-key]:focus,html.site-editing [data-edit-index]:focus,html.site-editing [data-edit-path]:focus{outline:2px solid #0d9488;background:rgba(13,148,136,.14)}
+html.site-editing [data-edit-nav]{cursor:pointer;outline-style:dotted}
 </style>`
 
 const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
@@ -821,6 +886,7 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
       if(node){
         var span=document.createElement('span');
         span.textContent=node.nodeValue.trim();
+        span.setAttribute('data-edit-nav','1');
         a.replaceChild(span,node);
         copy(span,key);
       }else{copy(a,key);}
@@ -923,9 +989,22 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
     var node=e.target;
     var el=node&&node.closest?node.closest('[data-edit-key],[data-edit-index],[data-edit-path]'):null;
     if(!el)return;
+    // Menu links keep navigating on a single click; double-click renames them.
+    if(el.hasAttribute('data-edit-nav'))return;
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
+    if(active===el)return;
+    commit();
+    start(el);
+  },true);
+  document.addEventListener('dblclick',function(e){
+    if(!isEditing())return;
+    var node=e.target;
+    var el=node&&node.closest?node.closest('[data-edit-nav]'):null;
+    if(!el)return;
+    e.preventDefault();
+    e.stopPropagation();
     if(active===el)return;
     commit();
     start(el);
@@ -967,6 +1046,10 @@ export function applySiteExperience(html: string, business: BusinessData): strin
     out = out.replace('</body>', `${siteTextScript(texts)}</body>`)
   }
   // Every template ships the same four pages, so the page shell is always on.
-  out = out.replace('</body>', `${PAGES_MODE_STYLES}${PAGES_MODE_SCRIPT}</body>`)
+  // Design + section switches are injected first so the page script sees them.
+  out = out.replace(
+    '</body>',
+    `${siteDesignStyles(business)}${siteVisibilityScript(business)}${PAGES_MODE_STYLES}${PAGES_MODE_SCRIPT}</body>`
+  )
   return out
 }

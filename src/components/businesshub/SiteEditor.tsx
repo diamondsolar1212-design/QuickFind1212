@@ -70,10 +70,13 @@ export function SiteEditor({
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const [content, setContent] = useState<string>(business.siteContent || '')
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(true)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activePage, setActivePage] = useState('home')
+  // Bumped whenever the preview must be rebuilt even if the HTML is unchanged
+  // (Discard / Save), so React remounts the iframe instead of keeping DOM edits.
+  const [frameKey, setFrameKey] = useState(0)
 
   const build = useCallback(
     (siteContent: string, cta?: string, cta2?: string) =>
@@ -96,7 +99,7 @@ export function SiteEditor({
   useEffect(() => {
     setContent(business.siteContent || '')
     setDraft(EMPTY_DRAFT)
-    setEditing(false)
+    setEditing(true)
     setDirty(false)
     setShownHtml(build(business.siteContent || ''))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,8 +187,9 @@ export function SiteEditor({
   const resetDraft = () => {
     setDraft(EMPTY_DRAFT)
     setDirty(false)
-    setEditing(false)
+    setEditing(true)
     setShownHtml(build(content))
+    setFrameKey((value) => value + 1)
   }
 
   const handleSave = async () => {
@@ -213,10 +217,11 @@ export function SiteEditor({
       setContent(nextContent)
       setDraft(EMPTY_DRAFT)
       setDirty(false)
-      setEditing(false)
+      setEditing(true)
       setShownHtml(
         build(nextContent, draft.ctaLabel ?? business.ctaLabel, draft.cta2Label ?? business.cta2Label)
       )
+      setFrameKey((value) => value + 1)
       toast.success('Website text saved')
       window.dispatchEvent(new CustomEvent('business-updated', { detail: data.business }))
       onSaved?.(data.business)
@@ -315,6 +320,7 @@ export function SiteEditor({
 
       <div style={{ height: 'min(72vh, 760px)', minHeight: 420, overflow: 'hidden', background: '#fff' }}>
         <iframe
+          key={frameKey}
           ref={frameRef}
           srcDoc={shownHtml}
           onLoad={sendMode}

@@ -30,6 +30,13 @@ export function toBusinessData(business: any): BusinessData {
     heroImages: business.heroImages || '',
     heroAutoScroll: business.heroAutoScroll !== false,
     siteMode: business.siteMode || 'scroll',
-    siteContent: business.siteContent || ''
+    siteContent: business.siteContent || '',
+    fontChoice: business.fontChoice || 'sans',
+    layoutStyle: business.layoutStyle || 'standard',
+    showGallery: business.showGallery !== false,
+    showHours: business.showHours !== false,
+    showReviews: business.showReviews !== false,
+    showMap: business.showMap !== false,
+    showProducts: business.showProducts !== false
   }
 }
