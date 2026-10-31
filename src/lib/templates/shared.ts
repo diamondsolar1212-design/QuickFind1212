@@ -718,6 +718,9 @@ html.site-pages .navlinks a.site-nav-current{text-decoration:underline;text-unde
 
 const PAGES_MODE_SCRIPT = `<script>(function(){
   var body=document.body;
+  // Stay quiet during the first draw; the host replies to "site-ready" with the
+  // page that should be shown, so a reload does not bounce back to home.
+  var ready=false;
   function usable(parent){
     return Array.prototype.filter.call(parent.children,function(el){
       if(/^(SCRIPT|STYLE|LINK|HEADER|FOOTER|NOSCRIPT|TEMPLATE)$/.test(el.tagName))return false;
@@ -781,7 +784,7 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     });
     setCurrent(page);
     try{
-      if(window.parent&&window.parent!==window)window.parent.postMessage({type:'site-page-change',page:page},'*');
+      if(ready&&window.parent&&window.parent!==window)window.parent.postMessage({type:'site-page-change',page:page},'*');
     }catch(err){}
     var target=anchorId?document.getElementById(anchorId):null;
     if(target&&target.offsetParent!==null){
@@ -820,6 +823,12 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
   }else{
     draw('home','');
   }
+  // Tell the preview host the document is ready, so it can re-apply the
+  // current page and edit mode after an iframe reload.
+  ready=true;
+  try{
+    if(window.parent&&window.parent!==window)window.parent.postMessage({type:'site-ready'},'*');
+  }catch(err){}
 })();</script>`
 
 // ---------------------------------------------------------------------------

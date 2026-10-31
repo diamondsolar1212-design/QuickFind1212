@@ -6,6 +6,7 @@
 // are collected locally, then saved to Business.siteContent in one go.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ExternalLink, Eye, Loader2, Pencil, RotateCcw, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { generateBusinessWebsite, withPreviewEditor } from '@/lib/template-engine'
@@ -70,7 +71,8 @@ export function SiteEditor({
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const [content, setContent] = useState<string>(business.siteContent || '')
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
-  const [editing, setEditing] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activePage, setActivePage] = useState('home')
@@ -79,14 +81,15 @@ export function SiteEditor({
   const [frameKey, setFrameKey] = useState(0)
 
   const build = useCallback(
-    (siteContent: string, cta?: string, cta2?: string) =>
+    (siteContent: string, cta?: string, cta2?: string, products?: string | null) =>
       withPreviewEditor(
         generateBusinessWebsite(
           toBusinessData({
             ...business,
             siteContent,
             ctaLabel: cta ?? business.ctaLabel,
-            cta2Label: cta2 ?? business.cta2Label
+            cta2Label: cta2 ?? business.cta2Label,
+            ...(products ? { products } : {})
           })
         )
       ),
@@ -99,7 +102,8 @@ export function SiteEditor({
   useEffect(() => {
     setContent(business.siteContent || '')
     setDraft(EMPTY_DRAFT)
-    setEditing(true)
+    setEditing(false)
+    setFullscreen(false)
     setDirty(false)
     setShownHtml(build(business.siteContent || ''))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,6 +116,10 @@ export function SiteEditor({
     )
     frameRef.current?.contentWindow?.postMessage({ type: 'site-page', page: activePage }, '*')
   }, [editing, activePage])
+
+  // Answer the iframe's ready ping with the page the provider was looking at.
+  const sendModeRef = useRef(sendMode)
+  sendModeRef.current = sendMode
 
   const goPage = (page: string) => {
     setActivePage(page)
@@ -152,6 +160,8 @@ export function SiteEditor({
         setDirty(true)
       } else if (data.type === 'site-page-change' && typeof data.page === 'string') {
         setActivePage(data.page)
+      } else if (data.type === 'site-ready') {
+        sendModeRef.current()
       } else if (data.type === 'site-product-edit') {
         const index = Number(data.index)
         const field = String(data.field ?? '')
@@ -184,10 +194,44 @@ export function SiteEditor({
   }, [draft.products, business.products])
   const canSave = dirty || nextContent !== content
 
+  // Leaving full-screen editing re-renders the page from the draft, so nothing
+  // typed or renamed is lost when the iframe is recreated at the normal size.
+  const exitEditing = () => {
+    setShownHtml(
+      build(
+        nextContent,
+        draft.ctaLabel ?? business.ctaLabel,
+        draft.cta2Label ?? business.cta2Label,
+        editedProducts ?? business.products
+      )
+    )
+    setEditing(false)
+    setFullscreen(false)
+  }
+
+  const toggleEditing = () => {
+    if (editing) {
+      exitEditing()
+    } else {
+      setEditing(true)
+      setFullscreen(true)
+    }
+  }
+
+  // Full-screen editing should not scroll the page behind the overlay.
+  // (Esc is left to the preview's own editor so it never closes the dialog.)
+  useEffect(() => {
+    if (!fullscreen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [fullscreen])
+
   const resetDraft = () => {
     setDraft(EMPTY_DRAFT)
     setDirty(false)
-    setEditing(true)
     setShownHtml(build(content))
     setFrameKey((value) => value + 1)
   }
@@ -217,7 +261,8 @@ export function SiteEditor({
       setContent(nextContent)
       setDraft(EMPTY_DRAFT)
       setDirty(false)
-      setEditing(true)
+      setEditing(false)
+      setFullscreen(false)
       setShownHtml(
         build(nextContent, draft.ctaLabel ?? business.ctaLabel, draft.cta2Label ?? business.cta2Label)
       )
@@ -234,12 +279,23 @@ export function SiteEditor({
 
   const liveHref = `/business/${business.id}/website`
 
-  return (
-    <div className="rounded-xl overflow-hidden border border-border/60 shadow-lg bg-card">
+  const card = (
+    <div
+      className={
+        fullscreen
+          ? 'flex flex-1 flex-col min-h-0 bg-card overflow-hidden shadow-2xl sm:rounded-xl border border-brand/30'
+          : 'rounded-xl overflow-hidden border border-border/60 shadow-lg bg-card'
+      }
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-brand/10 border-b border-brand/20">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-bold text-brand flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5" /> LIVE WEBSITE
+            {fullscreen && (
+              <span className="text-[9px] font-semibold uppercase tracking-wide bg-brand text-brand-foreground rounded-full px-1.5 py-0.5">
+                Full screen
+              </span>
+            )}
           </span>
           {dirty && (
             <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
@@ -262,7 +318,8 @@ export function SiteEditor({
             size="sm"
             variant={editing ? 'default' : 'outline'}
             className="h-7 px-2 text-[11px]"
-            onClick={() => setEditing((value) => !value)}
+            onClick={toggleEditing}
+            title={editing ? 'Finish editing and return to the page' : 'Open the full-screen text editor'}
           >
             {editing ? <Check className="w-3 h-3 mr-1" /> : <Pencil className="w-3 h-3 mr-1" />}
             {editing ? 'Done editing' : 'Edit text'}
@@ -318,7 +375,13 @@ export function SiteEditor({
         ))}
       </div>
 
-      <div style={{ height: 'min(72vh, 760px)', minHeight: 420, overflow: 'hidden', background: '#fff' }}>
+      <div
+        style={
+          fullscreen
+            ? { flex: 1, minHeight: 0, overflow: 'hidden', background: '#fff' }
+            : { height: 'min(72vh, 760px)', minHeight: 420, overflow: 'hidden', background: '#fff' }
+        }
+      >
         <iframe
           key={frameKey}
           ref={frameRef}
@@ -337,4 +400,15 @@ export function SiteEditor({
       </div>
     </div>
   )
+
+  if (fullscreen && typeof document !== 'undefined') {
+    return createPortal(
+      <div className="fixed inset-0 z-[200] flex bg-slate-900/95 p-1 sm:p-3 pointer-events-auto">
+        {card}
+      </div>,
+      document.body
+    )
+  }
+
+  return card
 }

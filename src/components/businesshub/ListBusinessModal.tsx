@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -1683,14 +1684,18 @@ function WebsitePreview({
 }) {
   const html = useMemo(() => withPreviewEditor(generateBusinessWebsite(business)), [business])
   const [shownHtml, setShownHtml] = useState(html)
-  // Editing is on by default: providers click text in the preview and type.
-  const [editing, setEditing] = useState(true)
+  // The preview starts as a clean page; "Edit text" opens the full-screen editor.
+  const [editing, setEditing] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const [currentPage, setCurrentPage] = useState('home')
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   // Edits made inside the iframe are already visible there. Reloading the frame
   // for them would steal focus and jump back to the first page, so skip it.
   const inlineEditsRef = useRef(0)
   const appliedInlineRef = useRef(0)
+  // Escape / Done needs the newest HTML without re-binding listeners every keystroke.
+  const htmlRef = useRef(html)
+  htmlRef.current = html
 
   // Keep typing responsive: reload the preview a beat after the last keystroke.
   useEffect(() => {
@@ -1707,6 +1712,11 @@ function WebsitePreview({
     frameRef.current?.contentWindow?.postMessage({ type: 'site-page', page: currentPage }, '*')
   }, [editing, currentPage])
 
+  // The iframe announces itself once its page script is running; answer with the
+  // current page + edit mode so a reload never falls back to the home page.
+  const sendEditModeRef = useRef(sendEditMode)
+  sendEditModeRef.current = sendEditMode
+
   // srcDoc reloads reset the iframe, so re-send the mode after each update.
   useEffect(() => {
     const timer = setTimeout(sendEditMode, 80)
@@ -1718,11 +1728,33 @@ function WebsitePreview({
     frameRef.current?.contentWindow?.postMessage({ type: 'site-page', page }, '*')
   }
 
-  const toggleEditing = () => {
+  const exitEditing = useCallback(() => {
     // Leaving edit mode re-syncs the preview with everything captured so far.
-    if (editing) setShownHtml(html)
-    setEditing(!editing)
+    setShownHtml(htmlRef.current)
+    setEditing(false)
+    setFullscreen(false)
+  }, [])
+
+  const toggleEditing = () => {
+    if (editing) {
+      exitEditing()
+    } else {
+      // Editing opens full screen, so there is room to click and type.
+      setEditing(true)
+      setFullscreen(true)
+    }
   }
+
+  // Full-screen editing should not scroll the wizard behind the overlay.
+  // (Esc is left to the preview's own editor so it never closes the wizard.)
+  useEffect(() => {
+    if (!fullscreen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [fullscreen])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -1740,24 +1772,39 @@ function WebsitePreview({
         onTextEdit?.(data.path, String(data.value ?? ''))
       } else if (data.type === 'site-page-change' && typeof data.page === 'string') {
         setCurrentPage(data.page)
+      } else if (data.type === 'site-ready') {
+        sendEditModeRef.current()
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [onCopyEdit, onProductEdit, onTextEdit])
 
-  return (
-    <div className="bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden shadow-md">
-      <div className="bg-brand/10 px-3 py-2 flex items-center justify-between gap-2 border-b border-brand/20">
+  // The same markup renders inline and in the full-screen overlay; only the
+  // outer classes and the frame height change, so nothing is lost on toggle.
+  const card = (
+    <div
+      className={
+        fullscreen
+          ? 'flex flex-1 flex-col min-h-0 bg-card overflow-hidden shadow-2xl sm:rounded-xl border border-brand/30'
+          : 'bg-card rounded-xl border-2 border-dashed border-brand/30 overflow-hidden shadow-md'
+      }
+    >
+      <div className="bg-brand/10 px-3 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-brand/20">
         <span className="text-xs font-bold text-brand flex items-center gap-1.5">
           <Eye className="w-3.5 h-3.5" />
           LIVE PREVIEW
+          {fullscreen && (
+            <span className="text-[9px] font-semibold uppercase tracking-wide bg-brand text-brand-foreground rounded-full px-1.5 py-0.5">
+              Full screen
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={toggleEditing}
-            title="Click any text in the preview to edit it"
+            title={editing ? 'Finish editing and return to the page' : 'Open the full-screen text editor'}
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
               editing
                 ? 'bg-brand text-brand-foreground shadow-sm'
@@ -1794,7 +1841,13 @@ function WebsitePreview({
           Click any outlined text to edit · menu links open their page (double-click to rename) · Enter saves · Esc cancels
         </div>
       )}
-      <div style={{ height, overflow: 'hidden', position: 'relative', background: '#fff' }}>
+      <div
+        style={
+          fullscreen
+            ? { flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative', background: '#fff' }
+            : { height, overflow: 'hidden', position: 'relative', background: '#fff' }
+        }
+      >
         {desktop ? (
           <ScaledSiteFrame html={shownHtml} title={title} iframeRef={frameRef} onLoad={sendEditMode} />
         ) : (
@@ -1810,6 +1863,17 @@ function WebsitePreview({
       </div>
     </div>
   )
+
+  if (fullscreen && typeof document !== 'undefined') {
+    return createPortal(
+      <div className="fixed inset-0 z-[200] flex bg-slate-900/95 p-1 sm:p-3 pointer-events-auto">
+        {card}
+      </div>,
+      document.body
+    )
+  }
+
+  return card
 }
 
 // Sticky preview column used by every wizard step; the mobile version is
