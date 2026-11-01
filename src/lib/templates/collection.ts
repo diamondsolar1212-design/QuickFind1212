@@ -1029,6 +1029,31 @@ const RAIL_SCRIPT = `<script>(function(){
   });
 })();</script>`
 
+// Store-type → product presentation style. Keeps the curated skin look but
+// makes the Products & services section read like the business's actual trade
+// (menu for food, rows for services, cards for retail/catalogue).
+const OFFERINGS_BY_CATEGORY: Record<string, 'cards' | 'menu' | 'rows' | 'compact'> = {
+  'Grocery & Essentials': 'cards',
+  Restaurants: 'menu',
+  'Food & Sweets': 'menu',
+  'Food & Beverages': 'menu',
+  'Textiles & Apparel': 'cards',
+  'Handicrafts & Art': 'cards',
+  Electronics: 'cards',
+  Automobile: 'cards',
+  'Beauty & Personal Care': 'cards',
+  'Real Estate': 'rows',
+  'Home Services': 'rows',
+  Doctors: 'rows',
+  'Repair Services': 'rows',
+  'Wedding Planning': 'rows',
+  Education: 'rows',
+  'Travel Booking': 'rows',
+  'B2B Suppliers': 'rows',
+  'Health & Wellness': 'cards',
+  Other: 'cards'
+}
+
 export function generateCollectionTemplate(
   templateId: string,
   b: BusinessData,
@@ -1036,7 +1061,8 @@ export function generateCollectionTemplate(
   products: TemplateProduct[],
   hours: HourEntry[]
 ): string {
-  const skin = SKINS[templateId] || SKINS['blush-atelier']
+  const baseSkin = SKINS[templateId] || SKINS['blush-atelier']
+  const skin = { ...baseSkin, offerings: OFFERINGS_BY_CATEGORY[b.category] || baseSkin.offerings }
   const primary = primaryCta(b)
   const secondary = secondaryCta(b)
   const links = customLinks(b)
