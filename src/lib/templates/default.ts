@@ -154,7 +154,7 @@ export function generateDefault(
   const primary = primaryCta(b, 'Call')
   const secondary = secondaryCta(b, 'Take a look', '#gallery')
   const links = customLinks(b)
-  const showRows = variant === 'restaurant' || variant === 'premium'
+  const showRows = false
 
   const menuLabel = 'Products & services'
   const navPhone = variant === 'service' && b.phone
@@ -203,6 +203,7 @@ export function generateDefault(
         <div class="product-body">
           <div class="product-line"><h3>${escapeHtml(String(p.name ?? 'Product'))}</h3>${p.price ? `<span class="price">${escapeHtml(String(p.price))}</span>` : ''}</div>
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
+          <a href="${escapeHtml(telHref(b.phone))}" style="display:inline-block;margin-top:8px;font-size:.8rem;font-weight:600;color:var(--accent);text-decoration:none;">Enquire →</a>
         </div>
       </article>`).join('')}
     </div>`

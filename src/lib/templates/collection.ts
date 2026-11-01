@@ -529,6 +529,7 @@ function productsHtml(skin: SkinStyle, b: BusinessData, products: TemplateProduc
             <h3>${escapeHtml(String(p.name ?? 'Product'))}</h3>
             <div class="price">${escapeHtml(String(p.price ?? ''))}</div>
             ${p.details ? `<p>${escapeHtml(truncate(String(p.details), 90))}</p>` : ''}
+            <a class="product-enquire" href="${escapeHtml(telHref(b.phone))}" style="display:inline-block;margin-top:10px;font-size:.85rem;font-weight:600;color:var(--accent);text-decoration:none;">Enquire →</a>
           </div>
         </article>`
       )
@@ -1062,7 +1063,7 @@ export function generateCollectionTemplate(
   hours: HourEntry[]
 ): string {
   const baseSkin = SKINS[templateId] || SKINS['blush-atelier']
-  const skin = { ...baseSkin, offerings: OFFERINGS_BY_CATEGORY[b.category] || baseSkin.offerings }
+  const skin = { ...baseSkin, offerings: 'cards' as const }
   const primary = primaryCta(b)
   const secondary = secondaryCta(b)
   const links = customLinks(b)
