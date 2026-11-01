@@ -307,10 +307,15 @@ export function ListBusinessModal({ open, onClose }: Props) {
     phone: '+91 98765 43210',
     rating: 4.5,
     reviewCount: 100,
-    profileImage,
-    imageUrls: galleryImages.join(','),
+    profileImage: profileImage || DEFAULT_HERO_IMAGES[0],
+    imageUrls: (profileImage ? [profileImage, ...galleryImages] : galleryImages).concat(DEFAULT_HERO_PICK).join(','),
     heroImages: (heroImages.length > 0 ? heroImages : DEFAULT_HERO_PICK).join(','),
-    products: '',
+    products: JSON.stringify([
+      { id: '1', name: 'Premium Product', price: '₹499', details: 'Best seller item with great quality.', image: DEFAULT_HERO_IMAGES[1] },
+      { id: '2', name: 'Signature Service', price: '₹999', details: 'Professional service for your needs.', image: DEFAULT_HERO_IMAGES[2] },
+      { id: '3', name: 'Value Pack', price: '₹299', details: 'Affordable and reliable.', image: DEFAULT_HERO_IMAGES[3] },
+      { id: '4', name: 'New Arrival', price: '₹799', details: 'Freshly added to our catalogue.', image: DEFAULT_HERO_IMAGES[4] || DEFAULT_HERO_IMAGES[0] }
+    ]),
     hours: '',
     themeColor,
     template: 'retail'
