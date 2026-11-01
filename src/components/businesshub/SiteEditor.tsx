@@ -316,12 +316,12 @@ export function SiteEditor({
           <Button
             type="button"
             size="sm"
-            variant={editing ? 'default' : 'outline'}
-            className="h-7 px-2 text-[11px]"
+            variant="default"
+            className="h-9 px-4 text-xs sm:text-sm font-bold shadow-md ring-2 ring-brand/30"
             onClick={toggleEditing}
             title={editing ? 'Finish editing and return to the page' : 'Open the full-screen text editor'}
           >
-            {editing ? <Check className="w-3 h-3 mr-1" /> : <Pencil className="w-3 h-3 mr-1" />}
+            {editing ? <Check className="w-4 h-4 mr-1.5" /> : <Pencil className="w-4 h-4 mr-1.5" />}
             {editing ? 'Done editing' : 'Edit text'}
           </Button>
           {canSave && (

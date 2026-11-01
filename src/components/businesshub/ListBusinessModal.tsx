@@ -120,6 +120,43 @@ const CATEGORIES = [
   'B2B Suppliers', 'Repair Services', 'Other'
 ]
 
+// The website is created from the business details, so every category starts
+// with the template that suits it best. Providers can still pick another one.
+const TEMPLATE_BY_CATEGORY: Record<string, string> = {
+  'Grocery & Essentials': 'calm-sage',
+  Restaurants: 'forest-table',
+  'Home Services': 'steel-works',
+  'Textiles & Apparel': 'blush-atelier',
+  'Food & Sweets': 'maroon-heritage',
+  'Food & Beverages': 'citrus-studio',
+  Automobile: 'monochrome-lab',
+  Electronics: 'tech-lime',
+  'Health & Wellness': 'jungle-gold',
+  'Handicrafts & Art': 'terracotta-house',
+  'Beauty & Personal Care': 'lavender-hush',
+  'Real Estate': 'noir-edition',
+  Doctors: 'aqua-house',
+  'Wedding Planning': 'peach-sunset',
+  Education: 'sage-journal',
+  'Travel Booking': 'coastal-drift',
+  'B2B Suppliers': 'steel-works',
+  'Repair Services': 'steel-works',
+  Other: 'blush-atelier'
+}
+
+// Ready-made hero photos so a new website has a scrolling hero strip before
+// the provider uploads anything. Local files keep it working offline.
+const DEFAULT_HERO_IMAGES = [
+  '/defaults/hero-grocery.svg',
+  '/defaults/hero-restaurant.svg',
+  '/defaults/hero-wellness.svg',
+  '/defaults/hero-service.svg',
+  '/defaults/hero-fashion.svg',
+  '/defaults/hero-tech.svg'
+]
+
+const DEFAULT_HERO_PICK = DEFAULT_HERO_IMAGES.slice(0, 4)
+
 const EMOJI_MAP: Record<string, string> = {
   'Grocery & Essentials': '🛒', 'Restaurants': '🍽️', 'Home Services': '🔧', 'Textiles & Apparel': '🧵',
   'Food & Sweets': '🍯', 'Food & Beverages': '☕', 'Automobile': '🚗', 'Electronics': '📱',
@@ -140,6 +177,9 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [liveTracking, setLiveTracking] = useState(false)
   const [websiteTemplate, setWebsiteTemplate] = useState('elegant')
+  // True once the provider picks a template by hand; until then the template
+  // follows the category chosen in the Business Details step.
+  const [templatePicked, setTemplatePicked] = useState(false)
   // New design customization state
   const [themeColor, setThemeColor] = useState('#0d9488')
   const [fontChoice, setFontChoice] = useState('sans')
@@ -182,8 +222,30 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   const update = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }))
 
+  // The website is generated from the business details, so the matching
+  // template is picked as soon as the category is known. A manual choice wins.
+  const recommendedTemplate = TEMPLATE_BY_CATEGORY[form.category] || 'blush-atelier'
+  useEffect(() => {
+    if (templatePicked) return
+    setForm((f) => (f.template === recommendedTemplate ? f : { ...f, template: recommendedTemplate }))
+  }, [recommendedTemplate, templatePicked])
+
+  // Recommended template first, everything else keeps the curated order.
+  const templateChoices = useMemo(
+    () =>
+      [...TEMPLATES].sort(
+        (a, b) => Number(b.id === recommendedTemplate) - Number(a.id === recommendedTemplate)
+      ),
+    [recommendedTemplate]
+  )
+
   const totalImages = (profileImage ? 1 : 0) + galleryImages.length
   const allImages = profileImage ? [profileImage, ...galleryImages] : galleryImages
+  // A brand-new website opens with ready-made hero photos, so the scrolling
+  // strip is never empty; uploaded photos take over as soon as there are any.
+  const heroFallback = allImages.length > 0 ? allImages : DEFAULT_HERO_PICK
+  const heroSelected = heroImages.length > 0 ? heroImages : heroFallback
+  const heroChoices = Array.from(new Set([...allImages, ...DEFAULT_HERO_IMAGES]))
 
   // Snapshot of everything the generated website needs, so every wizard step
   // can show the same live preview without duplicating the mapping.
@@ -212,7 +274,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
     cta2Label,
     cta2Url,
     links: JSON.stringify(siteLinks.filter((l) => l.label.trim() && l.url.trim())),
-    heroImages: heroImages.join(','),
+    heroImages: heroSelected.join(','),
     heroAutoScroll,
     siteMode,
     siteContent: siteContentJson(siteCopy, siteTexts),
@@ -247,11 +309,12 @@ export function ListBusinessModal({ open, onClose }: Props) {
     reviewCount: 100,
     profileImage,
     imageUrls: galleryImages.join(','),
+    heroImages: (heroImages.length > 0 ? heroImages : DEFAULT_HERO_PICK).join(','),
     products: '',
     hours: '',
     themeColor,
     template: 'retail'
-  }), [form.name, form.category, profileImage, galleryImages, themeColor])
+  }), [form.name, form.category, profileImage, galleryImages, heroImages, themeColor])
 
   const fillAddressFromCoords = async (lat: number, lng: number, force: boolean) => {
     const controller = new AbortController()
@@ -293,7 +356,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
   }
 
   const toggleHeroImage = (url: string) => {
-    const base = heroImages.length > 0 ? heroImages : allImages
+    const base = heroImages.length > 0 ? heroImages : heroFallback
     if (base.includes(url)) {
       if (base.length <= 2) {
         toast.error('Keep at least 2 images in the scrolling hero')
@@ -380,11 +443,11 @@ export function ListBusinessModal({ open, onClose }: Props) {
   }
 
   const validateStep = (s: number): boolean => {
-    if (s === 2) {
+    if (s === 1) {
       if (!form.name.trim()) { toast.error('Business name is required'); return false }
       if (!form.description.trim()) { toast.error('A short description is required'); return false }
     }
-    if (s === 3) {
+    if (s === 2) {
       if (!form.phone.trim()) { toast.error('Phone number is required'); return false }
       if (!form.address.trim()) { toast.error('Street address is required'); return false }
       if (!form.city.trim()) { toast.error('City is required'); return false }
@@ -403,12 +466,12 @@ export function ListBusinessModal({ open, onClose }: Props) {
       setShowAuthModal(true)
       return
     }
-    if (!validateStep(2)) {
-      setStep(2)
+    if (!validateStep(1)) {
+      setStep(1)
       return
     }
-    if (!validateStep(3)) {
-      setStep(3)
+    if (!validateStep(2)) {
+      setStep(2)
       return
     }
 
@@ -439,7 +502,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
           cta2Label,
           cta2Url,
           links: JSON.stringify(siteLinks.filter((l) => l.label.trim() && l.url.trim())),
-          heroImages: heroImages.join(','),
+          heroImages: heroSelected.join(','),
           heroAutoScroll,
           siteMode,
           siteContent: siteContentJson(siteCopy, siteTexts),
@@ -467,6 +530,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setGalleryImages([])
     setLiveTracking(false)
     setWebsiteTemplate('elegant')
+    setTemplatePicked(false)
     setThemeColor('#0d9488')
     setFontChoice('sans')
     setLayoutStyle('standard')
@@ -529,9 +593,9 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   }`}>
                     {step > s ? <Check className="w-3 h-3" /> : <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">{s}</span>}
                     <span className="hidden sm:inline">
-                      {s === 1 && t('list_step1')}
-                      {s === 2 && t('list_step2')}
-                      {s === 3 && t('list_step3')}
+                      {s === 1 && t('list_step2')}
+                      {s === 2 && t('list_step3')}
+                      {s === 3 && t('list_step1')}
                       {s === 4 && t('list_step4')}
                     </span>
                   </div>
@@ -569,8 +633,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
             </div>
           ) : (
             <>
-              {/* Step 1: Template + Design Customization (split layout) */}
-              {step === 1 && (
+              {/* Step 3: Template + Design Customization (split layout) */}
+              {step === 3 && (
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-serif font-semibold text-lg">{t('list_step1')}</h3>
@@ -585,21 +649,27 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       <div>
                         <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Choose Template</Label>
                         <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5 mb-2">
-                          20 designer websites · <b>FREE</b> for now — scrolling hero photos, editable text & buttons, single-page or multi-page layouts.
+                          Recommended for {form.category}: <b>{TEMPLATES.find((t) => t.id === recommendedTemplate)?.name || recommendedTemplate}</b>. 20 designer websites · <b>FREE</b> for now — scrolling hero photos, editable text & buttons, single-page or multi-page layouts.
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {TEMPLATES.map((tpl) => {
+                          {templateChoices.map((tpl) => {
                             const selected = form.template === tpl.id
+                            const recommended = tpl.id === recommendedTemplate
 
                             return (
                               <button
                                 key={tpl.id}
-                                onClick={() => update('template', tpl.id)}
+                                onClick={() => { setTemplatePicked(true); update('template', tpl.id) }}
                                 className={`text-left rounded-lg border-2 overflow-hidden transition-all relative ${
                                   selected ? 'border-brand shadow-md scale-[1.02]' : 'border-border hover:border-brand/40 hover:scale-[1.01]'
                                 }`}
                               >
-                                {tpl.designer && (
+                                {recommended && (
+                                  <span className="absolute top-1.5 right-1.5 z-10 text-[8px] font-black tracking-wider text-sky-700 bg-sky-100 border border-sky-300 rounded-full px-1.5 py-0.5">
+                                    Recommended
+                                  </span>
+                                )}
+                                {tpl.designer && !recommended && (
                                   <span className="absolute top-1.5 right-1.5 z-10 text-[8px] font-black tracking-wider text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-full px-1.5 py-0.5">
                                     FREE
                                   </span>
@@ -1040,8 +1110,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                 </div>
               )}
 
-              {/* Step 2: Business Details */}
-              {step === 2 && (
+              {/* Step 1: Business Details */}
+              {step === 1 && (
                 <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
                   <div className="space-y-4 min-w-0">
                   <h3 className="font-serif font-semibold text-lg">{t('list_step2')}</h3>
@@ -1097,8 +1167,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                 </div>
               )}
 
-              {/* Step 3: Contact + Location */}
-              {step === 3 && (
+              {/* Step 2: Contact + Location */}
+              {step === 2 && (
                 <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
                   <div className="space-y-4 min-w-0">
                   <h3 className="font-serif font-semibold text-lg">{t('list_step3')}</h3>
@@ -1363,19 +1433,20 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           onClick={() => setHeroImages([])}
                           className="text-[10px] font-semibold text-brand hover:underline"
                         >
-                          Use all images
+                          Reset to all images
                         </button>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       Pick the photos that scroll in the hero strip. All uploaded images are used by default.
                     </p>
-                    {allImages.length === 0 ? (
+                    {heroChoices.length === 0 ? (
                       <p className="text-[11px] font-medium text-amber-600">Upload images above to choose hero photos.</p>
                     ) : (
                       <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                        {allImages.map((url) => {
-                          const active = heroImages.length === 0 || heroImages.includes(url)
+                        {heroChoices.map((url) => {
+                          const active = heroSelected.includes(url)
+                          const isDefault = DEFAULT_HERO_IMAGES.includes(url)
                           return (
                             <button
                               key={url}
@@ -1387,6 +1458,11 @@ export function ListBusinessModal({ open, onClose }: Props) {
                               }`}
                             >
                               <img src={url} alt="Hero option" className="w-full h-14 object-cover" />
+                              {isDefault && (
+                                <span className="absolute bottom-1 left-1 text-[8px] font-bold text-white bg-black/60 rounded px-1 py-0.5">
+                                  Default
+                                </span>
+                              )}
                               <span className={`absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center ${
                                 active ? 'bg-brand text-brand-foreground' : 'bg-white/90 text-muted-foreground border border-border'
                               }`}>
@@ -1513,7 +1589,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   {step > 1 ? t('list_back') : 'Cancel'}
                 </Button>
                 <div className="flex items-center gap-3">
-                  {step === 3 && totalImages < MIN_IMAGES && (
+                  {step === 2 && totalImages < MIN_IMAGES && (
                     <span className="text-[11px] font-medium text-amber-600 text-right">
                       Add {MIN_IMAGES - totalImages} more image{MIN_IMAGES - totalImages === 1 ? '' : 's'} to continue
                     </span>
@@ -1523,8 +1599,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       onClick={() => { if (validateStep(step)) setStep(step + 1) }}
                       className="bg-brand hover:bg-brand/90 text-brand-foreground"
                       disabled={
-                        (step === 2 && (!form.name || !form.description)) ||
-                        (step === 3 && totalImages < MIN_IMAGES)
+                        (step === 1 && (!form.name || !form.description)) ||
+                        (step === 2 && totalImages < MIN_IMAGES)
                       }
                     >
                       {t('list_next')}
@@ -1805,13 +1881,13 @@ function WebsitePreview({
             type="button"
             onClick={toggleEditing}
             title={editing ? 'Finish editing and return to the page' : 'Open the full-screen text editor'}
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs sm:text-sm font-bold shadow-md ring-2 ring-brand/30 transition-colors ${
               editing
-                ? 'bg-brand text-brand-foreground shadow-sm'
-                : 'bg-white/80 text-brand hover:bg-white'
+                ? 'bg-brand text-brand-foreground ring-brand'
+                : 'bg-brand text-brand-foreground hover:bg-brand/90 animate-pulse'
             }`}
           >
-            <Pencil className="w-3 h-3" />
+            <Pencil className="w-3.5 h-3.5" />
             {editing ? 'Done editing' : 'Edit text'}
           </button>
           <span className="text-[10px] text-muted-foreground uppercase tracking-wide truncate">
