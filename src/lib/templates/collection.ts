@@ -4,7 +4,6 @@
 
 import {
   anchorAttrs,
-  catalogueEmptyBlock,
   collectImages,
   customLinks,
   documentHead,
@@ -470,16 +469,6 @@ function galleryHtml(skin: SkinStyle, b: BusinessData, images: string[]): string
 }
 
 function productsHtml(skin: SkinStyle, b: BusinessData, products: TemplateProduct[]): string {
-  if (products.length === 0) {
-    const hex = skin.bg.replace('#', '')
-    const darkSkin = hex.length >= 6
-      ? parseInt(hex.slice(0, 2), 16) * 0.299 + parseInt(hex.slice(2, 4), 16) * 0.587 + parseInt(hex.slice(4, 6), 16) * 0.114 < 140
-      : false
-    return `<section class="section" id="offerings"><div class="wrap">
-    ${sectionHead('Products & services', 'Our products & services.', 'Explore the most requested products and services.')}
-    ${catalogueEmptyBlock(b, darkSkin ? 'dark' : 'light')}
-  </div></section>`
-  }
   const title =
     skin.offerings === 'menu' ? 'The catalogue.' :
     skin.offerings === 'rows' ? 'Signature products.' :

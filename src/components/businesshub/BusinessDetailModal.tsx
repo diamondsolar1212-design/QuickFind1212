@@ -19,6 +19,9 @@ import { useI18n } from '@/store/i18n'
 import { toast } from 'sonner'
 import { generateBusinessWebsite } from '@/lib/template-engine'
 import { isCollectionSkin } from '@/lib/templates/collection'
+import { toBusinessData } from '@/lib/business-site'
+import { SITE_TEMPLATES } from './templateCatalog'
+import { TemplateThumb } from './SitePreviewFrame'
 import { SiteEditor } from './SiteEditor'
 import { productEmoji, productImage, parseProducts } from '@/lib/products'
 
@@ -38,6 +41,11 @@ const TEMPLATE_META: Record<string, { icon: any; accent: string; label: string }
   restaurant: { icon: UtensilsCrossed, accent: '#dc2626', label: 'Restaurant' },
   service: { icon: Wrench, accent: '#0891b2', label: 'Service Provider' },
   premium: { icon: Sparkles, accent: '#7c3aed', label: 'Premium Showcase' },
+  'luxury-editorial': { icon: Store, accent: '#a77b45', label: 'Luxury Editorial' },
+  'modern-dark': { icon: Store, accent: '#b7f36b', label: 'Modern Dark' },
+  'minimal-contemporary': { icon: Store, accent: '#527c70', label: 'Minimal Contemporary' },
+  'organic-lifestyle': { icon: Store, accent: '#b65f43', label: 'Organic Lifestyle' },
+  'bold-creative': { icon: Store, accent: '#ff5b35', label: 'Bold Creative' },
   'calm-sage': { icon: Sparkles, accent: '#8a9a87', label: 'Calm Sage' },
   'jungle-gold': { icon: Crown, accent: '#C9A227', label: 'Jungle Gold' },
   'athletic-bold': { icon: Sparkles, accent: '#FF5400', label: 'Athletic Bold' },
@@ -57,6 +65,10 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
   useEffect(() => {
     if (user?.name) setReviewName(user.name)
   }, [user?.id, user?.name])
+
+  // Template previews run the real generator on this listing's own photos,
+  // hero picks and catalogue, so each card is the site the owner would get.
+  const thumbSeed = useMemo(() => toBusinessData(business ?? {}), [business])
 
   if (!business) return null
 
@@ -382,20 +394,10 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                         Your Website Template
                       </h3>
                       <p className="text-xs text-muted-foreground mb-3">
-                        Choose how your business website looks. Visitors see this template when they open your shared link — only you can change it.
+                        Choose the design family for your website. Visitors see it when they open your shared link — only you can change it. Each preview runs the same rule-based build on your own photos, products and details.
                       </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {[
-                          { id: 'retail', name: 'Retail', desc: 'Clean storefront', preview: 'from-emerald-50 to-green-100' },
-                          { id: 'restaurant', name: 'Restaurant', desc: 'Warm dining', preview: 'from-red-50 to-orange-100' },
-                          { id: 'service', name: 'Service', desc: 'Trust + clarity', preview: 'from-cyan-50 to-sky-100' },
-                          { id: 'premium', name: 'Premium', desc: 'Luxury showcase', preview: 'from-violet-50 to-purple-100' },
-                          { id: 'calm-sage', name: 'Calm Sage', desc: 'Soft sand & sage', preview: 'from-stone-100 to-lime-100' },
-                          { id: 'jungle-gold', name: 'Jungle Gold', desc: 'Deep green + gold', preview: 'from-emerald-900 to-yellow-600' },
-                          { id: 'athletic-bold', name: 'Athletic', desc: 'Black + orange', preview: 'from-zinc-900 to-orange-600' },
-                          { id: 'tech-lime', name: 'Tech Lime', desc: 'Dark + lime', preview: 'from-slate-900 to-lime-400' },
-                          { id: 'journalism-red', name: 'Journalism', desc: 'Editorial black + red', preview: 'from-neutral-900 to-red-600' }
-                        ].map((tpl) => {
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                        {SITE_TEMPLATES.map((tpl) => {
                           const isActive = (business.template || 'retail') === tpl.id
                           return (
                             <button
@@ -405,12 +407,17 @@ export function BusinessDetailModal({ business, open, onClose }: Props) {
                                 isActive ? 'border-brand shadow-md' : 'border-border hover:border-brand/40'
                               }`}
                             >
-                              <div className={`h-12 bg-gradient-to-br ${tpl.preview} flex items-center justify-center`}>
-                                {isActive && <Check className="w-4 h-4 text-emerald-600" />}
+                              <div className="h-28 relative bg-white">
+                                <TemplateThumb seed={thumbSeed} id={tpl.id} color={tpl.color} />
+                                {isActive && (
+                                  <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-brand text-brand-foreground flex items-center justify-center shadow">
+                                    <Check className="w-3 h-3" />
+                                  </span>
+                                )}
                               </div>
                               <div className="p-2 bg-card">
-                                <div className="font-bold text-xs">{tpl.name}</div>
-                                <div className="text-[10px] text-muted-foreground">{tpl.desc}</div>
+                                <div className="font-bold text-xs">{tpl.emoji} {t(tpl.name as any)}</div>
+                                <div className="text-[10px] text-muted-foreground">{t(tpl.desc as any)}</div>
                               </div>
                             </button>
                           )

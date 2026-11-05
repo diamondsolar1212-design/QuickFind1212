@@ -10,7 +10,6 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
-  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -52,7 +51,6 @@ export function generateTechLime(
   const rating = ratingOf(b)
   const reviews = reviewCountOf(b)
   const hero = heroImage(b, images)
-  const hasProducts = products.length > 0
   const location = escapeHtml(listText([b.city, b.state], ', '))
   const primary = primaryCta(b, 'Connect')
   const secondary = secondaryCta(b, 'Explore the work', '#gallery')
@@ -78,7 +76,7 @@ export function generateTechLime(
       <span class="kicker">03 / Products &amp; services</span>
       <h2>Selected <em>output.</em></h2>
     </div>
-    ${hasProducts ? `<div class="product-grid">
+    <div class="product-grid">
       ${products.slice(0, 8).map((p, i) => `
       <article class="product reveal" style="transition-delay:${i * 45}ms">
         <div class="product-media">${productMediaHtml(p, '#1a1d28', 'width:100%;height:100%;object-fit:cover;display:block;transition:transform .8s cubic-bezier(.2,.7,.2,1);')}
@@ -92,7 +90,7 @@ export function generateTechLime(
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
         </div>
       </article>`).join('')}
-    </div>` : catalogueEmptyBlock(b, 'dark')}
+    </div>
   </section>`
 
   const bodyParagraphs = paragraphs(description)
@@ -309,7 +307,7 @@ export function generateTechLime(
         <span>PHOTOS <b>${images.length}</b></span>
         <span>RATING <b>${rating > 0 ? rating.toFixed(1) : 'NEW'}</b></span>
         <span>REVIEWS <b>${reviews}</b></span>
-        ${hasProducts ? `<span>PRODUCTS <b>${products.length}</b></span>` : ''}
+        <span>PRODUCTS <b>${products.length}</b></span>
       </div>
     </div>
     <div class="canvas-card reveal" style="transition-delay:140ms">
@@ -364,7 +362,7 @@ export function generateTechLime(
         <div class="readout-row"><span>Rating</span><strong>${rating > 0 ? `${rating.toFixed(1)} <em>/ 5</em>` : 'New'}</strong></div>
         <div class="readout-row"><span>Reviews</span><strong>${reviews}</strong></div>
         <div class="readout-row"><span>Photos</span><strong>${images.length}</strong></div>
-        ${hasProducts ? `<div class="readout-row"><span>Products</span><strong>${products.length}</strong></div>` : ''}
+        <div class="readout-row"><span>Products</span><strong>${products.length}</strong></div>
       </div>
     </div>
   </section>

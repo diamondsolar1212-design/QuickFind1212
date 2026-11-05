@@ -10,7 +10,6 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
-  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -53,7 +52,6 @@ export function generateJournalismRed(
   const rating = ratingOf(b)
   const reviews = reviewCountOf(b)
   const hero = heroImage(b, images)
-  const hasProducts = products.length > 0
   const location = escapeHtml(listText([b.city, b.state], ', '))
   const primary = primaryCta(b, 'Contact')
   const secondary = secondaryCta(b, 'See the visuals', '#gallery')
@@ -90,7 +88,7 @@ export function generateJournalismRed(
       <h2>Worth <em>your money.</em></h2>
       <p class="section-kicker">The shortlist — tested, compared and kept on the shelf.</p>
     </div>
-    ${hasProducts ? `${sliderMax > 0 ? `
+    ${sliderMax > 0 ? `
     <div class="price-panel reveal">
       <div class="price-head">
         <span class="section-label" style="margin:0">Budget</span>
@@ -116,7 +114,7 @@ export function generateJournalismRed(
           </div>
         </article>`
       }).join('')}
-    </div>` : catalogueEmptyBlock(b, 'dark')}
+    </div>
   </section>`
 
   const bodyParagraphs = paragraphs(description)
@@ -350,7 +348,7 @@ export function generateJournalismRed(
       <div class="hero-meta-top">
         <span class="live"><span class="live-dot"></span>Featured · ${category}</span>
         <span>${city || 'India'}${state ? `, ${state}` : ''}${rating > 0 ? ` · ${rating.toFixed(1)} rated` : ''}</span>
-        <div class="stats-mini"><span>PHOTOS <b>${images.length}</b></span><span>REVIEWS <b>${reviews}</b></span>${hasProducts ? `<span>PICKS <b>${products.length}</b></span>` : ''}</div>
+        <div class="stats-mini"><span>PHOTOS <b>${images.length}</b></span><span>REVIEWS <b>${reviews}</b></span><span>PICKS <b>${products.length}</b></span></div>
       </div>
       <div class="cine reveal">
         ${hero ? `<img src="${escapeHtml(hero)}" alt="${name}">` : `<div class="cine-fallback"><span>${escapeHtml(initials(b.name))}</span></div>`}
@@ -396,7 +394,7 @@ export function generateJournalismRed(
             <div><span>Rating</span><strong>${rating > 0 ? rating.toFixed(1) : 'New'}</strong></div>
             <div><span>Reviews</span><strong>${reviews}</strong></div>
             <div><span>Photos</span><strong>${images.length}</strong></div>
-            ${hasProducts ? `<div><span>Picks</span><strong>${products.length}</strong></div>` : ''}
+            <div><span>Picks</span><strong>${products.length}</strong></div>
           </div>
         </div>
       </div>

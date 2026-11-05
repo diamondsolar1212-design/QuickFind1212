@@ -10,7 +10,6 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
-  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -48,7 +47,6 @@ export function generateJungleGold(
   const rating = ratingOf(b)
   const reviews = reviewCountOf(b)
   const hero = heroImage(b, images)
-  const hasProducts = products.length > 0
   const location = escapeHtml(listText([b.city, b.state], ', '))
 
   const galleryTiles = (() => {
@@ -74,7 +72,7 @@ export function generateJungleGold(
       <h2>The <em>collection</em>.</h2>
       <p class="section-note">A considered selection, available in store and by enquiry.</p>
     </div>
-    ${hasProducts ? `<div class="catalogue">
+    <div class="catalogue">
       ${products.slice(0, 8).map((p, i) => `
       <article class="entry reveal" style="transition-delay:${i * 60}ms">
         <div class="entry-media">${productMediaHtml(p, '#0D2818')}</div>
@@ -87,7 +85,7 @@ export function generateJungleGold(
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
         </div>
       </article>`).join('')}
-    </div>` : catalogueEmptyBlock(b, 'dark')}
+    </div>
   </section>`
 
   const bodyParagraphs = paragraphs(description)
@@ -101,7 +99,7 @@ export function generateJungleGold(
   const indexRows = [
     ['01', 'Ethos', '#about'],
     ['02', 'Plates', '#gallery'],
-    ...(hasProducts ? [['03', 'Catalogue', '#products']] : []),
+    ['03', 'Catalogue', '#products'],
     ['04', 'Voices', '#reviews'],
     ['05', 'Colophon', '#contact'],
   ]

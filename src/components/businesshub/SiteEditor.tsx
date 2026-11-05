@@ -7,9 +7,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ExternalLink, Eye, Loader2, Pencil, RotateCcw, Save } from 'lucide-react'
+import { Check, ExternalLink, Eye, Globe, Loader2, Pencil, Rocket, RotateCcw, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { generateBusinessWebsite, withPreviewEditor } from '@/lib/template-engine'
+import { isEngineSkin } from '@/lib/site-engine'
 import { sanitizeSiteContent } from '@/lib/templates/shared'
 import { parseProducts } from '@/lib/products'
 import { toBusinessData } from '@/lib/business-site'
@@ -24,6 +25,24 @@ type Draft = {
 }
 
 const EMPTY_DRAFT: Draft = { texts: {}, copy: {}, products: {} }
+
+/** What /api/website/[id] reports about the saved builds. */
+interface BuildRecord {
+  family: string
+  status: string
+  versions: { number: number; family: string; summary: string; createdAt: string }[]
+  published: { version: number; url: string; publishedAt: string } | null
+}
+
+const BUILD_STAGES: { id: string; label: string }[] = [
+  { id: 'analysing', label: 'Reading your listing' },
+  { id: 'design', label: 'Applying the design family' },
+  { id: 'content', label: 'Composing section copy' },
+  { id: 'images', label: 'Picking photos' },
+  { id: 'pages', label: 'Building the pages' },
+  { id: 'seo', label: 'Adding SEO & structured data' },
+  { id: 'ready', label: 'Website ready' }
+]
 
 const SITE_PAGES = [
   { id: 'home', label: 'Home' },
@@ -279,6 +298,84 @@ export function SiteEditor({
 
   const liveHref = `/business/${business.id}/website`
 
+  // Generation is a real server build, so the panel reports the stages the
+  // engine measured rather than a decorative progress bar.
+  const [saved, setSaved] = useState<BuildRecord | null>(null)
+  const [stages, setStages] = useState<{ stage: string; ms: number }[]>([])
+  const [busy, setBusy] = useState<'' | 'generate' | 'publish' | 'restore'>('')
+
+  const refreshBuild = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/website/${business.id}`)
+      if (res.ok) setSaved((await res.json()) as BuildRecord)
+    } catch {
+      /* the panel simply keeps its previous state */
+    }
+  }, [business.id])
+
+  useEffect(() => {
+    refreshBuild()
+  }, [refreshBuild, business.template])
+
+  const runBuildAction = async (payload: Record<string, unknown>) => {
+    const res = await fetch(`/api/website/${business.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, ...payload })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.ok) throw new Error(data.error || 'The website build failed')
+    return data
+  }
+
+  const handleGenerate = async () => {
+    setBusy('generate')
+    setStages([])
+    try {
+      const data = await runBuildAction({ action: 'generate', family: business.template })
+      setStages(data.stages || [])
+      toast.success(`Version ${data.version} generated · ${data.pages.length} pages`)
+      await refreshBuild()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const handlePublish = async () => {
+    setBusy('publish')
+    try {
+      const data = await runBuildAction({ action: 'publish' })
+      toast.success(`Published version ${data.version}`)
+      await refreshBuild()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const handleRestore = async (version: number) => {
+    setBusy('restore')
+    try {
+      const data = await runBuildAction({ action: 'rollback', version })
+      toast.success(`Restored version ${data.version}`)
+      if (data.business) {
+        window.dispatchEvent(new CustomEvent('business-updated', { detail: data.business }))
+        onSaved?.(data.business)
+      }
+      await refreshBuild()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const latestVersion = saved?.versions[0]?.number || 0
+  const unpublished = latestVersion > 0 && saved?.published?.version !== latestVersion
+
   const card = (
     <div
       className={
@@ -401,6 +498,95 @@ export function SiteEditor({
     </div>
   )
 
+  const buildPanel = (
+    <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="font-serif font-semibold text-base">Generate &amp; publish</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Built from your listing&apos;s own facts — no invented reviews, prices or claims. The same details always
+            produce the same website.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" onClick={handleGenerate} disabled={busy !== ''}>
+            {busy === 'generate' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-1.5" />}
+            Generate my website
+          </Button>
+          {(unpublished || (latestVersion > 0 && !saved?.published)) && (
+            <Button type="button" size="sm" variant="outline" onClick={handlePublish} disabled={busy !== ''}>
+              {busy === 'publish' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5 mr-1.5" />}
+              Publish v{latestVersion}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {stages.length > 0 && (
+        <ol className="grid sm:grid-cols-2 gap-x-5 gap-y-1 border-t border-border/50 pt-3">
+          {BUILD_STAGES.map((entry) => {
+            const done = stages.filter((s) => s.stage === entry.id)[0]
+            return (
+              <li key={entry.id} className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  {done ? (
+                    <Check className="w-3 h-3 text-emerald-600" />
+                  ) : (
+                    <span className="w-3 h-3 rounded-full border border-border inline-block" />
+                  )}
+                  {entry.label}
+                </span>
+                <span className="text-muted-foreground tabular-nums">{done ? `${done.ms} ms` : ''}</span>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+
+      <div className="text-xs flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+        {saved?.published ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 font-semibold">
+            Live · version {saved.published.version}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+            {latestVersion > 0 ? 'Generated, not published yet' : 'No saved build yet'}
+          </span>
+        )}
+        {saved?.published && (
+          <a href={liveHref} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+            {liveHref}
+          </a>
+        )}
+      </div>
+
+      {saved && saved.versions.length > 0 && (
+        <div className="border-t border-border/50 pt-3">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+            Saved versions
+          </div>
+          <ul className="space-y-1">
+            {saved.versions.map((v) => (
+              <li key={v.number} className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="text-muted-foreground truncate">
+                  v{v.number} · {v.family} · {v.summary}
+                </span>
+                <button
+                  type="button"
+                  className="text-brand hover:underline disabled:opacity-50 shrink-0"
+                  onClick={() => handleRestore(v.number)}
+                  disabled={busy !== ''}
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+
   if (fullscreen && typeof document !== 'undefined') {
     return createPortal(
       <div className="fixed inset-0 z-[200] flex bg-slate-900/95 p-1 sm:p-3 pointer-events-auto">
@@ -410,5 +596,12 @@ export function SiteEditor({
     )
   }
 
-  return card
+  return (
+    <div className="space-y-4">
+      {card}
+      {/* Generation only applies to the rule-based families; legacy skins have
+          their own renderer and nothing here can rebuild them. */}
+      {isEngineSkin(business.template) && buildPanel}
+    </div>
+  )
 }

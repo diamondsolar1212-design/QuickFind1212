@@ -5,10 +5,14 @@
 import { productEmoji, productImage } from '../products'
 
 export interface BusinessData {
+  /** Listing id — used for canonical URLs by the site engine. */
+  id?: string
   name: string
   description: string
   category: string
   subcategory?: string | null
+  /** Comma separated keywords the provider entered — real data, used for grouping. */
+  tags?: string
   city: string
   state: string
   address: string
@@ -158,7 +162,7 @@ export function readableOn(hex: string): string {
   return luminance > 0.62 ? '#121212' : '#ffffff'
 }
 
-/** Profile image first, then the comma separated gallery — deduped, capped at 10. */
+/** Profile image first, then the comma separated gallery — deduped, capped at 12. */
 export function collectImages(business: BusinessData): string[] {
   const gallery = String(business.imageUrls || '')
     .split(',')
@@ -166,11 +170,23 @@ export function collectImages(business: BusinessData): string[] {
     .filter(Boolean)
   const profile = safeUrl(business.profileImage)
   const all = profile ? [profile, ...gallery] : gallery
-  return Array.from(new Set(all)).slice(0, 10)
+  return Array.from(new Set(all)).slice(0, 12)
+}
+
+/** The owner's chosen hero photos, in the order they picked them. */
+export function heroPicks(business: BusinessData): string[] {
+  return Array.from(
+    new Set(
+      String(business.heroImages || '')
+        .split(',')
+        .map(safeUrl)
+        .filter(Boolean)
+    )
+  )
 }
 
 export function heroImage(business: BusinessData, images: string[]): string {
-  return safeUrl(business.profileImage) || images[0] || ''
+  return heroPicks(business)[0] || safeUrl(business.profileImage) || images[0] || ''
 }
 
 export function telHref(phone: string): string {
@@ -364,12 +380,9 @@ export const GRAIN_OVERLAY = `<div aria-hidden="true" style="position:fixed;inse
 
 /** Provider-picked hero photos (falls back to the full gallery). */
 export function heroSlides(business: BusinessData, images: string[]): string[] {
-  const picked = String(business.heroImages || '')
-    .split(',')
-    .map(safeUrl)
-    .filter(Boolean)
+  const picked = heroPicks(business)
   const source = picked.length >= 2 ? picked : images
-  return Array.from(new Set(source.filter(Boolean))).slice(0, 10)
+  return Array.from(new Set(source.filter(Boolean))).slice(0, 12)
 }
 
 export function heroRailHtml(images: string[], b: BusinessData): string {
@@ -586,24 +599,6 @@ function siteTextScript(texts: Record<string, string>): string {
 })();</script>`
 }
 
-/** Friendly, theme-aware placeholder used when a business has no catalogue yet. */
-export function catalogueEmptyBlock(
-  business: BusinessData,
-  tone: 'light' | 'dark' = 'light'
-): string {
-  const accent = safeColor(business.themeColor, '#0d9488')
-  const cta = primaryCta(business, 'Call to enquire')
-  const dark = tone === 'dark'
-  const muted = dark ? 'rgba(245,245,244,.72)' : 'rgba(28,25,23,.66)'
-  const border = dark ? 'rgba(255,255,255,.2)' : 'rgba(28,25,23,.14)'
-  const background = dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.025)'
-  return `<div class="catalogue-empty" style="border:1px dashed ${border};border-radius:16px;padding:30px 24px;background:${background};text-align:center;max-width:720px;margin:0 auto;">
-    <p style="margin:0 0 6px;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:${accent};font-weight:700;">Products &amp; services</p>
-    <p style="margin:0 0 18px;color:${muted};font-size:1rem;line-height:1.65;">Our catalogue is being updated. Call or WhatsApp us to ask about available products, prices and delivery.</p>
-    <a href="${escapeHtml(cta.url)}"${anchorAttrs(cta.url)} style="display:inline-block;padding:11px 22px;border-radius:999px;background:${accent};color:${readableOn(accent)};font-weight:700;text-decoration:none;">${escapeHtml(cta.label)}</a>
-  </div>`
-}
-
 function siteCopyScript(copy: SiteCopy): string {
   const json = JSON.stringify(copy).replace(/</g, '\u003c').replace(/>/g, '\u003e')
   return `<script>(function(){
@@ -756,11 +751,20 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     assigned[index]=page;
     pages[page].push(block);
   }
-  add('products',blockOf('products')||blockOf('offerings')||blockOf('menu'));
-  add('about',blockOf('about'));
-  add('about',blockOf('gallery'));
-  add('contact',blockOf('contact')||blockOf('visit'));
-  add('home',blockOf('reviews'));
+  // The site engine states each block's page outright; older skins are grouped
+  // by their section ids below instead.
+  var declared=false;
+  for(var d=0;d<blocks.length;d++){
+    var group=blocks[d].getAttribute?blocks[d].getAttribute('data-page-group'):null;
+    if(group&&pages[group]){pages[group].push(blocks[d]);assigned[d]=group;declared=true;}
+  }
+  if(!declared){
+    add('products',blockOf('products')||blockOf('offerings')||blockOf('menu'));
+    add('about',blockOf('about'));
+    add('about',blockOf('gallery'));
+    add('contact',blockOf('contact')||blockOf('visit'));
+    add('home',blockOf('reviews'));
+  }
   for(var i=0;i<blocks.length;i++){
     if(!assigned[i]){assigned[i]='home';pages.home.push(blocks[i]);}
   }
@@ -815,11 +819,27 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     draw(pageOfBlock(block),id);
   },true);
   document.documentElement.classList.add('site-pages');
+  // Nav links carry real page URLs so each page is crawlable. Inside the
+  // preview iframe those URLs cannot resolve, so draw the page locally.
+  if(window.self!==window.top){
+    document.addEventListener('click',function(e){
+      var link=e.target&&e.target.closest?e.target.closest('a[data-page]'):null;
+      if(!link)return;
+      var wanted=link.getAttribute('data-page');
+      if(!pages[wanted]||!pages[wanted].length)return;
+      e.preventDefault();
+      draw(wanted,'');
+    },true);
+  }
   var initial=location.hash?location.hash.slice(1):'';
+  var served=body.getAttribute?body.getAttribute('data-start-page'):'';
   if(initial&&initial!=='top'){
     var start=blockOf(initial);
     if(start)draw(pageOfBlock(start),initial);
+    else if(served&&pages[served]&&pages[served].length)draw(served,'');
     else draw('home','');
+  }else if(served&&pages[served]&&pages[served].length){
+    draw(served,'');
   }else{
     draw('home','');
   }

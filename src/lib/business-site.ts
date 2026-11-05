@@ -3,10 +3,12 @@ import type { BusinessData } from './templates/shared'
 /** Maps a Prisma Business row to the normalized shape the templates expect. */
 export function toBusinessData(business: any): BusinessData {
   return {
+    id: business.id || '',
     name: business.name || 'Business',
     description: business.description || '',
     category: business.category || '',
     subcategory: business.subcategory || null,
+    tags: business.tags || '',
     city: business.city || '',
     state: business.state || '',
     address: business.address || '',

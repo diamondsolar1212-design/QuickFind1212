@@ -10,7 +10,6 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
-  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -18,6 +17,7 @@ import {
   heroRailHtml,
   HERO_RAIL_SCRIPT,
   HERO_RAIL_STYLES,
+  heroSlides,
   initials,
   listText,
   mapHref,
@@ -47,10 +47,9 @@ export function generateAthleticBold(
   const description = String(b.description || '')
   const rating = ratingOf(b)
   const reviews = reviewCountOf(b)
-  const hasProducts = products.length > 0
   const location = escapeHtml(listText([b.city, b.state], ', '))
 
-  const reel = images.slice(0, 5)
+  const reel = heroSlides(b, images).slice(0, 5)
   const slideCount = Math.max(3, reel.length || 3)
   const slides = Array.from({ length: slideCount }, (_, i) => {
     const url = reel[i] || ''
@@ -82,7 +81,7 @@ export function generateAthleticBold(
       <div class="eyebrow">03 / Products &amp; services</div>
       <h2>Built for <span>the work.</span></h2>
     </div>
-    ${hasProducts ? `<div class="gear-grid">
+    <div class="gear-grid">
       ${products.slice(0, 8).map((p, i) => `
       <article class="gear reveal" style="transition-delay:${i * 50}ms">
         <div class="gear-media">${productMediaHtml(p, '#1c1c1c', 'width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.15) brightness(.85);transition:filter .5s,transform .6s;')}</div>
@@ -93,7 +92,7 @@ export function generateAthleticBold(
           ${p.price ? `<div class="gear-price">${escapeHtml(String(p.price))}</div>` : ''}
         </div>
       </article>`).join('')}
-    </div>` : catalogueEmptyBlock(b, 'dark')}
+    </div>
   </section>`
 
   const bodyParagraphs = paragraphs(description)

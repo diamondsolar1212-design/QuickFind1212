@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -14,14 +14,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Store, UtensilsCrossed, Wrench, Sparkles, ChevronRight, ChevronLeft,
-  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Crown, Eye, LocateFixed,
+  Store, Sparkles, ChevronRight, ChevronLeft,
+  Check, MapPin, Loader2, PartyPopper, Phone, Globe, Tag, Camera, Upload, Plus, X, Eye, LocateFixed,
   Images, Pencil
 } from 'lucide-react'
 import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
 import { generateBusinessWebsite, withPreviewEditor, MIN_IMAGES, type BusinessData } from '@/lib/template-engine'
-import { COLLECTION_TEMPLATES } from '@/lib/templates/collection-meta'
+import { profileFor } from '@/lib/site-engine/categories'
+import { DEFAULT_HERO_IMAGES } from '@/lib/templates/samples'
+import { SITE_TEMPLATES, templateById } from './templateCatalog'
+import { ScaledSiteFrame, TemplateThumb } from './SitePreviewFrame'
 import { toast } from 'sonner'
 
 const MapView = dynamic(
@@ -88,30 +91,6 @@ function siteContentJson(copy: SiteCopyFields, texts: Record<string, string> = {
   return Object.keys(out).length > 0 ? JSON.stringify(out) : ''
 }
 
-const TEMPLATES = [
-  // Base layouts — simple, fast, always free
-  { id: 'retail', icon: Store, name: 'list_template_retail', desc: 'list_template_retail_desc', color: '#16a34a', emoji: '🏪', premium: false, designer: false },
-  { id: 'restaurant', icon: UtensilsCrossed, name: 'list_template_restaurant', desc: 'list_template_restaurant_desc', color: '#dc2626', emoji: '🍽️', premium: false, designer: false },
-  { id: 'service', icon: Wrench, name: 'list_template_service', desc: 'list_template_service_desc', color: '#0891b2', emoji: '🔧', premium: false, designer: false },
-  { id: 'premium', icon: Sparkles, name: 'list_template_premium', desc: 'list_template_premium_desc', color: '#7c3aed', emoji: '✨', premium: false, designer: false },
-  // Designer collection — 20 premium HTML sites, free for now
-  { id: 'calm-sage', icon: Sparkles, name: 'Calm Sage', desc: 'Serene studio style — soft sand/sage tones', color: '#8a9a87', emoji: '🌿', premium: false, designer: true },
-  { id: 'jungle-gold', icon: Sparkles, name: 'Jungle Gold', desc: 'Editorial monograph — deep green + gold luxury', color: '#C9A227', emoji: '📖', premium: false, designer: true },
-  { id: 'athletic-bold', icon: Sparkles, name: 'Athletic Bold', desc: 'High-intensity gym — black + orange energy', color: '#FF5400', emoji: '💪', premium: false, designer: true },
-  { id: 'tech-lime', icon: Sparkles, name: 'Tech Lime', desc: 'Dark technical — lime green modern accents', color: '#d4ff3a', emoji: '⚡', premium: false, designer: true },
-  { id: 'journalism-red', icon: Sparkles, name: 'Journalism Red', desc: 'Tech review style — black + red editorial', color: '#ff2a2a', emoji: '📰', premium: false, designer: true },
-  ...COLLECTION_TEMPLATES.map((tpl) => ({
-    id: tpl.id,
-    icon: Sparkles,
-    name: tpl.name,
-    desc: tpl.desc,
-    color: tpl.color,
-    emoji: tpl.emoji,
-    premium: false,
-    designer: true
-  }))
-]
-
 const CATEGORIES = [
   'Grocery & Essentials', 'Restaurants', 'Home Services', 'Textiles & Apparel',
   'Food & Sweets', 'Food & Beverages', 'Automobile', 'Electronics',
@@ -120,42 +99,12 @@ const CATEGORIES = [
   'B2B Suppliers', 'Repair Services', 'Other'
 ]
 
-// The website is created from the business details, so every category starts
-// with the template that suits it best. Providers can still pick another one.
-const TEMPLATE_BY_CATEGORY: Record<string, string> = {
-  'Grocery & Essentials': 'calm-sage',
-  Restaurants: 'forest-table',
-  'Home Services': 'steel-works',
-  'Textiles & Apparel': 'blush-atelier',
-  'Food & Sweets': 'maroon-heritage',
-  'Food & Beverages': 'citrus-studio',
-  Automobile: 'monochrome-lab',
-  Electronics: 'tech-lime',
-  'Health & Wellness': 'jungle-gold',
-  'Handicrafts & Art': 'terracotta-house',
-  'Beauty & Personal Care': 'lavender-hush',
-  'Real Estate': 'noir-edition',
-  Doctors: 'aqua-house',
-  'Wedding Planning': 'peach-sunset',
-  Education: 'sage-journal',
-  'Travel Booking': 'coastal-drift',
-  'B2B Suppliers': 'steel-works',
-  'Repair Services': 'steel-works',
-  Other: 'blush-atelier'
-}
-
 // Ready-made hero photos so a new website has a scrolling hero strip before
 // the provider uploads anything. Local files keep it working offline.
-const DEFAULT_HERO_IMAGES = [
-  '/defaults/hero-grocery.svg',
-  '/defaults/hero-restaurant.svg',
-  '/defaults/hero-wellness.svg',
-  '/defaults/hero-service.svg',
-  '/defaults/hero-fashion.svg',
-  '/defaults/hero-tech.svg'
-]
-
 const DEFAULT_HERO_PICK = DEFAULT_HERO_IMAGES.slice(0, 4)
+
+// Gallery slots the wizard offers; the hero strip and gallery render all of them.
+const MAX_GALLERY_IMAGES = 12
 
 const EMOJI_MAP: Record<string, string> = {
   'Grocery & Essentials': '🛒', 'Restaurants': '🍽️', 'Home Services': '🔧', 'Textiles & Apparel': '🧵',
@@ -176,7 +125,6 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [profileImage, setProfileImage] = useState('')
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [liveTracking, setLiveTracking] = useState(false)
-  const [websiteTemplate, setWebsiteTemplate] = useState('elegant')
   // True once the provider picks a template by hand; until then the template
   // follows the category chosen in the Business Details step.
   const [templatePicked, setTemplatePicked] = useState(false)
@@ -222,18 +170,18 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   const update = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }))
 
-  // The website is generated from the business details, so the matching
-  // template is picked as soon as the category is known. A manual choice wins.
-  const recommendedTemplate = TEMPLATE_BY_CATEGORY[form.category] || 'blush-atelier'
+  // The website is composed from the business details, so the category's design
+  // family is picked as soon as the category is known. A manual choice wins.
+  const recommendedTemplate = profileFor(form.category).family
   useEffect(() => {
     if (templatePicked) return
     setForm((f) => (f.template === recommendedTemplate ? f : { ...f, template: recommendedTemplate }))
   }, [recommendedTemplate, templatePicked])
 
-  // Recommended template first, everything else keeps the curated order.
+  // Recommended family first, the rest keep the curated order.
   const templateChoices = useMemo(
     () =>
-      [...TEMPLATES].sort(
+      [...SITE_TEMPLATES].sort(
         (a, b) => Number(b.id === recommendedTemplate) - Number(a.id === recommendedTemplate)
       ),
     [recommendedTemplate]
@@ -415,29 +363,40 @@ export function ListBusinessModal({ open, onClose }: Props) {
     )
   }, [])
 
-  // Image upload handler — uses /api/upload endpoint
-  const handleImageUpload = async (file: File, kind: 'profile' | 'gallery') => {
-    if (!file) return
-    setUploadingImage(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (res.ok && data.url) {
-        if (kind === 'profile') {
-          setProfileImage(data.url)
-          toast.success('Profile image uploaded!')
-        } else {
-          setGalleryImages((prev) => [...prev, data.url].slice(0, 6)) // max 6 gallery images
-          toast.success('Image added to gallery!')
-        }
-      } else {
-        toast.error(data.error || 'Upload failed')
-      }
-    } catch {
-      toast.error('Network error during upload')
+  // Image upload handler — one /api/upload request per picked file, so a
+  // multi-select fills the gallery in a single gesture.
+  const handleImageUpload = async (files: File[], kind: 'profile' | 'gallery') => {
+    if (files.length === 0) return
+    const room = kind === 'profile' ? 1 : Math.max(0, MAX_GALLERY_IMAGES - galleryImages.length)
+    if (room === 0) {
+      toast.error(`Gallery is full — ${MAX_GALLERY_IMAGES} images maximum`)
+      return
     }
+    setUploadingImage(true)
+    const uploaded: string[] = []
+    let failed = 0
+    for (const file of files.slice(0, room)) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        const data = await res.json()
+        if (res.ok && data.url) uploaded.push(data.url)
+        else failed += 1
+      } catch {
+        failed += 1
+      }
+    }
+    if (uploaded.length > 0) {
+      if (kind === 'profile') {
+        setProfileImage(uploaded[0])
+        toast.success('Profile image uploaded!')
+      } else {
+        setGalleryImages((prev) => [...prev, ...uploaded].slice(0, MAX_GALLERY_IMAGES))
+        toast.success(`${uploaded.length} image${uploaded.length === 1 ? '' : 's'} added to gallery!`)
+      }
+    }
+    if (failed > 0) toast.error(`${failed} image${failed === 1 ? '' : 's'} failed to upload`)
     setUploadingImage(false)
   }
 
@@ -488,11 +447,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
         body: JSON.stringify({
           ...form,
           emoji: EMOJI_MAP[form.category] || '🏪',
-          imageColor: TEMPLATES.find((t) => t.id === form.template)?.color || '#0d9488',
+          imageColor: templateById(form.template)?.color || '#0d9488',
           profileImage,
           imageUrls: galleryImages.join(','),
           liveTracking,
-          websiteTemplate,
           themeColor,
           fontChoice,
           layoutStyle,
@@ -534,7 +492,6 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setProfileImage('')
     setGalleryImages([])
     setLiveTracking(false)
-    setWebsiteTemplate('elegant')
     setTemplatePicked(false)
     setThemeColor('#0d9488')
     setFontChoice('sans')
@@ -654,7 +611,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       <div>
                         <Label className="text-xs font-semibold uppercase tracking-wide mb-2 block">Choose Template</Label>
                         <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5 mb-2">
-                          Recommended for {form.category}: <b>{TEMPLATES.find((t) => t.id === recommendedTemplate)?.name || recommendedTemplate}</b>. 20 designer websites · <b>FREE</b> for now — scrolling hero photos, editable text & buttons, single-page or multi-page layouts.
+                          Recommended for {form.category}: <b>{templateById(recommendedTemplate)?.name || recommendedTemplate}</b>. 5 design families · <b>FREE</b> for now — the layout is built from your products, photos and details, so each family shows your business differently.
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {templateChoices.map((tpl) => {
@@ -1342,7 +1299,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           className="hidden"
                           onChange={(e) => {
                             const f = e.target.files?.[0]
-                            if (f) handleImageUpload(f, 'profile')
+                            e.target.value = ''
+                            if (f) handleImageUpload([f], 'profile')
                           }}
                           disabled={uploadingImage}
                         />
@@ -1394,15 +1352,17 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           </button>
                         </div>
                       ))}
-                      {galleryImages.length < 6 && (
+                      {galleryImages.length < MAX_GALLERY_IMAGES && (
                         <label className="cursor-pointer">
                           <input
                             type="file"
                             accept="image/*"
+                            multiple
                             className="hidden"
                             onChange={(e) => {
-                              const f = e.target.files?.[0]
-                              if (f) handleImageUpload(f, 'gallery')
+                              const files = Array.from(e.target.files ?? [])
+                              e.target.value = ''
+                              if (files.length) handleImageUpload(files, 'gallery')
                             }}
                             disabled={uploadingImage}
                           />
@@ -1421,7 +1381,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         ? `✓ ${totalImages} images ready — your website gallery is complete.`
                         : `Add ${MIN_IMAGES - totalImages} more image${MIN_IMAGES - totalImages === 1 ? '' : 's'} to unlock your website. Minimum ${MIN_IMAGES} images (profile + gallery) required.`}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">Up to 6 gallery images. Show your products, store interior, team, etc.</p>
+                    <p className="text-[11px] text-muted-foreground">Up to {MAX_GALLERY_IMAGES} gallery images — select several photos at once (Ctrl/click in the picker, or drag them together). Show your products, store interior, team, etc.</p>
                   </div>
 
                   {/* Hero scrolling images */}
@@ -1483,42 +1443,6 @@ export function ListBusinessModal({ open, onClose }: Props) {
                       <span className="text-xs">Auto-scroll hero images</span>
                     </label>
                   </div>
-
-                  {/* Premium website template picker */}
-                  {form.template === 'premium' && (
-                    <>
-                      <Separator className="my-3" />
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold flex items-center gap-2">
-                          <Crown className="w-4 h-4 text-amber-500" />
-                          Premium Website Template
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { id: 'elegant', name: 'Elegant', desc: 'Serif + soft colors' },
-                            { id: 'classic', name: 'Classic', desc: 'Traditional + warm' },
-                            { id: 'bold', name: 'Bold', desc: 'Modern + high contrast' },
-                            { id: 'boutique', name: 'Boutique', desc: 'Luxury + minimal' }
-                          ].map((tpl) => (
-                            <button
-                              key={tpl.id}
-                              type="button"
-                              onClick={() => setWebsiteTemplate(tpl.id)}
-                              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                                websiteTemplate === tpl.id
-                                  ? 'border-brand bg-brand-soft/30 shadow-sm'
-                                  : 'border-border hover:border-brand/40'
-                              }`}
-                            >
-                              <div className="font-bold text-sm">{tpl.name}</div>
-                              <div className="text-[10px] text-muted-foreground">{tpl.desc}</div>
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">Premium businesses get a customizable mini-website with their own template.</p>
-                      </div>
-                    </>
-                  )}
                   </div>
                   <PreviewPane business={previewBusiness} onCopyEdit={handleSiteCopyEdit} onProductEdit={handleSiteProductEdit} onTextEdit={handleSiteTextEdit} />
                 </div>
@@ -1532,7 +1456,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                   <div className="rounded-xl border border-border/60 overflow-hidden">
                     <div
                       className="h-24 flex items-center px-5 text-white"
-                      style={{ background: `linear-gradient(135deg, ${TEMPLATES.find((t) => t.id === form.template)?.color}, ${TEMPLATES.find((t) => t.id === form.template)?.color}aa)` }}
+                      style={{ background: `linear-gradient(135deg, ${templateById(form.template)?.color}, ${templateById(form.template)?.color}aa)` }}
                     >
                       <div className="w-14 h-14 rounded-xl bg-white shadow flex items-center justify-center text-2xl mr-3">
                         {EMOJI_MAP[form.category] || '🏪'}
@@ -1561,7 +1485,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         {form.isB2B && <Badge variant="outline" className="text-brand border-brand/30">B2B</Badge>}
                         {form.isB2C && <Badge variant="outline" className="text-brand border-brand/30">B2C</Badge>}
                         <Badge variant="outline" className="text-muted-foreground">
-                          {TEMPLATES.find((t) => t.id === form.template)?.emoji} {t(TEMPLATES.find((tp) => tp.id === form.template)!.name as any)}
+                          {templateById(form.template)?.emoji} {t((templateById(form.template)?.name || '') as any)}
                         </Badge>
                       </div>
                     </div>
@@ -1630,109 +1554,6 @@ export function ListBusinessModal({ open, onClose }: Props) {
     </Dialog>
   )
 }
-
-// ===== Desktop-width iframe scaled down to fit its container =====
-// Rendering at a real desktop viewport and scaling the frame keeps the
-// generated site in its desktop layout instead of collapsing to mobile.
-const DESKTOP_VIEWPORT = 1440
-
-function ScaledSiteFrame({
-  html,
-  title,
-  viewportWidth = DESKTOP_VIEWPORT,
-  sandbox = 'allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox',
-  interactive = true,
-  iframeRef,
-  onLoad
-}: {
-  html: string
-  title: string
-  viewportWidth?: number
-  sandbox?: string
-  interactive?: boolean
-  iframeRef?: RefObject<HTMLIFrameElement | null>
-  onLoad?: () => void
-}) {
-  const boxRef = useRef<HTMLDivElement>(null)
-  const [box, setBox] = useState({ w: 0, h: 0 })
-  const [inView, setInView] = useState(false)
-
-  useEffect(() => {
-    const el = boxRef.current
-    if (!el) return
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight })
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  // Only mint real iframes for previews near the viewport; 20 full websites
-  // at once would stall the wizard.
-  useEffect(() => {
-    const el = boxRef.current
-    if (!el) return
-    if (typeof IntersectionObserver === 'undefined') {
-      setInView(true)
-      return
-    }
-    const io = new IntersectionObserver(
-      (entries) => setInView(entries.some((entry) => entry.isIntersecting)),
-      { rootMargin: '200px' }
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-
-  const scale = box.w > 0 ? box.w / viewportWidth : 0
-
-  return (
-    <div
-      ref={boxRef}
-      style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative', background: '#fff' }}
-    >
-      {scale > 0 && inView && (
-        <iframe
-          ref={iframeRef}
-          onLoad={onLoad}
-          srcDoc={html}
-          title={title}
-          style={{
-            width: `${viewportWidth}px`,
-            height: `${Math.max(box.h / scale, 320)}px`,
-            border: 'none',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            transform: `scale(${scale})`,
-            transformOrigin: 'top left',
-            pointerEvents: interactive ? 'auto' : 'none'
-          }}
-          sandbox={sandbox}
-          loading="lazy"
-        />
-      )}
-    </div>
-  )
-}
-
-// Template-grid sample: memoized so wizard typing never rebuilds 20 sites.
-const TemplateThumb = memo(function TemplateThumb({ seed, id, color }: { seed: BusinessData; id: string; color: string }) {
-  const html = useMemo(
-    () => generateBusinessWebsite({ ...seed, template: id, themeColor: color }),
-    [seed, id, color]
-  )
-  return (
-    <ScaledSiteFrame
-      html={html}
-      title={id + ' preview'}
-      viewportWidth={1100}
-      sandbox="allow-same-origin allow-scripts allow-popups"
-      interactive={false}
-    />
-  )
-})
 
 // ===== Live website preview shared by every wizard step =====
 type PreviewEditHandler = (key: string, value: string) => void

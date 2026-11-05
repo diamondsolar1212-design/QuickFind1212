@@ -22,18 +22,18 @@ export function WelcomePopup({ onClose, onStart }: Props) {
       emoji: '🎨',
       icon: Sparkles,
       gradient: 'from-brand to-amber-500',
-      description: 'Create a stunning online presence for your business in minutes. Pick from beautiful templates, customize colors & fonts, upload images — your website is ready to share!',
+      description: 'Create a stunning online presence for your business in minutes. Your products, photos and details build the site — you just pick the design family.',
       features: [
-        { icon: Palette, text: '9 professional website templates for every business type' },
+        { icon: Palette, text: '5 design families, each laid out for your business type' },
         { icon: Crown, text: 'Custom theme colors, fonts, and layout styles' },
-        { icon: Camera, text: 'Upload profile image + up to 6 gallery photos' },
+        { icon: Camera, text: 'Upload profile image + up to 12 gallery photos' },
         { icon: Eye, text: 'Live preview as you customize' }
       ],
       cta: 'See How It Works'
     },
     {
-      title: '9 Templates, 9 Distinct Looks',
-      subtitle: 'Each template styles your gallery, products and sections differently',
+      title: 'One site, five design families',
+      subtitle: 'The same facts, composed differently for a shop, a clinic, a kitchen or a workshop',
       emoji: '🖼️',
       icon: Camera,
       gradient: 'from-purple-500 to-pink-500',

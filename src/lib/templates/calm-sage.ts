@@ -10,7 +10,6 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
-  catalogueEmptyBlock,
   customLinks,
   documentHead,
   heroRailHtml,
@@ -47,7 +46,6 @@ export function generateCalmSage(
   const rating = ratingOf(b)
   const reviews = reviewCountOf(b)
   const hero = heroImage(b, images)
-  const hasProducts = products.length > 0
   const primary = primaryCta(b, 'Call')
   const secondary = secondaryCta(b, 'Explore the space', '#gallery')
   const links = customLinks(b)
@@ -78,7 +76,7 @@ export function generateCalmSage(
       <span class="kicker">03 — Products &amp; services</span>
       <h2>Made to be <em>taken home</em>.</h2>
     </div>
-    ${hasProducts ? `<div class="product-grid">
+    <div class="product-grid">
       ${products.slice(0, 8).map((p, i) => `
       <article class="product reveal" style="transition-delay:${i * 60}ms">
         <div class="product-media">${productMediaHtml(p, '#e3d5c1')}</div>
@@ -90,7 +88,7 @@ export function generateCalmSage(
           ${p.details ? `<p>${escapeHtml(String(p.details))}</p>` : ''}
         </div>
       </article>`).join('')}
-    </div>` : catalogueEmptyBlock(b)}
+    </div>
   </section>`
 
   const bodyParagraphs = paragraphs(description)
@@ -319,7 +317,7 @@ export function generateCalmSage(
         ${rating > 0 ? `<div class="stat"><strong><span data-count="${rating}" data-decimals="1">${rating.toFixed(1)}</span></strong><span>Average rating</span></div>` : ''}
         ${reviews > 0 ? `<div class="stat"><strong><span data-count="${reviews}">${reviews}</span></strong><span>Verified reviews</span></div>` : ''}
         <div class="stat"><strong><span data-count="${images.length}">${images.length}</span></strong><span>Photos on show</span></div>
-        ${hasProducts ? `<div class="stat"><strong><span data-count="${products.length}">${products.length}</span></strong><span>Offerings</span></div>` : ''}
+        <div class="stat"><strong><span data-count="${products.length}">${products.length}</span></strong><span>Offerings</span></div>
       </aside>
       <div class="about-copy reveal">
         <p class="dropcap">${escapeHtml(lede)}</p>

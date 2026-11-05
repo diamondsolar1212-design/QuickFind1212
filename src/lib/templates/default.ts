@@ -11,7 +11,6 @@ import {
   NAV_INTERCEPTOR_SCRIPT,
   UI_SCRIPT,
   anchorAttrs,
-  catalogueEmptyBlock,
   customLinks,
   documentHead,
   escapeHtml,
@@ -148,7 +147,6 @@ export function generateDefault(
   const rating = ratingOf(b)
   const reviews = reviewCountOf(b)
   const hero = heroImage(b, images)
-  const hasProducts = products.length > 0
   const accent = safeColor(b.themeColor, v.fallbackAccent)
   const onAccent = readableOn(accent)
   const primary = primaryCta(b, 'Call')
@@ -226,7 +224,7 @@ export function generateDefault(
       <span class="kicker">${productsKicker}</span>
       <h2>${productsTitle}</h2>
     </div>
-    ${hasProducts ? (showRows ? productList : productCards) : catalogueEmptyBlock(b)}
+    ${productCards}
   </section>`
 
   const bodyParagraphs = paragraphs(description)

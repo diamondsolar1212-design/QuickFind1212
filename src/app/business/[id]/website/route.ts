@@ -12,7 +12,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const business = await db.business.findUnique({ where: { id } }).catch(() => null)
   if (!business) return new Response('Business not found', { status: 404 })
 
-  const html = generateBusinessWebsite(toBusinessData(business))
+  const html = generateBusinessWebsite(toBusinessData(business), {
+    businessId: id,
+    origin: new URL(_request.url).origin
+  })
   return new Response(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
