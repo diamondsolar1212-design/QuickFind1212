@@ -23,6 +23,8 @@ import { useI18n } from '@/store/i18n'
 import { generateBusinessWebsite, withPreviewEditor, MIN_IMAGES, type BusinessData } from '@/lib/template-engine'
 import { profileFor } from '@/lib/site-engine/categories'
 import { DEFAULT_HERO_IMAGES, defaultHeroImages, sampleProducts } from '@/lib/templates/samples'
+import { detectCategoryFromName, suggestBusinessDetails } from '@/lib/business-details-suggestions'
+import { AutoDetailsPanel } from './AutoDetailsPanel'
 import { SITE_TEMPLATES, templateById } from './templateCatalog'
 import { ScaledSiteFrame, TemplateThumb } from './SitePreviewFrame'
 import { toast } from 'sonner'
@@ -163,6 +165,11 @@ export function ListBusinessModal({ open, onClose }: Props) {
   // The exact sample catalogue auto-create wrote last. If the provider has not
   // edited it, a category change regenerates fresh samples for the new trade.
   const [autoSampleJson, setAutoSampleJson] = useState<string | null>(null)
+  // Chooser for the auto-generated description / category / subcategory / tags.
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  // True once the provider chooses a category by hand, so auto-detect does not
+  // overwrite their choice on the next auto-create click.
+  const [categoryPicked, setCategoryPicked] = useState(false)
   const [profileImage, setProfileImage] = useState('')
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [liveTracking, setLiveTracking] = useState(false)
@@ -358,6 +365,19 @@ export function ListBusinessModal({ open, onClose }: Props) {
     showReviews, showMap, showProducts, catalogProducts, ctaLabel, ctaUrl,
     cta2Label, cta2Url, heroSelected, heroAutoScroll
   ])
+
+  // Chooser options: description variants, categories, subcategories and tags
+  // derived from the current name/category/location.
+  const detailSuggestions = useMemo(
+    () =>
+      suggestBusinessDetails({
+        name: form.name,
+        category: form.category,
+        city: form.city,
+        state: form.state
+      }),
+    [form.name, form.category, form.city, form.state]
+  )
 
   // Style samples for the template grid: fixed copy + the user's photos, so
   // typing a description never re-renders twenty websites.
@@ -688,6 +708,99 @@ export function ListBusinessModal({ open, onClose }: Props) {
     }
   }
 
+  // Fills the form with the best suggestions for the current name/category.
+  // Only empty fields are filled, so anything the provider typed is preserved.
+  const applyTopSuggestions = () => {
+    const detected = !categoryPicked && form.name.trim() ? detectCategoryFromName(form.name) : null
+    const targetCategory = detected || form.category
+    const next = suggestBusinessDetails({
+      name: form.name,
+      category: targetCategory,
+      city: form.city,
+      state: form.state
+    })
+    setForm((current) => {
+      const patch: typeof current = { ...current }
+      if (targetCategory !== current.category) patch.category = targetCategory
+      if (!current.subcategory.trim()) patch.subcategory = next.subcategories[0] || ''
+      if (!current.description.trim()) patch.description = next.descriptions[0] || ''
+      if (!current.tags.trim()) patch.tags = next.tags.slice(0, 4).join(', ')
+      return patch
+    })
+    return { category: targetCategory, suggestions: next }
+  }
+
+  /** Opens the chooser with auto-generated description/category/tags options. */
+  const openAutoDetails = () => {
+    if (!form.name.trim()) {
+      toast.error('Enter your business name first')
+      return
+    }
+    const { category } = applyTopSuggestions()
+    setShowSuggestions(true)
+    toast.success(`Auto-created details for ${category} — choose what fits your business.`)
+  }
+
+  const chooseSuggestedCategory = (category: string) => {
+    if (category === form.category) return
+    setCategoryPicked(true)
+    const next = suggestBusinessDetails({
+      name: form.name,
+      category,
+      city: form.city,
+      state: form.state
+    })
+    setForm((current) => {
+      const currentTags = current.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
+      const previousTags = detailSuggestions.tags
+      const tagsWereSuggested =
+        currentTags.length === 0 ||
+        currentTags.every((tag) => previousTags.some((item) => item.toLowerCase() === tag.toLowerCase()))
+      const currentDescription = current.description.trim()
+      const descriptionWasSuggested =
+        !currentDescription || detailSuggestions.descriptions.includes(currentDescription)
+      return {
+        ...current,
+        category,
+        subcategory: next.subcategories[0] || '',
+        description: descriptionWasSuggested ? next.descriptions[0] || '' : current.description,
+        tags: tagsWereSuggested ? next.tags.slice(0, 4).join(', ') : current.tags
+      }
+    })
+  }
+
+  const chooseSuggestedSubcategory = (subcategory: string) => {
+    update('subcategory', subcategory)
+  }
+
+  const toggleSuggestedTag = (tag: string) => {
+    setForm((current) => {
+      const list = current.tags
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+      const exists = list.some((item) => item.toLowerCase() === tag.toLowerCase())
+      const next = exists
+        ? list.filter((item) => item.toLowerCase() !== tag.toLowerCase())
+        : [...list, tag]
+      return { ...current, tags: next.slice(0, 12).join(', ') }
+    })
+  }
+
+  const chooseSuggestedDescription = (description: string) => {
+    update('description', description)
+  }
+
+  const useSuggestedDetails = () => {
+    setShowSuggestions(false)
+    handleAutoCreate(false)
+  }
+
+  const publishSuggestedDetails = () => {
+    setShowSuggestions(false)
+    handleAutoCreate(true)
+  }
+
   const reset = () => {
     setStep(1)
     setSuccess(null)
@@ -697,6 +810,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setTemplatePicked(false)
     setAutoCreated(false)
     setAutoSampleJson(null)
+    setShowSuggestions(false)
+    setCategoryPicked(false)
     setThemeColor('#0d9488')
     setFontChoice('sans')
     setLayoutStyle('standard')
@@ -1295,27 +1410,37 @@ export function ListBusinessModal({ open, onClose }: Props) {
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-2.5 sm:pl-[42px]">
+                    <div className="flex flex-wrap items-center gap-2 mt-2.5 sm:pl-[42px]">
                       <Button
                         size="sm"
-                        onClick={() => handleAutoCreate(false)}
+                        onClick={openAutoDetails}
                         className="bg-brand hover:bg-brand/90 text-brand-foreground h-8"
                       >
                         <Sparkles className="w-3.5 h-3.5 mr-1" />
                         Auto-create website
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleAutoCreate(true)}
-                        disabled={submitting}
-                        className="h-8"
-                      >
-                        {submitting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-1" />}
-                        Auto-create &amp; publish
-                      </Button>
+                      <span className="text-[10px] text-muted-foreground">
+                        Pick from ready-made options for description, category, subcategory and keywords.
+                      </span>
                     </div>
                   </div>
+                  {showSuggestions && (
+                    <AutoDetailsPanel
+                      suggestions={detailSuggestions}
+                      category={form.category}
+                      subcategory={form.subcategory}
+                      tags={form.tags}
+                      description={form.description}
+                      submitting={submitting}
+                      onCategory={chooseSuggestedCategory}
+                      onSubcategory={chooseSuggestedSubcategory}
+                      onToggleTag={toggleSuggestedTag}
+                      onDescription={chooseSuggestedDescription}
+                      onContinue={useSuggestedDetails}
+                      onPublish={publishSuggestedDetails}
+                      onClose={() => setShowSuggestions(false)}
+                    />
+                  )}
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
                       <Label>{t('list_field_businessName')} *</Label>
@@ -1337,7 +1462,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                     </div>
                     <div>
                       <Label>{t('list_field_category')}</Label>
-                      <Select value={form.category} onValueChange={(v) => update('category', v)}>
+                      <Select value={form.category} onValueChange={(v) => { setCategoryPicked(true); update('category', v) }}>
                         <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
