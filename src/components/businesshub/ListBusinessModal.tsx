@@ -22,7 +22,7 @@ import { useApp } from '@/store/app'
 import { useI18n } from '@/store/i18n'
 import { generateBusinessWebsite, withPreviewEditor, MIN_IMAGES, type BusinessData } from '@/lib/template-engine'
 import { profileFor } from '@/lib/site-engine/categories'
-import { DEFAULT_HERO_IMAGES } from '@/lib/templates/samples'
+import { DEFAULT_HERO_IMAGES, defaultHeroImages, sampleProducts } from '@/lib/templates/samples'
 import { SITE_TEMPLATES, templateById } from './templateCatalog'
 import { ScaledSiteFrame, TemplateThumb } from './SitePreviewFrame'
 import { toast } from 'sonner'
@@ -114,6 +114,41 @@ const EMOJI_MAP: Record<string, string> = {
   'Travel Booking': '✈️', 'B2B Suppliers': '🏭', 'Repair Services': '🛠️', 'Other': '🏪'
 }
 
+/** Every website field auto-create can fill in one go. */
+interface DesignSnapshot {
+  template: string
+  themeColor: string
+  fontChoice: string
+  layoutStyle: string
+  showGallery: boolean
+  showHours: boolean
+  showReviews: boolean
+  showMap: boolean
+  showProducts: boolean
+  products: string
+  ctaLabel: string
+  ctaUrl: string
+  cta2Label: string
+  cta2Url: string
+  heroImages: string
+  heroAutoScroll: boolean
+  /** Present when `products` is the generated sample list for this category. */
+  autoSampleJson?: string
+}
+
+/** Typography + spacing that suits each category's design family. */
+function fontForFamily(family: string): string {
+  if (family === 'luxury-editorial' || family === 'organic-lifestyle') return 'serif'
+  if (family === 'modern-dark' || family === 'bold-creative') return 'modern'
+  return 'sans'
+}
+
+function layoutForFamily(family: string): string {
+  if (family === 'luxury-editorial' || family === 'organic-lifestyle') return 'spacious'
+  if (family === 'bold-creative') return 'compact'
+  return 'standard'
+}
+
 export function ListBusinessModal({ open, onClose }: Props) {
   const { t } = useI18n()
   const { user, setShowAuthModal, setSelectedBusinessId } = useApp()
@@ -122,6 +157,12 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  // True once auto-create generated the design, so publishing does not demand
+  // four uploaded photos — the generated site already has category hero images.
+  const [autoCreated, setAutoCreated] = useState(false)
+  // The exact sample catalogue auto-create wrote last. If the provider has not
+  // edited it, a category change regenerates fresh samples for the new trade.
+  const [autoSampleJson, setAutoSampleJson] = useState<string | null>(null)
   const [profileImage, setProfileImage] = useState('')
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [liveTracking, setLiveTracking] = useState(false)
@@ -188,7 +229,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
   )
 
   const totalImages = (profileImage ? 1 : 0) + galleryImages.length
-  const allImages = profileImage ? [profileImage, ...galleryImages] : galleryImages
+  const allImages = useMemo(
+    () => (profileImage ? [profileImage, ...galleryImages] : galleryImages),
+    [profileImage, galleryImages]
+  )
   // A brand-new website opens with ready-made hero photos, so the scrolling
   // strip is never empty; uploaded photos take over as soon as there are any.
   const heroFallback = allImages.length > 0 ? allImages : DEFAULT_HERO_PICK
@@ -241,6 +285,78 @@ export function ListBusinessModal({ open, onClose }: Props) {
     ctaLabel, ctaUrl, cta2Label, cta2Url, siteLinks,
     heroImages, heroAutoScroll, siteMode, siteCopy, siteTexts,
     fontChoice, layoutStyle, showGallery, showHours, showReviews, showMap, showProducts
+  ])
+
+  // Everything auto-create needs, derived from the business details. Manual
+  // choices already made by the provider win, so auto-create never wipes work.
+  const autoDesign = useMemo<DesignSnapshot>(() => {
+    const profile = profileFor(form.category)
+    const family = profile.family
+    const tpl = templateById(family)
+    const photos = allImages.length > 0 ? allImages : defaultHeroImages(form.category)
+    const heroPool = Array.from(new Set([...photos, ...defaultHeroImages(form.category)]))
+    const sampleList = sampleProducts(previewBusiness, photos).map((p, i) => ({
+      id: String(i + 1),
+      name: String(p.name ?? ''),
+      price: String(p.price ?? ''),
+      details: String(p.details ?? p.description ?? ''),
+      image: String(p.image ?? photos[i % Math.max(photos.length, 1)] ?? '')
+    }))
+    const sampleJson = JSON.stringify(sampleList)
+    const currentJson = catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : ''
+    // Refresh samples after a category change, but never overwrite a catalogue
+    // the provider has edited themselves.
+    const useSample = !currentJson || (autoSampleJson !== null && currentJson === autoSampleJson)
+    const sample = useSample ? sampleList : catalogProducts
+    const tel = String(form.whatsapp || form.phone || '').replace(/[^\d+]/g, '')
+    return {
+      template: templatePicked ? form.template : family,
+      themeColor: themeColor !== '#0d9488' ? themeColor : (tpl?.color || '#0d9488'),
+      fontChoice: fontChoice !== 'sans' ? fontChoice : fontForFamily(family),
+      layoutStyle: layoutStyle !== 'standard' ? layoutStyle : layoutForFamily(family),
+      showGallery,
+      showHours,
+      showReviews,
+      showMap,
+      showProducts,
+      products: JSON.stringify(sample),
+      ctaLabel: ctaLabel || profile.cta.primary,
+      ctaUrl: ctaUrl || (tel ? `tel:${tel}` : ''),
+      cta2Label: cta2Label || profile.cta.secondary,
+      cta2Url: cta2Url || '#offerings',
+      heroImages: heroPool.slice(0, 8).join(','),
+      heroAutoScroll: true,
+      autoSampleJson: useSample ? sampleJson : undefined
+    }
+  }, [
+    form.category, form.template, form.phone, form.whatsapp, templatePicked,
+    themeColor, fontChoice, layoutStyle, showGallery, showHours, showReviews,
+    showMap, showProducts, allImages, catalogProducts, autoSampleJson, ctaLabel,
+    ctaUrl, cta2Label, cta2Url, previewBusiness
+  ])
+
+  // Snapshot used by the normal (manual) submit path.
+  const currentDesign = useMemo<DesignSnapshot>(() => ({
+    template: form.template,
+    themeColor,
+    fontChoice,
+    layoutStyle,
+    showGallery,
+    showHours,
+    showReviews,
+    showMap,
+    showProducts,
+    products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
+    ctaLabel,
+    ctaUrl,
+    cta2Label,
+    cta2Url,
+    heroImages: heroSelected.join(','),
+    heroAutoScroll
+  }), [
+    form.template, themeColor, fontChoice, layoutStyle, showGallery, showHours,
+    showReviews, showMap, showProducts, catalogProducts, ctaLabel, ctaUrl,
+    cta2Label, cta2Url, heroSelected, heroAutoScroll
   ])
 
   // Style samples for the template grid: fixed copy + the user's photos, so
@@ -424,21 +540,16 @@ export function ListBusinessModal({ open, onClose }: Props) {
     return true
   }
 
-  const handleSubmit = async () => {
+  // Contact fields needed to publish. Images are optional for auto-create —
+  // the generated site already opens with category hero photos and sample products.
+  const contactReady = !!(form.phone.trim() && form.address.trim() && form.city.trim() && form.state.trim())
+
+  const submitBusiness = async (design: DesignSnapshot) => {
     if (!user) {
       toast.error('Please login first')
       setShowAuthModal(true)
       return
     }
-    if (!validateStep(1)) {
-      setStep(1)
-      return
-    }
-    if (!validateStep(2)) {
-      setStep(2)
-      return
-    }
-
     setSubmitting(true)
     try {
       const res = await fetch('/api/businesses', {
@@ -447,26 +558,27 @@ export function ListBusinessModal({ open, onClose }: Props) {
         body: JSON.stringify({
           ...form,
           emoji: EMOJI_MAP[form.category] || '🏪',
-          imageColor: templateById(form.template)?.color || '#0d9488',
+          imageColor: templateById(design.template)?.color || '#0d9488',
           profileImage,
           imageUrls: galleryImages.join(','),
           liveTracking,
-          themeColor,
-          fontChoice,
-          layoutStyle,
-          showGallery,
-          showHours,
-          showReviews,
-          showMap,
-          showProducts,
-          products: catalogProducts.length > 0 ? JSON.stringify(catalogProducts) : '',
-          ctaLabel,
-          ctaUrl,
-          cta2Label,
-          cta2Url,
+          template: design.template,
+          themeColor: design.themeColor,
+          fontChoice: design.fontChoice,
+          layoutStyle: design.layoutStyle,
+          showGallery: design.showGallery,
+          showHours: design.showHours,
+          showReviews: design.showReviews,
+          showMap: design.showMap,
+          showProducts: design.showProducts,
+          products: design.products,
+          ctaLabel: design.ctaLabel,
+          ctaUrl: design.ctaUrl,
+          cta2Label: design.cta2Label,
+          cta2Url: design.cta2Url,
           links: JSON.stringify(siteLinks.filter((l) => l.label.trim() && l.url.trim())),
-          heroImages: heroSelected.join(','),
-          heroAutoScroll,
+          heroImages: design.heroImages,
+          heroAutoScroll: design.heroAutoScroll,
           siteMode,
           siteContent: siteContentJson(siteCopy, siteTexts),
           ownerId: user.id
@@ -486,6 +598,96 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setSubmitting(false)
   }
 
+  const handleSubmit = async () => {
+    if (!user) {
+      toast.error('Please login first')
+      setShowAuthModal(true)
+      return
+    }
+    if (!validateStep(1)) {
+      setStep(1)
+      return
+    }
+    if (autoCreated) {
+      // Auto-created sites already ship with hero photos and products; only the
+      // contact fields are still required to publish.
+      if (!contactReady) {
+        setStep(2)
+        toast.error('Add your phone and address to publish the website')
+        return
+      }
+    } else if (!validateStep(2)) {
+      setStep(2)
+      return
+    }
+    await submitBusiness(currentDesign)
+  }
+
+  // Fills the whole website from the business details in one click: template,
+  // theme, typography, layout, hero photos, sample products and button copy.
+  const applyAutoDesign = (design: DesignSnapshot) => {
+    setForm((f) => ({ ...f, template: design.template }))
+    setThemeColor(design.themeColor)
+    setFontChoice(design.fontChoice)
+    setLayoutStyle(design.layoutStyle)
+    setShowGallery(design.showGallery)
+    setShowHours(design.showHours)
+    setShowReviews(design.showReviews)
+    setShowMap(design.showMap)
+    setShowProducts(design.showProducts)
+    if (design.products) {
+      try {
+        const parsed = JSON.parse(design.products)
+        if (Array.isArray(parsed)) setCatalogProducts(parsed)
+      } catch {
+        // Keep the existing catalogue when the snapshot cannot be parsed.
+      }
+    }
+    setCtaLabel(design.ctaLabel)
+    setCtaUrl(design.ctaUrl)
+    setCta2Label(design.cta2Label)
+    setCta2Url(design.cta2Url)
+    setHeroImages(design.heroImages ? design.heroImages.split(',').filter(Boolean) : [])
+    setHeroAutoScroll(design.heroAutoScroll)
+    setAutoSampleJson(design.autoSampleJson ?? null)
+    setAutoCreated(true)
+  }
+
+  /**
+   * One-click auto-create. With `publish` it creates the listing immediately
+   * (no image uploads needed); otherwise it fills the website and jumps to the
+   * review step so the provider can fine-tune before publishing.
+   */
+  const handleAutoCreate = async (publish: boolean) => {
+    if (!user) {
+      toast.error('Please login first')
+      setShowAuthModal(true)
+      return
+    }
+    if (!validateStep(1)) {
+      setStep(1)
+      return
+    }
+    const design = autoDesign
+    applyAutoDesign(design)
+    if (publish) {
+      if (!contactReady) {
+        setStep(2)
+        toast.info('Website generated — add your phone and address to publish it.')
+        return
+      }
+      await submitBusiness(design)
+      return
+    }
+    if (contactReady) {
+      setStep(4)
+      toast.success('Website auto-created from your business details — review and publish.')
+    } else {
+      setStep(2)
+      toast.success('Website auto-created — add contact details to publish.')
+    }
+  }
+
   const reset = () => {
     setStep(1)
     setSuccess(null)
@@ -493,6 +695,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setGalleryImages([])
     setLiveTracking(false)
     setTemplatePicked(false)
+    setAutoCreated(false)
+    setAutoSampleJson(null)
     setThemeColor('#0d9488')
     setFontChoice('sans')
     setLayoutStyle('standard')
@@ -1077,6 +1281,41 @@ export function ListBusinessModal({ open, onClose }: Props) {
                 <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
                   <div className="space-y-4 min-w-0">
                   <h3 className="font-serif font-semibold text-lg">{t('list_step2')}</h3>
+                  {/* One-click of the whole website from the business details */}
+                  <div className="rounded-xl border border-brand/30 bg-gradient-to-r from-brand-soft/50 via-brand-soft/20 to-transparent p-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-8 h-8 rounded-full bg-brand text-brand-foreground flex items-center justify-center shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold">Auto-create your website</div>
+                        <p className="text-[11px] leading-snug text-muted-foreground mt-0.5">
+                          Builds the complete site from your business name, category and details — template, theme,
+                          hero photos, sample products and page copy. You can fine-tune everything afterwards.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2.5 sm:pl-[42px]">
+                      <Button
+                        size="sm"
+                        onClick={() => handleAutoCreate(false)}
+                        className="bg-brand hover:bg-brand/90 text-brand-foreground h-8"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 mr-1" />
+                        Auto-create website
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAutoCreate(true)}
+                        disabled={submitting}
+                        className="h-8"
+                      >
+                        {submitting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-1" />}
+                        Auto-create &amp; publish
+                      </Button>
+                    </div>
+                  </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
                       <Label>{t('list_field_businessName')} *</Label>
@@ -1509,14 +1748,27 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
               {/* Footer nav */}
               <div className="flex justify-between items-center pt-5 mt-5 border-t border-border/60">
-                <Button
-                  variant="ghost"
-                  onClick={() => step > 1 ? setStep(step - 1) : handleClose()}
-                  className="text-muted-foreground"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  {step > 1 ? t('list_back') : 'Cancel'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => step > 1 ? setStep(step - 1) : handleClose()}
+                    className="text-muted-foreground"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    {step > 1 ? t('list_back') : 'Cancel'}
+                  </Button>
+                  {step > 1 && step < 4 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAutoCreate(contactReady)}
+                      className="h-8 border-brand/40 text-brand hover:bg-brand-soft/40"
+                    >
+                      {contactReady ? <Globe className="w-3.5 h-3.5 mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                      {contactReady ? 'Auto-create & publish' : 'Auto-create'}
+                    </Button>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   {step === 2 && totalImages < MIN_IMAGES && (
                     <span className="text-[11px] font-medium text-amber-600 text-right">
