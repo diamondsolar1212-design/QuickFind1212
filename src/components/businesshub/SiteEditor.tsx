@@ -7,13 +7,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ExternalLink, Eye, Globe, Loader2, Pencil, Rocket, RotateCcw, Save } from 'lucide-react'
+import { Check, ExternalLink, Eye, Globe, Loader2, Pencil, Rocket, RotateCcw, Save, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { generateBusinessWebsite, withPreviewEditor } from '@/lib/template-engine'
 import { isEngineSkin } from '@/lib/site-engine'
 import { sanitizeSiteContent } from '@/lib/templates/shared'
 import { parseProducts } from '@/lib/products'
 import { toBusinessData } from '@/lib/business-site'
+import { autoSiteContent } from '@/lib/website-autocontent'
 import { Button } from '@/components/ui/button'
 
 type Draft = {
@@ -237,6 +238,39 @@ export function SiteEditor({
     }
   }
 
+  /**
+   * Auto-writes the whole site from the saved listing. Existing manual edits in
+   * this draft win, so pressing it twice never overwrites the provider's work.
+   */
+  const applyAutoContent = () => {
+    const generated = autoSiteContent(business)
+    const copy: Record<string, string> = {}
+    for (const [key, value] of Object.entries(generated.copy)) {
+      if (typeof value === 'string' && value.trim()) copy[key] = value
+    }
+    for (const [key, value] of Object.entries(draft.copy)) {
+      const text = String(value ?? '').trim()
+      if (text) copy[key] = text
+    }
+    const nextDraft: Draft = {
+      ...draft,
+      copy,
+      ctaLabel: String(draft.ctaLabel ?? '').trim() || generated.ctaLabel,
+      cta2Label: String(draft.cta2Label ?? '').trim() || generated.cta2Label
+    }
+    setDraft(nextDraft)
+    setShownHtml(
+      build(
+        mergeDraft(content, nextDraft),
+        nextDraft.ctaLabel,
+        nextDraft.cta2Label,
+        editedProducts ?? business.products
+      )
+    )
+    setDirty(true)
+    toast.success('Website content auto-filled — review it, then save.')
+  }
+
   // Full-screen editing should not scroll the page behind the overlay.
   // (Esc is left to the preview's own editor so it never closes the dialog.)
   useEffect(() => {
@@ -409,6 +443,16 @@ export function SiteEditor({
             onClick={() => window.open(liveHref, '_blank', 'noopener')}
           >
             <ExternalLink className="w-3 h-3 mr-1" /> View site
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px]"
+            onClick={applyAutoContent}
+            title="Write every heading, paragraph, menu label and button from your listing"
+          >
+            <Sparkles className="w-3 h-3 mr-1" /> Auto-write
           </Button>
           <Button
             type="button"

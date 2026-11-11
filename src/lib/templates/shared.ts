@@ -77,11 +77,23 @@ export function safeUrl(value: unknown): string {
 
 // Website buttons/links may be phone, email, in-page anchors or web URLs.
 const HREF_RE = /^(https?:\/\/|\/|tel:|mailto:|#)/i
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PHONE_RE = /^\+?[\d\s().-]{6,}$/
+const DOMAIN_RE = /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i
 
+/**
+ * Normalises the links a provider can type into the website editor:
+ * `https://…`, `tel:`, `mailto:`, `#anchor`, `/path`, bare domains, emails and
+ * phone numbers all work. Dangerous schemes (javascript:, data:) are rejected.
+ */
 export function safeHref(value: unknown, fallback = '#'): string {
   const url = String(value ?? '').trim()
-  if (!url || !HREF_RE.test(url)) return fallback
-  return url
+  if (!url) return fallback
+  if (HREF_RE.test(url)) return url
+  if (EMAIL_RE.test(url)) return `mailto:${url}`
+  if (PHONE_RE.test(url)) return `tel:${url.replace(/[^\d+]/g, '')}`
+  if (DOMAIN_RE.test(url)) return `https://${url}`
+  return fallback
 }
 
 export function isExternalHref(href: string): boolean {
@@ -124,7 +136,9 @@ export function primaryCta(
   fallbackLabel = 'Contact Us'
 ): SiteLink {
   const label = String(business.ctaLabel || '').trim().slice(0, 40) || fallbackLabel
-  const url = safeHref(business.ctaUrl, '') || telHref(business.phone)
+  // A site with no phone and no link still needs a working button: send the
+  // visitor to the contact page instead of an empty href.
+  const url = safeHref(business.ctaUrl, '') || telHref(business.phone) || '#contact'
   return { label, url }
 }
 
@@ -567,7 +581,7 @@ export function sanitizeSiteContent(raw: unknown): string {
 
 /** Applies click-to-edit overrides to the published site (no editor UI). */
 function siteTextScript(texts: Record<string, string>): string {
-  const json = JSON.stringify(texts).replace(/</g, '\u003c').replace(/>/g, '\u003e')
+  const json = JSON.stringify(texts).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
   return `<script>(function(){
   var t=${json};
   if(!t)return;
@@ -600,20 +614,80 @@ function siteTextScript(texts: Record<string, string>): string {
 }
 
 function siteCopyScript(copy: SiteCopy): string {
-  const json = JSON.stringify(copy).replace(/</g, '\u003c').replace(/>/g, '\u003e')
+  const json = JSON.stringify(copy).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
   return `<script>(function(){
   var c=${json};
-  function setText(selector,value){
+  function mark(el){if(el)el.setAttribute('data-site-copy','1');return el;}
+  // Four-page mode hides the blocks that do not belong to the page being
+  // viewed. The same copy can appear in more than one block, so always prefer
+  // the visible one and fall back to the first match.
+  function shown(el){
+    if(!el)return false;
+    if(el.closest('.site-page-hidden'))return false;
+    for(var n=el;n&&n.nodeType===1;n=n.parentElement){
+      var cs=getComputedStyle(n);
+      if(cs.display==='none'||cs.visibility==='hidden')return false;
+    }
+    return true;
+  }
+  function first(list){
+    var fallback=null;
+    for(var i=0;i<list.length;i++){
+      var el=document.querySelector(list[i]);
+      if(!el)continue;
+      if(!fallback)fallback=el;
+      if(shown(el))return el;
+    }
+    return fallback;
+  }
+  function setText(list,value){
     if(!value)return;
-    var el=document.querySelector(selector);
+    var el=first(list);
     if(!el)return;
     el.textContent=value;
-    el.setAttribute('data-site-copy','1');
+    mark(el);
   }
-  // Nav labels keep any decorative prefix (e.g. <i>01</i>) intact.
+  // The about paragraph may contain several blank-line separated paragraphs.
+  // Replace the template's about prose with them; hide the leftovers so old
+  // generated copy does not sit under the provider's new text.
+  function setParagraphs(list,value){
+    if(!value)return;
+    var host=first(list);
+    if(!host)return;
+    var container=host.closest('#about,#intro,#story,#qualifications')||host.parentElement||host;
+    var groups=['.about-p','.dropcap','.about-copy > p','.muted'];
+    var paras=[];
+    for(var g=0;g<groups.length;g++){
+      var found=container.querySelectorAll(groups[g]);
+      for(var f=0;f<found.length;f++){if(paras.indexOf(found[f])<0)paras.push(found[f]);}
+    }
+    if(!paras.length)paras=[host];
+    var parts=String(value).split(/\\n{2,}/).map(function(part){return part.trim();}).filter(Boolean);
+    if(!parts.length)parts=[String(value).trim()];
+    // A single paragraph replaces only the opening paragraph (click-to-edit
+    // uses this); an explicit multi-paragraph value rewrites the whole block.
+    if(parts.length===1){paras[0].textContent=parts[0];mark(paras[0]);return;}
+    for(var i=0;i<paras.length;i++){
+      if(i<parts.length){paras[i].textContent=parts[i];mark(paras[i]);paras[i].style.display='';}
+      else{paras[i].style.display='none';}
+    }
+    if(parts.length>paras.length){
+      var anchor=paras[paras.length-1];
+      var target=(anchor&&anchor.parentElement)||container;
+      for(var j=paras.length;j<parts.length;j++){
+        var p=document.createElement('p');
+        p.className='about-p';
+        p.textContent=parts[j];
+        mark(p);
+        target.appendChild(p);
+      }
+    }
+  }
+  // Nav/footer labels keep any decorative prefix (e.g. <i>01</i>) intact.
   function setLabel(selector,value){
     if(!value)return;
     document.querySelectorAll(selector).forEach(function(el){
+      if(el.getAttribute('data-site-copy'))return;
       var node=null;
       for(var i=el.childNodes.length-1;i>=0;i--){
         var n=el.childNodes[i];
@@ -621,24 +695,82 @@ function siteCopyScript(copy: SiteCopy): string {
       }
       if(node)node.nodeValue=value;
       else el.textContent=value;
-      el.setAttribute('data-site-copy','1');
+      mark(el);
     });
   }
-  setText('.hero-tag',c.heroTagline);
-  setText('.hero h1',c.heroTitle);
-  setText('#about h2',c.aboutTitle);
-  setText('#about .about-p, #about .dropcap',c.aboutText);
-  setText('#gallery h2',c.galleryTitle);
-  setText('#offerings h2, #products h2, #menu h2',c.offeringsTitle);
-  setText('#reviews h2',c.reviewsTitle);
-  setText('#visit h2, #contact h2',c.visitTitle);
-  setText('footer p, footer .foot-note',c.footerNote);
-  setLabel('.navlinks a[href="#about"]',c.navAbout);
+  function run(){
+  setText(['.hero h1','#top h1'],c.heroTitle);
+  setText(['.hero-tag'],c.heroTagline);
+  setText(['#about h2','#intro h2','#story h2'],c.aboutTitle);
+  setParagraphs(['#about .about-p','#about .dropcap','#about .about-copy > p','#about .muted','#intro .about-p','#intro p'],c.aboutText);
+  setText(['#gallery h2'],c.galleryTitle);
+  setText(['#products h2','#menu h2','#offerings h2','#specs h2','#packages h2','#destinations h2','#daily-essentials h2','#offers h2'],c.offeringsTitle);
+  setText(['#reviews h2'],c.reviewsTitle);
+  setText(['#contact h2','#visit h2'],c.visitTitle);
+  var foot=document.querySelector('footer .foot-note')||document.querySelector('footer p');
+  if(c.footerNote&&foot){foot.textContent=c.footerNote;mark(foot);}
+  setLabel('.navlinks a[data-page="home"], footer a[data-page="home"]',c.navHome);
+  setLabel('.navlinks a[data-page="about"], footer a[data-page="about"]',c.navAbout);
+  setLabel('.navlinks a[data-page="products"], footer a[data-page="products"]',c.navOfferings);
+  setLabel('.navlinks a[data-page="contact"], footer a[data-page="contact"]',c.navVisit);
   setLabel('.navlinks a[href="#gallery"]',c.navGallery);
-  setLabel('.navlinks a[href="#offerings"], .navlinks a[href="#products"], .navlinks a[href="#menu"]',c.navOfferings);
   setLabel('.navlinks a[href="#reviews"]',c.navReviews);
-  setLabel('.navlinks a[href="#visit"], .navlinks a[href="#contact"]',c.navVisit);
-  setLabel('.navlinks a[data-page="home"]',c.navHome);
+  }
+  // Wait for the page splitter (which runs later in the document) so the
+  // "visible block" detection sees the real page instead of every section.
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);
+  else run();
+})();</script>`
+}
+
+/**
+ * One link list, rendered into both the nav and the footer. Templates already
+ * print the first link or two; this layer adds any missing ones so every skin
+ * (engine, collection and bespoke) honours the same provider input.
+ */
+function customLinksScript(business: BusinessData): string {
+  const links = customLinks(business)
+  if (links.length === 0) return ''
+  const json = JSON.stringify(links).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
+  return `<style id="site-custom-links-css">
+  .site-extra-links{max-width:1180px;margin:0 auto;padding:0 28px 22px;display:flex;gap:18px;flex-wrap:wrap;font-size:12px;letter-spacing:.04em;opacity:.85}
+  .site-extra-links a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+  .site-extra-links a:hover{opacity:.75}
+  </style><script>(function(){
+  var links=${json};
+  function make(link,className){
+    var a=document.createElement('a');
+    a.href=link.url;
+    a.textContent=link.label;
+    if(className)a.className=className;
+    if(/^https?:\\/\\//i.test(link.url)){a.target='_blank';a.rel='noopener noreferrer';}
+    a.setAttribute('data-custom-link','1');
+    return a;
+  }
+  function has(scope,href){
+    return Array.prototype.some.call(scope.querySelectorAll('a'),function(a){
+      return (a.getAttribute('href')||'')===href;
+    });
+  }
+  var nav=document.querySelector('.navlinks');
+  if(nav){
+    var cta=nav.querySelector('.nav-cta');
+    links.forEach(function(link){
+      if(has(nav,link.url))return;
+      var a=make(link,'nav-custom');
+      if(cta)nav.insertBefore(a,cta);
+      else nav.appendChild(a);
+    });
+  }
+  var footer=document.querySelector('footer');
+  if(footer&&!links.every(function(link){return has(footer,link.url);})){
+    var wrap=footer.querySelector('.site-extra-links');
+    if(!wrap){wrap=document.createElement('div');wrap.className='site-extra-links';footer.appendChild(wrap);}
+    links.forEach(function(link){
+      if(has(footer,link.url))return;
+      wrap.appendChild(make(link));
+    });
+  }
 })();</script>`
 }
 
@@ -734,11 +866,25 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     if(inner.length>1)blocks=inner;
   }
   if(blocks.length<2)return;
-  function blockOf(id){
+  // Templates name the offerings section differently (products/menu/offerings)
+  // and the contact section as contact/visit. Resolve the aliases so an
+  // auto-generated button such as "#offerings" works on every skin.
+  var ALIASES={offerings:['products','menu'],products:['offerings','menu'],menu:['offerings','products'],contact:['visit'],visit:['contact']};
+  function findBlock(id){
     var el=document.getElementById(id);
     if(!el)return null;
     for(var i=0;i<blocks.length;i++){
       if(blocks[i]===el||blocks[i].contains(el))return blocks[i];
+    }
+    return null;
+  }
+  function blockOf(id){
+    var hit=findBlock(id);
+    if(hit)return hit;
+    var alt=ALIASES[id]||[];
+    for(var a=0;a<alt.length;a++){
+      var aliasHit=findBlock(alt[a]);
+      if(aliasHit)return aliasHit;
     }
     return null;
   }
@@ -764,6 +910,19 @@ const PAGES_MODE_SCRIPT = `<script>(function(){
     add('about',blockOf('gallery'));
     add('contact',blockOf('contact')||blockOf('visit'));
     add('home',blockOf('reviews'));
+  }
+  // The engine can emit two prose blocks for the about page (a short "intro"
+  // welcome plus the "story" section). Showing both repeats the same copy, so
+  // the welcome block moves to the home page and the story keeps the about.
+  var introBlock=findBlock('intro');
+  var storyBlock=findBlock('about');
+  if(introBlock&&storyBlock&&introBlock!==storyBlock){
+    var introIndex=blocks.indexOf(introBlock);
+    if(assigned[introIndex]==='about'){
+      pages.about=pages.about.filter(function(el){return el!==introBlock;});
+      assigned[introIndex]='home';
+      pages.home.push(introBlock);
+    }
   }
   for(var i=0;i<blocks.length;i++){
     if(!assigned[i]){assigned[i]='home';pages.home.push(blocks[i]);}
@@ -950,24 +1109,42 @@ const PREVIEW_EDITOR_SCRIPT = `<script>(function(){
       count++;
     }
   }
+  function visible(el){
+    if(!el)return false;
+    if(el.closest('.site-page-hidden'))return false;
+    return !!(el.offsetParent||el.getClientRects().length);
+  }
+  // The four-page splitter hides blocks; click-to-edit must read the block the
+  // provider is actually looking at, not an earlier hidden duplicate.
+  function pick(selectors){
+    var fallback=null;
+    for(var i=0;i<selectors.length;i++){
+      var found=document.querySelectorAll(selectors[i]);
+      for(var j=0;j<found.length;j++){
+        if(!fallback)fallback=found[j];
+        if(visible(found[j]))return found[j];
+      }
+    }
+    return fallback;
+  }
   function tag(){
-    copy(document.querySelector('.hero h1'),'heroTitle');
-    copy(document.querySelector('.hero-tag'),'heroTagline');
-    copy(document.querySelector('#about h2'),'aboutTitle');
-    copy(document.querySelector('#about .about-p, #about .dropcap'),'aboutText');
-    copy(document.querySelector('#gallery h2'),'galleryTitle');
-    copy(document.querySelector('#offerings h2, #products h2, #menu h2'),'offeringsTitle');
-    copy(document.querySelector('#reviews h2'),'reviewsTitle');
-    copy(document.querySelector('#visit h2, #contact h2'),'visitTitle');
-    copy(document.querySelector('footer .foot-note, footer p'),'footerNote');
-    copy(document.querySelector('.navlinks .nav-cta'),'ctaLabel');
-    copy(document.querySelector('.hero .btn-primary, .hero-actions .btn-primary'),'ctaLabel');
-    copy(document.querySelector('.hero .btn-ghost, .hero-actions .btn-ghost'),'cta2Label');
-    nav('.navlinks a[href="#about"]','navAbout');
+    copy(pick(['.hero h1','#top h1']),'heroTitle');
+    copy(pick(['.hero-tag']),'heroTagline');
+    copy(pick(['#intro h2','#about h2','#story h2']),'aboutTitle');
+    copy(pick(['#intro .about-p','#about .about-p','#about .dropcap','#about .muted']),'aboutText');
+    copy(pick(['#gallery h2']),'galleryTitle');
+    copy(pick(['#products h2','#menu h2','#offerings h2','#specs h2','#packages h2','#destinations h2']),'offeringsTitle');
+    copy(pick(['#reviews h2']),'reviewsTitle');
+    copy(pick(['#contact h2','#visit h2']),'visitTitle');
+    copy(pick(['footer .foot-note','footer p']),'footerNote');
+    copy(pick(['.navlinks .nav-cta']),'ctaLabel');
+    copy(pick(['.hero .btn-primary','.hero-actions .btn-primary']),'ctaLabel');
+    copy(pick(['.hero .btn-ghost','.hero-actions .btn-ghost']),'cta2Label');
+    nav('.navlinks a[data-page="about"]','navAbout');
     nav('.navlinks a[href="#gallery"]','navGallery');
-    nav('.navlinks a[href="#offerings"], .navlinks a[href="#products"], .navlinks a[href="#menu"]','navOfferings');
+    nav('.navlinks a[data-page="products"], .navlinks a[href="#offerings"], .navlinks a[href="#products"], .navlinks a[href="#menu"]','navOfferings');
     nav('.navlinks a[href="#reviews"]','navReviews');
-    nav('.navlinks a[href="#visit"], .navlinks a[href="#contact"]','navVisit');
+    nav('.navlinks a[data-page="contact"], .navlinks a[href="#visit"], .navlinks a[href="#contact"]','navVisit');
     nav('.navlinks a[data-page="home"]','navHome');
     tagProducts();
     tagText();
@@ -1074,6 +1251,9 @@ export function applySiteExperience(html: string, business: BusinessData): strin
   if (Object.keys(texts).length > 0) {
     out = out.replace('</body>', `${siteTextScript(texts)}</body>`)
   }
+  // Provider links are rendered into both the nav and the footer, whatever
+  // markup the chosen template ships.
+  out = out.replace('</body>', `${customLinksScript(business)}</body>`)
   // Every template ships the same four pages, so the page shell is always on.
   // Design + section switches are injected first so the page script sees them.
   out = out.replace(

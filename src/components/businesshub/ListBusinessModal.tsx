@@ -24,6 +24,7 @@ import { generateBusinessWebsite, withPreviewEditor, MIN_IMAGES, type BusinessDa
 import { profileFor } from '@/lib/site-engine/categories'
 import { DEFAULT_HERO_IMAGES, defaultHeroImages, sampleProducts } from '@/lib/templates/samples'
 import { detectCategoryFromName, suggestBusinessDetails } from '@/lib/business-details-suggestions'
+import { autoSiteContent } from '@/lib/website-autocontent'
 import { AutoDetailsPanel } from './AutoDetailsPanel'
 import { SITE_TEMPLATES, templateById } from './templateCatalog'
 import { ScaledSiteFrame, TemplateThumb } from './SitePreviewFrame'
@@ -93,6 +94,18 @@ function siteContentJson(copy: SiteCopyFields, texts: Record<string, string> = {
   return Object.keys(out).length > 0 ? JSON.stringify(out) : ''
 }
 
+/** Later sources win, but only when they actually contain text. */
+function mergeSiteCopy(...sources: Array<Partial<SiteCopyFields>>): SiteCopyFields {
+  const out: SiteCopyFields = { ...EMPTY_SITE_COPY }
+  for (const source of sources) {
+    for (const key of SITE_COPY_KEYS) {
+      const value = String(source[key] ?? '').trim()
+      if (value) out[key] = value
+    }
+  }
+  return out
+}
+
 const CATEGORIES = [
   'Grocery & Essentials', 'Restaurants', 'Home Services', 'Textiles & Apparel',
   'Food & Sweets', 'Food & Beverages', 'Automobile', 'Electronics',
@@ -134,6 +147,10 @@ interface DesignSnapshot {
   cta2Url: string
   heroImages: string
   heroAutoScroll: boolean
+  /** Editable page copy, buttons and custom links carried by this snapshot. */
+  copy: SiteCopyFields
+  siteContent: string
+  links: string
   /** Present when `products` is the generated sample list for this category. */
   autoSampleJson?: string
 }
@@ -196,6 +213,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
   const [heroAutoScroll, setHeroAutoScroll] = useState(true)
   const [siteMode] = useState<'scroll' | 'pages'>('pages')
   const [siteCopy, setSiteCopy] = useState<SiteCopyFields>({ ...EMPTY_SITE_COPY })
+  // True while `siteCopy` only holds auto-generated text, so a later
+  // auto-create run may refresh it; any manual edit flips this to false.
+  const [copyAuto, setCopyAuto] = useState(false)
+  const [linksAuto, setLinksAuto] = useState(false)
   // Free-form click-to-edit copy keyed by its DOM path in the generated site.
   const [siteTexts, setSiteTexts] = useState<Record<string, string>>({})
   // Products catalog (image + name + price + details)
@@ -294,6 +315,29 @@ export function ListBusinessModal({ open, onClose }: Props) {
     fontChoice, layoutStyle, showGallery, showHours, showReviews, showMap, showProducts
   ])
 
+  // Full website copy for the current details. The auto-create flow uses this
+  // to fill every heading, paragraph, button and custom link in one click.
+  const autoContent = useMemo(
+    () =>
+      autoSiteContent({
+        name: form.name,
+        category: form.category,
+        subcategory: form.subcategory,
+        tags: form.tags,
+        city: form.city,
+        state: form.state,
+        address: form.address,
+        description: form.description,
+        phone: form.phone,
+        email: form.email,
+        whatsapp: form.whatsapp
+      }),
+    [
+      form.name, form.category, form.subcategory, form.tags, form.city, form.state,
+      form.address, form.description, form.phone, form.email, form.whatsapp
+    ]
+  )
+
   // Everything auto-create needs, derived from the business details. Manual
   // choices already made by the provider win, so auto-create never wipes work.
   const autoDesign = useMemo<DesignSnapshot>(() => {
@@ -316,6 +360,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
     const useSample = !currentJson || (autoSampleJson !== null && currentJson === autoSampleJson)
     const sample = useSample ? sampleList : catalogProducts
     const tel = String(form.whatsapp || form.phone || '').replace(/[^\d+]/g, '')
+    // Auto copy fills every field, while anything the provider already typed
+    // wins. Values left over from an earlier auto-create run are not "manual"
+    // — regenerating them keeps the copy in sync with the latest details
+    // (city, phone, links) instead of freezing the first draft.
+    const manualCopy = copyAuto ? {} : siteCopy
+    const autoCopy = mergeSiteCopy(autoContent.copy, manualCopy)
+    const manualLinks = linksAuto ? [] : siteLinks.filter((link) => link.label.trim() && link.url.trim())
+    const autoLinks = manualLinks.length > 0 ? manualLinks : autoContent.links
     return {
       template: templatePicked ? form.template : family,
       themeColor: themeColor !== '#0d9488' ? themeColor : (tpl?.color || '#0d9488'),
@@ -333,13 +385,17 @@ export function ListBusinessModal({ open, onClose }: Props) {
       cta2Url: cta2Url || '#offerings',
       heroImages: heroPool.slice(0, 8).join(','),
       heroAutoScroll: true,
+      copy: autoCopy,
+      siteContent: siteContentJson(autoCopy, siteTexts),
+      links: JSON.stringify(autoLinks),
       autoSampleJson: useSample ? sampleJson : undefined
     }
   }, [
     form.category, form.template, form.phone, form.whatsapp, templatePicked,
     themeColor, fontChoice, layoutStyle, showGallery, showHours, showReviews,
     showMap, showProducts, allImages, catalogProducts, autoSampleJson, ctaLabel,
-    ctaUrl, cta2Label, cta2Url, previewBusiness
+    ctaUrl, cta2Label, cta2Url, previewBusiness, autoContent, siteCopy, siteTexts,
+    siteLinks, copyAuto, linksAuto
   ])
 
   // Snapshot used by the normal (manual) submit path.
@@ -359,11 +415,14 @@ export function ListBusinessModal({ open, onClose }: Props) {
     cta2Label,
     cta2Url,
     heroImages: heroSelected.join(','),
-    heroAutoScroll
+    heroAutoScroll,
+    copy: siteCopy,
+    siteContent: siteContentJson(siteCopy, siteTexts),
+    links: JSON.stringify(siteLinks.filter((link) => link.label.trim() && link.url.trim()))
   }), [
     form.template, themeColor, fontChoice, layoutStyle, showGallery, showHours,
     showReviews, showMap, showProducts, catalogProducts, ctaLabel, ctaUrl,
-    cta2Label, cta2Url, heroSelected, heroAutoScroll
+    cta2Label, cta2Url, heroSelected, heroAutoScroll, siteCopy, siteTexts, siteLinks
   ])
 
   // Chooser options: description variants, categories, subcategories and tags
@@ -459,6 +518,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
   const updateSiteCopy = (key: keyof SiteCopyFields, value: string) => {
     setSiteCopy((prev) => ({ ...prev, [key]: value }))
+    setCopyAuto(false)
   }
 
   // Inline preview edits arrive as postMessage from the generated site.
@@ -473,6 +533,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
       return
     }
     if (!SITE_COPY_KEYS.includes(key as keyof SiteCopyFields)) return
+    setCopyAuto(false)
     setSiteCopy((prev) => ({
       ...prev,
       [key]: text.slice(0, key === 'aboutText' || key === 'heroTagline' || key === 'footerNote' ? 1400 : 120)
@@ -596,11 +657,11 @@ export function ListBusinessModal({ open, onClose }: Props) {
           ctaUrl: design.ctaUrl,
           cta2Label: design.cta2Label,
           cta2Url: design.cta2Url,
-          links: JSON.stringify(siteLinks.filter((l) => l.label.trim() && l.url.trim())),
+          links: design.links,
           heroImages: design.heroImages,
           heroAutoScroll: design.heroAutoScroll,
           siteMode,
-          siteContent: siteContentJson(siteCopy, siteTexts),
+          siteContent: design.siteContent,
           ownerId: user.id
         })
       })
@@ -667,6 +728,33 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setCtaUrl(design.ctaUrl)
     setCta2Label(design.cta2Label)
     setCta2Url(design.cta2Url)
+    // The review step shows exactly what the generated site will use. Copy the
+    // provider typed by hand is left untouched; copy that came from an earlier
+    // auto-create run is refreshed so it matches the latest details.
+    if (copyAuto || !Object.values(siteCopy).some((value) => String(value ?? '').trim())) {
+      setSiteCopy(design.copy)
+      setCopyAuto(true)
+    }
+    if (linksAuto || siteLinks.filter((link) => link.label.trim() && link.url.trim()).length === 0) {
+      try {
+        const parsed = JSON.parse(design.links || '[]')
+        if (Array.isArray(parsed)) {
+          setSiteLinks(
+            parsed
+              .filter((link) => link && typeof link === 'object')
+              .map((link, index) => ({
+                id: `link-${index}-${Date.now()}`,
+                label: String(link.label ?? ''),
+                url: String(link.url ?? '')
+              }))
+              .slice(0, 4)
+          )
+          setLinksAuto(true)
+        }
+      } catch {
+        // Keep whatever links the provider already has.
+      }
+    }
     setHeroImages(design.heroImages ? design.heroImages.split(',').filter(Boolean) : [])
     setHeroAutoScroll(design.heroAutoScroll)
     setAutoSampleJson(design.autoSampleJson ?? null)
@@ -706,6 +794,33 @@ export function ListBusinessModal({ open, onClose }: Props) {
       setStep(2)
       toast.success('Website auto-created — add contact details to publish.')
     }
+  }
+
+  /**
+   * The "auto system" behind the Website Text panel: writes every heading,
+   * paragraph, menu label, button and custom link from the current business
+   * details. Pressing it is an explicit choice, so generated copy wins.
+   */
+  const applyWebsiteAutoContent = () => {
+    if (!form.name.trim()) {
+      toast.error('Enter your business name first')
+      return
+    }
+    setSiteCopy(mergeSiteCopy(autoContent.copy))
+    setCopyAuto(true)
+    setCtaLabel(autoContent.ctaLabel)
+    setCtaUrl(autoContent.ctaUrl || ctaUrl)
+    setCta2Label(autoContent.cta2Label)
+    setCta2Url(autoContent.cta2Url || cta2Url)
+    setSiteLinks(
+      autoContent.links.map((link, index) => ({
+        id: `link-${index}-${Date.now()}`,
+        label: link.label,
+        url: link.url
+      }))
+    )
+    setLinksAuto(true)
+    toast.success('Website content auto-filled — every field stays editable.')
   }
 
   // Fills the form with the best suggestions for the current name/category.
@@ -810,6 +925,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
     setTemplatePicked(false)
     setAutoCreated(false)
     setAutoSampleJson(null)
+    setCopyAuto(false)
+    setLinksAuto(false)
     setShowSuggestions(false)
     setCategoryPicked(false)
     setThemeColor('#0d9488')
@@ -1127,6 +1244,7 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                   const next = [...siteLinks]
                                   next[idx] = { ...link, label: e.target.value }
                                   setSiteLinks(next)
+                                  setLinksAuto(false)
                                 }}
                                 placeholder="Link text"
                                 className="h-8 text-xs"
@@ -1138,13 +1256,17 @@ export function ListBusinessModal({ open, onClose }: Props) {
                                   const next = [...siteLinks]
                                   next[idx] = { ...link, url: e.target.value }
                                   setSiteLinks(next)
+                                  setLinksAuto(false)
                                 }}
                                 placeholder="https://…"
                                 className="h-8 text-xs"
                               />
                               <button
                                 type="button"
-                                onClick={() => setSiteLinks(siteLinks.filter((l) => l.id !== link.id))}
+                                onClick={() => {
+                                  setSiteLinks(siteLinks.filter((l) => l.id !== link.id))
+                                  setLinksAuto(false)
+                                }}
                                 className="w-8 h-8 flex-shrink-0 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-red-600 hover:border-red-300"
                                 aria-label="Remove link"
                               >
@@ -1155,9 +1277,10 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           {siteLinks.length < 4 && (
                             <button
                               type="button"
-                              onClick={() =>
+                              onClick={() => {
                                 setSiteLinks([...siteLinks, { id: `link-${Date.now()}`, label: '', url: '' }])
-                              }
+                                setLinksAuto(false)
+                              }}
                               className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
                             >
                               <Plus className="w-3 h-3" /> Add custom link
@@ -1170,9 +1293,19 @@ export function ListBusinessModal({ open, onClose }: Props) {
 
                       {/* Editable website copy */}
                       <div>
-                        <Label className="text-xs font-semibold uppercase tracking-wide mb-1 block">Website Text</Label>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                          <Label className="text-xs font-semibold uppercase tracking-wide">Website Text</Label>
+                          <button
+                            type="button"
+                            onClick={applyWebsiteAutoContent}
+                            className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" /> Auto-fill content
+                          </button>
+                        </div>
                         <p className="text-[10px] text-muted-foreground mb-2">
                           Change any heading, paragraph or footer line. Empty fields keep the template&apos;s own copy.
+                          <b> Auto-fill</b> writes all of it from your business details — nothing is sent anywhere.
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                           <Input
@@ -1261,8 +1394,8 @@ export function ListBusinessModal({ open, onClose }: Props) {
                           />
                         </div>
                         <p className="mt-2 text-[10px] text-brand">
-                          Tip: click any heading, menu item or button in the live preview and type — the box here
-                          fills in automatically.
+                          Tip: click any heading, paragraph or button in the live preview and type — the box here
+                          fills in automatically. For menu items, double-click the label to rename it.
                         </p>
                         <Textarea
                           value={siteCopy.aboutText}
