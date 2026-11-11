@@ -14,6 +14,7 @@ import {
   ShieldCheck, Star, Loader2, ChevronRight, ChevronLeft,
   Crown, Sparkles, X, Tag, MessageCircle
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { BusinessCard } from '@/components/businesshub/BusinessCard'
 import { PremiumBusinessCard } from '@/components/businesshub/PremiumBusinessCard'
 import { ChatModal } from '@/components/businesshub/ChatModal'
@@ -28,6 +29,7 @@ import { NearbyPlaceCard } from '@/components/businesshub/NearbyPlaceCard'
 import { UserPanel } from '@/components/businesshub/UserPanel'
 import { AdminPanel } from '@/components/businesshub/AdminPanel'
 import { WelcomePopup } from '@/components/businesshub/WelcomePopup'
+import { categoryVisual } from '@/lib/category-visuals'
 
 // MapView uses react-leaflet which needs `window`. Load it on client only.
 const MapView = dynamic(
@@ -39,17 +41,17 @@ const MapView = dynamic(
 )
 
 const TOP_CATEGORIES = [
-  { name: 'Grocery & Essentials', emoji: '🛒', color: '#16a34a' },
-  { name: 'Restaurants', emoji: '🍽️', color: '#dc2626' },
-  { name: 'Home Services', emoji: '🔧', color: '#0891b2' },
-  { name: 'Textiles & Apparel', emoji: '🧵', color: '#7c3aed' },
-  { name: 'Food & Sweets', emoji: '🍯', color: '#c026d3' },
-  { name: 'Food & Beverages', emoji: '☕', color: '#92400e' },
-  { name: 'Automobile', emoji: '🚗', color: '#475569' },
-  { name: 'Electronics', emoji: '📱', color: '#0284c7' },
-  { name: 'Health & Wellness', emoji: '🌿', color: '#15803d' },
-  { name: 'Beauty & Personal Care', emoji: '💇', color: '#be185d' },
-  { name: 'Handicrafts & Art', emoji: '🎨', color: '#db2777' }
+  'Grocery & Essentials',
+  'Restaurants',
+  'Home Services',
+  'Textiles & Apparel',
+  'Food & Sweets',
+  'Food & Beverages',
+  'Automobile',
+  'Electronics',
+  'Health & Wellness',
+  'Beauty & Personal Care',
+  'Handicrafts & Art'
 ]
 
 export default function Home() {
@@ -283,8 +285,9 @@ export default function Home() {
     }
   }, [])
 
-  const getUserLocation = () => {
+  const getUserLocation = (manual = false) => {
     if (!navigator.geolocation) {
+      if (manual) toast.error('Location is not supported by this browser. Search by city instead.')
       return
     }
     setIsLocating(true)
@@ -295,12 +298,19 @@ export default function Home() {
         // Guard against NaN / null coordinates from the browser
         if (Number.isFinite(lat) && Number.isFinite(lng)) {
           setLocation(lat, lng)
+          if (manual) toast.success('Location detected — showing businesses near you')
         }
         setIsLocating(false)
       },
       (err) => {
         setIsLocating(false)
-        // Silently fail — user can click "Use My Location" manually
+        if (manual) {
+          toast.error(
+            err.code === err.PERMISSION_DENIED
+              ? 'Location permission denied. Allow access or search by city.'
+              : 'Could not detect your location. Try searching by city.'
+          )
+        }
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     )
@@ -370,13 +380,19 @@ export default function Home() {
             {/* Right actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <button
-                onClick={getUserLocation}
+                onClick={() => getUserLocation(true)}
                 disabled={isLocating}
                 title={t('hero_useLocation')}
                 className="hidden sm:flex items-center gap-1.5 text-navy-foreground hover:text-brand text-xs font-medium disabled:opacity-60"
               >
                 {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />}
-                <span className="hidden md:inline">{userLat ? `${userLat.toFixed(2)}, ${userLng?.toFixed(2)}` : t('hero_useLocation')}</span>
+                <span className="hidden md:inline-flex items-center gap-1.5">
+                  {isLocating
+                    ? t('hero_locating')
+                    : userLat
+                      ? (<><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Near you</>)
+                      : t('hero_useLocation')}
+                </span>
               </button>
 
               <Button
@@ -508,7 +524,13 @@ export default function Home() {
           <div className="max-w-[1600px] mx-auto px-4 sm:px-8 py-2">
             <div className="flex items-center gap-2 overflow-x-auto chip-strip">
               <button
-                onClick={() => setSelectedCategory('All')}
+                onClick={() => {
+                  clearFilters()
+                  setSearchQuery('')
+                  setCityQuery('')
+                  setShowAllListings(false)
+                  setActiveTab('discover')
+                }}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   selectedCategory === 'All'
                     ? 'bg-navy text-navy-foreground border-navy'
@@ -517,23 +539,33 @@ export default function Home() {
               >
                 All Categories
               </button>
-              {TOP_CATEGORIES.map((c) => (
-                <button
-                  key={c.name}
-                  onClick={() => {
-                    setSelectedCategory(c.name)
-                    setActiveTab('discover')
-                  }}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1 ${
-                    selectedCategory === c.name
-                      ? 'bg-brand text-brand-foreground border-brand'
-                      : 'bg-background text-foreground border-border hover:border-brand hover:text-brand'
-                  }`}
-                >
-                  <span>{c.emoji}</span>
-                  <span>{c.name}</span>
-                </button>
-              ))}
+              {TOP_CATEGORIES.map((name) => {
+                const visual = categoryVisual(name)
+                const Icon = visual.icon
+                const active = selectedCategory === name
+                return (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      setSelectedCategory(name)
+                      setActiveTab('discover')
+                    }}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+                      active
+                        ? 'bg-brand text-brand-foreground border-brand shadow-sm shadow-brand/30'
+                        : 'bg-background text-foreground border-border hover:border-brand hover:text-brand'
+                    }`}
+                  >
+                    <span
+                      className="flex h-5 w-5 items-center justify-center rounded-full"
+                      style={active ? undefined : { background: visual.soft }}
+                    >
+                      <Icon className="h-3 w-3" style={active ? undefined : { color: visual.color }} />
+                    </span>
+                    <span>{name}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -570,7 +602,7 @@ export default function Home() {
                 </p>
               </div>
               <Button
-                onClick={getUserLocation}
+                onClick={() => getUserLocation(true)}
                 disabled={isLocating}
                 variant="outline"
                 className="border-brand text-brand hover:bg-brand-soft h-9"
@@ -593,6 +625,7 @@ export default function Home() {
             {!searchQuery && !cityQuery && selectedCategory === 'All' && !verifiedOnly && !premiumOnly && !businessType && !showAllListings ? (
               <HomeSections
                 businesses={businesses}
+                categories={categories}
                 onCategoryPick={(cat) => {
                   setSelectedCategory(cat)
                 }}
@@ -601,6 +634,17 @@ export default function Home() {
                 onSearchByCity={(city) => setCityQuery(city)}
                 onGoToTab={(tab) => setActiveTab(tab)}
                 onBrowseAll={() => setShowAllListings(true)}
+                onSearch={(query, city) => {
+                  setSearchQuery(query)
+                  setCityQuery(city)
+                  setActiveTab('discover')
+                }}
+                onExplore={({ q, city, category }) => {
+                  if (q !== undefined) setSearchQuery(q)
+                  if (city !== undefined) setCityQuery(city)
+                  if (category !== undefined) setSelectedCategory(category)
+                  setActiveTab('discover')
+                }}
               />
             ) : (
               <>
@@ -907,8 +951,8 @@ export default function Home() {
               <h4 className="font-bold text-sm mb-3 text-brand">{t('footer_forBusiness')}</h4>
               <ul className="space-y-1.5 text-sm text-navy-foreground/80">
                 <li><button onClick={() => setShowListModal(true)} className="hover:text-brand">{t('footer_listFree')}</button></li>
-                <li><button className="hover:text-brand">{t('footer_premium')}</button></li>
-                <li><button className="hover:text-brand">{t('footer_advertise')}</button></li>
+                <li><button onClick={() => setShowListModal(true)} className="hover:text-brand">{t('footer_premium')}</button></li>
+                <li><button onClick={() => { setShowListModal(true); toast.info('List your business to unlock advertising options.') }} className="hover:text-brand">{t('footer_advertise')}</button></li>
                 <li><button onClick={() => setShowAuthModal(true)} className="hover:text-brand">{t('nav_login')}</button></li>
               </ul>
             </div>
